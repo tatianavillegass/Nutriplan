@@ -11,3 +11,18 @@ createRoot(document.getElementById('root')!).render(
     </HashRouter>
   </StrictMode>,
 );
+
+/**
+ * Instalable como app.
+ *
+ * El service worker es lo que permite a Android y al escritorio ofrecer
+ * "Instalar", y de paso deja que NutriPlan abra sin conexión. En desarrollo no
+ * se registra: sólo estorbaría, cacheando versiones a medio hacer.
+ */
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Sin service worker la app funciona igual, sólo no se puede instalar.
+    });
+  });
+}
