@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within, waitFor } from '@testing-library/react';
 import { PortionRing, estadoDePorciones } from '../common/PortionRing';
 import { DayProgressBar } from '../client/DayProgressBar';
 import { FoodPortionPicker } from '../phase3/FoodPortionPicker';
@@ -197,7 +197,7 @@ describe('Se me olvidó la contraseña', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'vanessa@correo.com' } });
   };
 
-  it('con la fecha correcta puede poner una contraseña nueva y entra', () => {
+  it('con la fecha correcta puede poner una contraseña nueva y entra', async () => {
     abrirOlvido();
     fireEvent.change(screen.getByLabelText('Fecha de nacimiento'), {
       target: { value: '1991-03-15' },
@@ -206,10 +206,10 @@ describe('Se me olvidó la contraseña', () => {
       target: { value: 'nueva12345' },
     });
     fireEvent.click(screen.getByText('Guardar y entrar'));
-    expect(useAuthStore.getState().sesion?.rol).toBe('cliente');
+    await waitFor(() => expect(useAuthStore.getState().sesion?.rol).toBe('cliente'));
   });
 
-  it('con la fecha equivocada no cambia nada', () => {
+  it('con la fecha equivocada no cambia nada', async () => {
     abrirOlvido();
     fireEvent.change(screen.getByLabelText('Fecha de nacimiento'), {
       target: { value: '1990-01-01' },
@@ -218,11 +218,11 @@ describe('Se me olvidó la contraseña', () => {
       target: { value: 'nueva12345' },
     });
     fireEvent.click(screen.getByText('Guardar y entrar'));
-    expect(screen.getByText(/no coinciden/)).toBeTruthy();
+    expect(await screen.findByText(/no coinciden/)).toBeTruthy();
     expect(useAuthStore.getState().sesion).toBeNull();
   });
 
-  it('si la ficha no tiene fecha, lo dice en vez de dejarla colgada', () => {
+  it('si la ficha no tiene fecha, lo dice en vez de dejarla colgada', async () => {
     useAppStore.setState({
       clients: useAppStore.getState().clients.map((c) => ({ ...c, fechaNacimiento: undefined })),
     });
@@ -234,7 +234,7 @@ describe('Se me olvidó la contraseña', () => {
       target: { value: 'nueva12345' },
     });
     fireEvent.click(screen.getByText('Guardar y entrar'));
-    expect(screen.getByText(/no tiene fecha de nacimiento/)).toBeTruthy();
+    expect(await screen.findByText(/no tiene fecha de nacimiento/)).toBeTruthy();
   });
 
   it('se puede volver a la pantalla de entrar', () => {

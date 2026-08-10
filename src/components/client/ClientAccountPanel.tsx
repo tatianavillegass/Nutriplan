@@ -3,6 +3,7 @@ import type { Client } from '../../types/client';
 import { estadoCuenta } from '../../types/auth';
 import { useAuthStore } from '../../store/useAuthStore';
 import { cuentaDeCliente } from '../../utils/auth';
+import { hayNube } from '../../utils/supabase';
 import { Button, Input } from '../common/ui';
 
 interface Props {
@@ -25,6 +26,29 @@ export function ClientAccountPanel({ client, onEmail }: Props) {
   const cuenta = cuentaDeCliente(cuentas, client.id);
   const [email, setEmail] = useState(client.email ?? '');
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Con servidor no hay "cuenta" que guardar aquí: basta con que el email
+   * esté en la ficha. Las reglas de la base de datos hacen que, al crearse
+   * la cuenta con ese correo, vea su plan y nada más.
+   */
+  if (hayNube && client.email) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-emerald-900">Acceso dado</p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            {client.email} — entra en la app con ese email. La primera vez pulsa «Crear una» y
+            elige su contraseña; a partir de ahí ve su plan desde donde quiera.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => onEmail('')}>
+          Quitar acceso
+        </Button>
+      </div>
+    );
+  }
 
   if (cuenta) {
     const pendiente = estadoCuenta(cuenta) === 'pendiente';
@@ -61,7 +85,9 @@ export function ClientAccountPanel({ client, onEmail }: Props) {
                 )
               )
                 return;
-              reiniciar(cuenta.id);
+              void reiniciar(cuenta.id).then((r) => {
+                if (!r.ok) window.alert(r.error);
+              });
             }}
           >
             Restablecer contraseña
@@ -91,12 +117,10 @@ export function ClientAccountPanel({ client, onEmail }: Props) {
         <Button
           disabled={!email.trim()}
           onClick={() => {
-            const r = invitar({ nombre: client.nombre, email, clientId: client.id });
-            if (!r.ok) {
-              setError(r.error);
-              return;
-            }
-            onEmail(email.trim());
+            void invitar({ nombre: client.nombre, email, clientId: client.id }).then((r) => {
+              if (!r.ok) setError(r.error);
+              else onEmail(email.trim());
+            });
           }}
         >
           Invitar

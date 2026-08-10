@@ -75,6 +75,19 @@ interface AppState {
   addMedicion: (m: Omit<Medicion, 'id'>) => Medicion;
   updateMedicion: (id: string, patch: Partial<Medicion>) => void;
   deleteMedicion: (id: string) => void;
+
+  /**
+   * Sustituye el estado por el que viene del servidor. Se usa al entrar,
+   * cuando lo que manda es la nube y no lo que hubiera en este navegador.
+   */
+  hidratar: (datos: {
+    clients: Client[];
+    plans: Plan[];
+    recipes: Receta[];
+    foods: Alimento[];
+    mediciones: Medicion[];
+    registros: RegistroDia[];
+  }) => void;
 }
 
 function hydrate<T>(key: string, fallback: T): T {
@@ -528,5 +541,29 @@ export const useAppStore = create<AppState>((set, get) => {
         persistMediciones(mediciones);
         return { mediciones };
       }),
+
+    hidratar: (datos) => {
+      // El catálogo del servidor puede venir vacío la primera vez (cuenta
+      // recién creada): entonces se arranca con el que trae la app, que es
+      // justo lo que se subirá a continuación.
+      const foods = datos.foods.length ? sanearGrupos(datos.foods) : FOOD_CATALOG;
+      const recipes = datos.recipes.length ? datos.recipes : SEED_RECIPES;
+
+      persistClients(datos.clients);
+      persistPlans(datos.plans);
+      persistRecipes(recipes);
+      persistFoods(foods);
+      persistMediciones(datos.mediciones);
+      persistRegistros(datos.registros);
+
+      set({
+        clients: datos.clients,
+        plans: migrarGruposPlanes(datos.plans),
+        recipes,
+        foods,
+        mediciones: datos.mediciones,
+        registros: datos.registros,
+      });
+    },
   };
 });

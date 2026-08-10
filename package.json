@@ -13,6 +13,7 @@
     "build:file": "tsc -b && vite build --mode singlefile --outDir dist-file"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.2",
     "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

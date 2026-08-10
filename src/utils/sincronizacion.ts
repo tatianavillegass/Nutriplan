@@ -1,0 +1,175 @@
+import { useAppStore } from '../store/useAppStore';
+import { storage } from './storage';
+import { hayNube } from './supabase';
+import { bajar, subirTodo, subirRegistros, type Foto, type Perfil } from './nube';
+import {
+  guardarPlantillas,
+  guardarPlantillasDia,
+  leerPlantillas,
+  leerPlantillasDia,
+} from './plantillas';
+
+/**
+ * MANTENER LOS DOS LADOS IGUALES
+ *
+ * La app no espera al servidor para nada: se trabaja en memoria, se pinta al
+ * instante, y por detrás se va subiendo. Si se cae la conexión no se pierde
+ * el trabajo — sigue en el navegador — y se sube en cuanto vuelve.
+ *
+ * Quién escribe qué:
+ *   · la nutricionista sube todo lo suyo
+ *   · el cliente sólo sube sus registros del día
+ *
+ * Se espera un momento antes de subir para no mandar veinte veces lo mismo
+ * mientras se teclea un nombre o se sube y baja una porción.
+ */
+
+const ESPERA_MS = 1500;
+
+let temporizador: ReturnType<typeof setTimeout> | null = null;
+let desuscribir: (() => void) | null = null;
+let perfilActivo: Perfil | null = null;
+let pendiente = false;
+
+/** Se avisa a la app de si hay algo por guardar, para poder enseñarlo. */
+type Estado = 'al-dia' | 'guardando' | 'error';
+let alCambiarEstado: ((e: Estado) => void) | null = null;
+
+export function observarSincronizacion(fn: ((e: Estado) => void) | null): void {
+  alCambiarEstado = fn;
+}
+
+function avisar(e: Estado) {
+  alCambiarEstado?.(e);
+}
+
+/** El estado completo, incluidas las plantillas, que viven aparte. */
+export function fotoActual(): Foto {
+  const s = useAppStore.getState();
+  return {
+    clients: s.clients,
+    plans: s.plans,
+    recipes: s.recipes,
+    foods: s.foods,
+    mediciones: s.mediciones,
+    registros: s.registros,
+    plantillas: leerPlantillas(),
+    plantillasDia: leerPlantillasDia(),
+  };
+}
+
+/**
+ * De quién es lo que hay guardado en este navegador. Sin esto, una segunda
+ * nutricionista que se registrara en el mismo ordenador se llevaría los
+ * clientes de la primera a su cuenta.
+ */
+const DUENO_KEY = 'nube_dueno';
+
+/** Deja el navegador como recién estrenado. Se llama al cerrar sesión. */
+export function olvidarLocal(): void {
+  useAppStore.getState().hidratar({
+    clients: [],
+    plans: [],
+    recipes: [],
+    foods: [],
+    mediciones: [],
+    registros: [],
+  });
+  guardarPlantillas([]);
+  guardarPlantillasDia([]);
+  void storage.remove(DUENO_KEY);
+}
+
+/**
+ * Al entrar: se trae lo que hay en el servidor y se sustituye lo local.
+ * Manda la nube, no el navegador — si no, dos dispositivos se pisarían.
+ *
+ * La única excepción es la primera vez de todas: una cuenta recién creada no
+ * tiene nada arriba y lo que hay en este navegador es suyo, así que se sube
+ * en lugar de tirarlo. Sólo si nadie más lo ha reclamado antes.
+ */
+export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
+  if (!hayNube) return;
+  avisar('guardando');
+
+  try {
+    const foto = await bajar(perfil);
+    const arribaVacio = !foto.clients.length && !foto.recipes.length && !foto.foods.length;
+    const dueno = storage.getSync<string>(DUENO_KEY);
+    const heredable = !dueno || dueno === perfil.nutriId;
+
+    if (arribaVacio && perfil.rol === 'nutricionista' && heredable) {
+      // Primera vez: lo que hay en este navegador pasa a ser lo de la cuenta.
+      void storage.set(DUENO_KEY, perfil.nutriId);
+      await subirTodo(perfil, fotoActual());
+    } else {
+      if (arribaVacio && !heredable) olvidarLocal();
+      void storage.set(DUENO_KEY, perfil.nutriId);
+      useAppStore.getState().hidratar(foto);
+      guardarPlantillas(foto.plantillas);
+      guardarPlantillasDia(foto.plantillasDia);
+    }
+    avisar('al-dia');
+  } catch (e) {
+    console.error('[nube] no se pudo cargar', e);
+    avisar('error');
+  }
+}
+
+/** A partir de aquí, cada cambio se sube solo. */
+export function arrancarSincronizacion(perfil: Perfil): void {
+  if (!hayNube) return;
+  pararSincronizacion();
+  perfilActivo = perfil;
+
+  desuscribir = useAppStore.subscribe(() => {
+    pendiente = true;
+    avisar('guardando');
+    if (temporizador) clearTimeout(temporizador);
+    temporizador = setTimeout(() => void empujar(), ESPERA_MS);
+  });
+
+  // Si se cierra la pestaña con algo a medias, se intenta un último envío.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', alSalirDeLaPagina);
+  }
+}
+
+export function pararSincronizacion(): void {
+  if (temporizador) clearTimeout(temporizador);
+  temporizador = null;
+  desuscribir?.();
+  desuscribir = null;
+  perfilActivo = null;
+  pendiente = false;
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('beforeunload', alSalirDeLaPagina);
+  }
+}
+
+function alSalirDeLaPagina() {
+  if (pendiente) void empujar();
+}
+
+/** Sube lo que toque según quién esté dentro. */
+export async function empujar(): Promise<void> {
+  const perfil = perfilActivo;
+  if (!perfil || !hayNube) return;
+  pendiente = false;
+
+  try {
+    if (perfil.rol === 'cliente') {
+      const mios = useAppStore
+        .getState()
+        .registros.filter((r) => r.clientId === perfil.clientId);
+      await subirRegistros(mios);
+    } else {
+      await subirTodo(perfil, fotoActual());
+    }
+    avisar('al-dia');
+  } catch (e) {
+    console.error('[nube] no se pudo guardar', e);
+    pendiente = true;
+    avisar('error');
+  }
+}

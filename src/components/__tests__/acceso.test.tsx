@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { AuthPage } from '../../pages/AuthPage';
 import { ClientAccountPanel } from '../client/ClientAccountPanel';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -43,29 +43,29 @@ describe('Pantalla de acceso', () => {
     expect(screen.getByText('Crea tu cuenta')).toBeTruthy();
   });
 
-  it('crear cuenta abre sesión directamente', () => {
+  it('crear cuenta abre sesión directamente', async () => {
     render(<AuthPage />);
     fireEvent.click(screen.getByText('Crear una'));
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Tats' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'tats@correo.com' } });
     fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'plan12345' } });
     fireEvent.click(screen.getByText('Crear cuenta'));
+    await waitFor(() => expect(useAuthStore.getState().actual()?.nombre).toBe('Tats'));
     expect(leerSesion()).toBeTruthy();
-    expect(useAuthStore.getState().actual()?.nombre).toBe('Tats');
   });
 
-  it('una contraseña corta se explica en vez de fallar en silencio', () => {
+  it('una contraseña corta se explica en vez de fallar en silencio', async () => {
     render(<AuthPage />);
     fireEvent.click(screen.getByText('Crear una'));
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Tats' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'tats@correo.com' } });
     fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: '123' } });
     fireEvent.click(screen.getByText('Crear cuenta'));
-    expect(screen.getByText(/8 caracteres/)).toBeTruthy();
+    expect(await screen.findByText(/8 caracteres/)).toBeTruthy();
     expect(leerSesion()).toBeNull();
   });
 
-  it('entrar con datos que no cuadran lo dice sin pistas de más', () => {
+  it('entrar con datos que no cuadran lo dice sin pistas de más', async () => {
     guardarCuentas([
       {
         id: 'cu1',
@@ -83,10 +83,10 @@ describe('Pantalla de acceso', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'tats@correo.com' } });
     fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'otracosa' } });
     fireEvent.click(screen.getByText('Entrar'));
-    expect(screen.getByText(/Email o contraseña incorrectos/)).toBeTruthy();
+    expect(await screen.findByText(/Email o contraseña incorrectos/)).toBeTruthy();
   });
 
-  it('un cliente invitado ve la pantalla de elegir contraseña con su nombre', () => {
+  it('un cliente invitado ve la pantalla de elegir contraseña con su nombre', async () => {
     const cuentas = [
       {
         id: 'cu2',
@@ -107,7 +107,7 @@ describe('Pantalla de acceso', () => {
 
     fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'vanessa123' } });
     fireEvent.click(screen.getByText('Guardar y entrar'));
-    expect(useAuthStore.getState().sesion?.rol).toBe('cliente');
+    await waitFor(() => expect(useAuthStore.getState().sesion?.rol).toBe('cliente'));
   });
 });
 
@@ -134,26 +134,26 @@ describe('Dar acceso al cliente desde su ficha', () => {
     expect(screen.getByText(/Dar acceso a Vanessa/)).toBeTruthy();
   });
 
-  it('invitar deja la cuenta pendiente y guarda el email en la ficha', () => {
+  it('invitar deja la cuenta pendiente y guarda el email en la ficha', async () => {
     const onEmail = vi.fn();
     const { rerender } = render(<ClientAccountPanel client={CLIENTE} onEmail={onEmail} />);
     fireEvent.change(screen.getByPlaceholderText('nombre@correo.com'), {
       target: { value: 'vanessa@correo.com' },
     });
     fireEvent.click(screen.getByText('Invitar'));
-    expect(onEmail).toHaveBeenCalledWith('vanessa@correo.com');
+    await waitFor(() => expect(onEmail).toHaveBeenCalledWith('vanessa@correo.com'));
 
     rerender(<ClientAccountPanel client={CLIENTE} onEmail={onEmail} />);
     expect(screen.getByText('Invitación pendiente')).toBeTruthy();
   });
 
-  it('un email inválido no crea nada y lo explica', () => {
+  it('un email inválido no crea nada y lo explica', async () => {
     render(<ClientAccountPanel client={CLIENTE} onEmail={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText('nombre@correo.com'), {
       target: { value: 'esto-no-es-un-email' },
     });
     fireEvent.click(screen.getByText('Invitar'));
-    expect(screen.getByText(/no parece válido/)).toBeTruthy();
+    expect(await screen.findByText(/no parece válido/)).toBeTruthy();
   });
 });
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Route, Routes, Navigate } from 'react-router-dom';
 import { Clients } from './pages/Clients';
 import { ClientDetail } from './pages/ClientDetail';
@@ -6,7 +7,15 @@ import { FoodCatalogPage } from './pages/FoodCatalogPage';
 import { ClientView } from './pages/ClientView';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { AuthPage } from './pages/AuthPage';
+import { ClaveNueva } from './components/common/ClaveNueva';
 import { useAuthStore } from './store/useAuthStore';
+import { hayNube } from './utils/supabase';
+import {
+  arrancarSincronizacion,
+  cargarDesdeNube,
+  observarSincronizacion,
+  pararSincronizacion,
+} from './utils/sincronizacion';
 
 const nav = [
   { to: '/clientes', label: 'Clientes' },
@@ -18,7 +27,43 @@ const nav = [
 export default function App() {
   const sesion = useAuthStore((s) => s.sesion);
   const cuenta = useAuthStore((s) => s.actual());
+  const perfil = useAuthStore((s) => s.perfil);
+  const cargando = useAuthStore((s) => s.cargando);
+  const recuperando = useAuthStore((s) => s.recuperando);
+  const arrancar = useAuthStore((s) => s.arrancar);
   const cerrar = useAuthStore((s) => s.salir);
+  const [guardado, setGuardado] = useState<'al-dia' | 'guardando' | 'error'>('al-dia');
+
+  // Al abrir la app se mira si quedaba una sesión abierta en el servidor.
+  useEffect(() => {
+    void arrancar();
+    observarSincronizacion(setGuardado);
+    return () => observarSincronizacion(null);
+  }, [arrancar]);
+
+  // Con sesión: se baja lo que hay arriba y a partir de ahí se sube solo.
+  useEffect(() => {
+    if (!perfil) return;
+    let vivo = true;
+    void cargarDesdeNube(perfil).then(() => {
+      if (vivo) arrancarSincronizacion(perfil);
+    });
+    return () => {
+      vivo = false;
+      pararSincronizacion();
+    };
+  }, [perfil]);
+
+  if (cargando) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center text-sm text-slate-400">
+        Abriendo tu cuenta…
+      </div>
+    );
+  }
+
+  // Llegando por el enlace del email, lo primero es la contraseña nueva.
+  if (recuperando) return <ClaveNueva />;
 
   // Sin sesión sólo existe la pantalla de acceso.
   if (!sesion || !cuenta) return <AuthPage />;
@@ -59,6 +104,28 @@ export default function App() {
           )}
 
           <div className="ml-auto flex items-center gap-3">
+            {hayNube && (
+              <span
+                className={`text-[11px] ${
+                  guardado === 'error'
+                    ? 'text-amber-600'
+                    : guardado === 'guardando'
+                      ? 'text-slate-400'
+                      : 'text-slate-300'
+                }`}
+                title={
+                  guardado === 'error'
+                    ? 'No se ha podido guardar en el servidor. Se reintenta solo.'
+                    : 'Los cambios se guardan solos.'
+                }
+              >
+                {guardado === 'error'
+                  ? 'Sin conexión'
+                  : guardado === 'guardando'
+                    ? 'Guardando…'
+                    : 'Guardado'}
+              </span>
+            )}
             <span className="text-xs text-slate-500">
               {cuenta.nombre}
               <span className="ml-1.5 text-slate-300">·</span>
@@ -67,7 +134,7 @@ export default function App() {
               </span>
             </span>
             <button
-              onClick={cerrar}
+              onClick={() => void cerrar()}
               className="rounded-lg px-2.5 py-1.5 text-xs text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
             >
               Salir

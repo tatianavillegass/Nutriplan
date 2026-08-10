@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useAppStore } from '../store/useAppStore';
 import { buscarPorEmail } from '../utils/auth';
 import { estadoCuenta } from '../types/auth';
+import { hayNube } from '../utils/supabase';
 import { Button, Field, Input } from '../components/common/ui';
 
 type Modo = 'entrar' | 'registro' | 'invitacion' | 'olvido';
@@ -25,6 +26,8 @@ export function AuthPage() {
   const [pass, setPass] = useState('');
   const [nacimiento, setNacimiento] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
   const cuenta = email.includes('@') ? buscarPorEmail(cuentas, email) : undefined;
   const invitacionPendiente = !!cuenta && estadoCuenta(cuenta) === 'pendiente';
@@ -35,17 +38,38 @@ export function AuthPage() {
     ? clients.find((c) => c.id === cuenta.clientId)?.fechaNacimiento
     : undefined;
 
-  const enviar = () => {
+  /** En la nube la fecha de nacimiento no pinta nada: se manda un email. */
+  const pideNacimiento = !hayNube && modoReal === 'olvido' && cuenta?.rol === 'cliente';
+
+  const enviar = async () => {
+    if (enviando) return;
     setError(null);
-    const r =
-      modoReal === 'registro'
-        ? registrar({ nombre, email, pass })
-        : modoReal === 'invitacion'
-          ? activarInvitacion(email, pass)
-          : modoReal === 'olvido'
-            ? recuperarContrasena({ email, fechaNacimiento: nacimiento, nueva: pass, enFicha })
-            : entrar(email, pass);
-    if (!r.ok) setError(r.error);
+    setAviso(null);
+    setEnviando(true);
+    try {
+      const r =
+        modoReal === 'registro'
+          ? await registrar({ nombre, email, pass })
+          : modoReal === 'invitacion'
+            ? await activarInvitacion(email, pass)
+            : modoReal === 'olvido'
+              ? await recuperarContrasena({
+                  email,
+                  fechaNacimiento: nacimiento,
+                  nueva: pass,
+                  enFicha,
+                })
+              : await entrar(email, pass);
+
+      if (!r.ok) setError(r.error);
+      else if (r.valor === 'email-enviado') {
+        setAviso(
+          `Te hemos mandado un email a ${email.trim()} con un enlace para elegir contraseña nueva. Si no aparece, mira en spam.`,
+        );
+      }
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const titulo = {
@@ -57,10 +81,13 @@ export function AuthPage() {
 
   const subtitulo = {
     entrar: 'Tu email y tu contraseña.',
-    registro: 'Para nutricionistas. A tus clientes los invitas tú después.',
+    registro: hayNube
+      ? 'Si tu nutricionista ya te ha dado de alta con este email, entrarás directa a tu plan.'
+      : 'Para nutricionistas. A tus clientes los invitas tú después.',
     invitacion: 'Tu nutricionista te ha dado de alta. Elige una contraseña para entrar.',
-    olvido:
-      cuenta && cuenta.rol !== 'cliente'
+    olvido: hayNube
+      ? 'Escribe tu email y te mandamos un enlace para elegir una contraseña nueva.'
+      : cuenta && cuenta.rol !== 'cliente'
         ? 'Elige una contraseña nueva. Sólo funciona en este navegador, donde ya están tus datos.'
         : 'Confirma tu fecha de nacimiento y elige una contraseña nueva.',
   }[modoReal];
@@ -102,7 +129,7 @@ export function AuthPage() {
             />
           </Field>
 
-          {modoReal === 'olvido' && cuenta?.rol === 'cliente' && (
+          {pideNacimiento && (
             <Field label="Fecha de nacimiento">
               <Input
                 type="date"
@@ -112,15 +139,17 @@ export function AuthPage() {
             </Field>
           )}
 
-          <Field label={modoReal === 'entrar' ? 'Contraseña' : 'Elige una contraseña'}>
-            <Input
-              type="password"
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && enviar()}
-              placeholder={modoReal === 'entrar' ? '' : 'Mínimo 8 caracteres'}
-            />
-          </Field>
+          {!(hayNube && modoReal === 'olvido') && (
+            <Field label={modoReal === 'entrar' ? 'Contraseña' : 'Elige una contraseña'}>
+              <Input
+                type="password"
+                value={pass}
+                onChange={(e) => setPass(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void enviar()}
+                placeholder={modoReal === 'entrar' ? '' : 'Mínimo 8 caracteres'}
+              />
+            </Field>
+          )}
         </div>
 
         {error && (
@@ -129,12 +158,28 @@ export function AuthPage() {
           </p>
         )}
 
-        <Button onClick={enviar} className="mt-4 w-full justify-center">
-          {modoReal === 'registro'
-            ? 'Crear cuenta'
-            : modoReal === 'invitacion' || modoReal === 'olvido'
-              ? 'Guardar y entrar'
-              : 'Entrar'}
+        {aviso && (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            {aviso}
+          </p>
+        )}
+
+        <Button
+          onClick={() => void enviar()}
+          disabled={enviando}
+          className="mt-4 w-full justify-center"
+        >
+          {enviando
+            ? 'Un momento…'
+            : modoReal === 'registro'
+              ? 'Crear cuenta'
+              : modoReal === 'invitacion'
+                ? 'Guardar y entrar'
+                : modoReal === 'olvido'
+                  ? hayNube
+                    ? 'Mandarme el enlace'
+                    : 'Guardar y entrar'
+                  : 'Entrar'}
         </Button>
 
         {modoReal === 'entrar' && (
@@ -183,8 +228,9 @@ export function AuthPage() {
       </div>
 
       <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-400">
-        Los datos se guardan en este navegador. Al conectar el servidor podrás entrar desde
-        cualquier dispositivo y las contraseñas quedarán cifradas de verdad.
+        {hayNube
+          ? 'Tu cuenta y tus planes viven en el servidor: entras desde el móvil, el portátil o donde quieras.'
+          : 'Los datos se guardan en este navegador. Al conectar el servidor podrás entrar desde cualquier dispositivo y las contraseñas quedarán cifradas de verdad.'}
       </p>
     </div>
   );
