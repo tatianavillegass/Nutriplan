@@ -59,7 +59,10 @@ export function AuthPage() {
     entrar: 'Tu email y tu contraseña.',
     registro: 'Para nutricionistas. A tus clientes los invitas tú después.',
     invitacion: 'Tu nutricionista te ha dado de alta. Elige una contraseña para entrar.',
-    olvido: 'Confirma tu fecha de nacimiento y elige una contraseña nueva.',
+    olvido:
+      cuenta && cuenta.rol !== 'cliente'
+        ? 'Elige una contraseña nueva. Sólo funciona en este navegador, donde ya están tus datos.'
+        : 'Confirma tu fecha de nacimiento y elige una contraseña nueva.',
   }[modoReal];
 
   return (
@@ -99,7 +102,7 @@ export function AuthPage() {
             />
           </Field>
 
-          {modoReal === 'olvido' && (
+          {modoReal === 'olvido' && cuenta?.rol === 'cliente' && (
             <Field label="Fecha de nacimiento">
               <Input
                 type="date"

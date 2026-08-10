@@ -12,6 +12,7 @@ import {
   leerCuentas,
   leerSesion,
   quitarCuentaDeCliente,
+  recuperarContrasena,
   registrar,
   reiniciarContrasena,
   salir,
@@ -102,6 +103,32 @@ describe('Registro y acceso de la nutricionista', () => {
     entrar(cuentas, NUTRI.email, NUTRI.pass);
     salir();
     expect(leerSesion()).toBeNull();
+  });
+
+  it('la nutricionista puede recuperar su acceso sin quedarse encerrada', () => {
+    const { cuentas } = alta();
+    const r = recuperarContrasena(cuentas, {
+      email: NUTRI.email,
+      fechaNacimiento: '',
+      nueva: 'nueva12345',
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.valor.sesion.rol).toBe('nutricionista');
+      expect(entrar(r.valor.cuentas, NUTRI.email, 'nueva12345').ok).toBe(true);
+      // La vieja deja de valer.
+      expect(entrar(r.valor.cuentas, NUTRI.email, NUTRI.pass).ok).toBe(false);
+    }
+  });
+
+  it('un email que no existe no da pistas ni crea nada', () => {
+    const { cuentas } = alta();
+    const r = recuperarContrasena(cuentas, {
+      email: 'nadie@correo.com',
+      fechaNacimiento: '',
+      nueva: 'nueva12345',
+    });
+    expect(r.ok).toBe(false);
   });
 
   it('cambiar la contraseña exige la anterior', () => {

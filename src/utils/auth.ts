@@ -214,6 +214,25 @@ export function recuperarContrasena(
   const generico = 'Los datos no coinciden. Habla con tu nutricionista.';
   if (!cuenta) return { ok: false, error: generico };
 
+  /**
+   * La nutricionista no tiene ficha contra la que comprobar nada, y dejarla
+   * fuera significaría perder todos sus clientes. Mientras los datos vivan en
+   * este navegador, quien lo usa ya los tiene delante: pedirle un dato más no
+   * añadiría seguridad, sólo la dejaría encerrada. Con Supabase esto pasa a
+   * ser un enlace por email.
+   */
+  if (cuenta.rol !== 'cliente') {
+    const fuerza = comprobarContrasena(datos.nueva);
+    if (!fuerza.valida) return { ok: false, error: fuerza.motivo! };
+
+    const actualizada: Cuenta = { ...cuenta, hash: hashear(datos.nueva), ultimoAcceso: nowIso() };
+    const siguiente = cuentas.map((c) => (c.id === cuenta.id ? actualizada : c));
+    const sesion: Sesion = { cuentaId: actualizada.id, rol: actualizada.rol, desde: nowIso() };
+    guardarCuentas(siguiente);
+    guardarSesion(sesion);
+    return { ok: true, valor: { cuentas: siguiente, sesion } };
+  }
+
   if (!datos.enFicha) {
     return {
       ok: false,
