@@ -46,6 +46,33 @@ export const supabase: SupabaseClient | null = hayNube
     })
   : null;
 
+/**
+ * QUIÉN PUEDE SER NUTRICIONISTA
+ *
+ * Sin esto, cualquiera que abriera la app podría crearse una cuenta de
+ * nutricionista y montar su propia consulta dentro. Con una tercera variable
+ * de entorno se dice qué correos son los de casa:
+ *
+ *    VITE_NUTRI_EMAIL=tatianavillegas.se@gmail.com
+ *
+ * Admite varios separados por comas, por si algún día sois más de una.
+ * Quien entre con otro email sólo puede ser cliente, y sólo si ya está dado
+ * de alta en una ficha.
+ *
+ * Si la variable no se pone, se deja pasar a cualquiera: hace falta para
+ * poder crear la primera cuenta antes de configurar nada.
+ */
+const nutricionistas = ((import.meta.env?.VITE_NUTRI_EMAIL as string | undefined) ?? '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+/** ¿Se le permite a este correo abrir consulta? */
+export function puedeSerNutricionista(email: string): boolean {
+  if (!nutricionistas.length) return true;
+  return nutricionistas.includes(email.trim().toLowerCase());
+}
+
 /** Igual que `supabase` pero sin comprobar el nulo en cada llamada. */
 export function nube(): SupabaseClient {
   if (!supabase) throw new Error('Supabase no está configurado.');
@@ -60,6 +87,8 @@ export function mensajeDeError(e: unknown): string {
   const bruto = e instanceof Error ? e.message : String(e ?? '');
   const t = bruto.toLowerCase();
 
+  if (t.includes('sin_alta'))
+    return 'Este email todavía no está dado de alta. Pídele a tu nutricionista que te añada y vuelve a intentarlo.';
   if (t.includes('invalid login credentials')) return 'Email o contraseña incorrectos.';
   if (t.includes('user already registered') || t.includes('already been registered'))
     return 'Ya hay una cuenta con ese email. Prueba a entrar.';

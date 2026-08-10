@@ -41,6 +41,19 @@ export function AuthPage() {
   /** En la nube la fecha de nacimiento no pinta nada: se manda un email. */
   const pideNacimiento = !hayNube && modoReal === 'olvido' && cuenta?.rol === 'cliente';
 
+  /**
+   * NADIE ABRE CONSULTA POR SU CUENTA
+   *
+   * "Crear cuenta" no es una invitación abierta: es el sitio donde el cliente
+   * al que ya han dado de alta elige su contraseña la primera vez. La única
+   * excepción es el estreno de la app en un navegador vacío, donde hace falta
+   * para que la nutricionista se dé de alta a sí misma.
+   */
+  const primeraVez = !hayNube && cuentas.length === 0;
+  const invitacion = primeraVez
+    ? '¿Todavía no tienes cuenta?'
+    : '¿Es tu primera vez y tu nutricionista te ha dado de alta?';
+
   const enviar = async () => {
     if (enviando) return;
     setError(null);
@@ -81,9 +94,9 @@ export function AuthPage() {
 
   const subtitulo = {
     entrar: 'Tu email y tu contraseña.',
-    registro: hayNube
-      ? 'Si tu nutricionista ya te ha dado de alta con este email, entrarás directa a tu plan.'
-      : 'Para nutricionistas. A tus clientes los invitas tú después.',
+    registro: primeraVez
+      ? 'Para nutricionistas. A tus clientes los invitas tú después.'
+      : 'Usa el email con el que tu nutricionista te ha dado de alta y elige tu contraseña.',
     invitacion: 'Tu nutricionista te ha dado de alta. Elige una contraseña para entrar.',
     olvido: hayNube
       ? 'Escribe tu email y te mandamos un enlace para elegir una contraseña nueva.'
@@ -213,7 +226,7 @@ export function AuthPage() {
 
         {(modoReal === 'entrar' || modoReal === 'registro') && (
           <p className="mt-3 text-center text-xs text-slate-500">
-            {modo === 'entrar' ? '¿Todavía no tienes cuenta? ' : '¿Ya tienes cuenta? '}
+            {modo === 'entrar' ? `${invitacion} ` : '¿Ya tienes cuenta? '}
             <button
               onClick={() => {
                 setModo(modo === 'entrar' ? 'registro' : 'entrar');
@@ -221,7 +234,7 @@ export function AuthPage() {
               }}
               className="font-medium text-brand-600 hover:underline"
             >
-              {modo === 'entrar' ? 'Crear una' : 'Entrar'}
+              {modo === 'entrar' ? (primeraVez ? 'Crear una' : 'Crear mi contraseña') : 'Entrar'}
             </button>
           </p>
         )}

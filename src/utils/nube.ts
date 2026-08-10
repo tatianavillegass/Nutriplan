@@ -1,5 +1,5 @@
 import type { User } from '@supabase/supabase-js';
-import { nube } from './supabase';
+import { nube, puedeSerNutricionista } from './supabase';
 import type { Client } from '../types/client';
 import type { Plan } from '../types/plan';
 import type { Receta } from '../types/recipe';
@@ -99,6 +99,10 @@ export async function resolverPerfil(user: User): Promise<Perfil> {
       email,
     };
   }
+
+  // No es cliente de nadie. Sólo queda que sea la dueña de la consulta; si no
+  // lo es, se para aquí: nadie abre consulta por su cuenta.
+  if (!puedeSerNutricionista(email)) throw new Error('SIN_ALTA');
 
   const nombre = (user.user_metadata?.nombre as string) || email.split('@')[0];
 

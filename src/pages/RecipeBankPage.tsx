@@ -9,6 +9,7 @@ import { TIEMPOS, DIFICULTADES } from '../types/recipe';
 import type { MealSlot } from '../types/food';
 import { Button, Card, Field, Input, Select, EmptyState, Badge } from '../components/common/ui';
 import { PhotoUpload } from '../components/common/PhotoUpload';
+import { ListaTexto } from '../components/common/ListaTexto';
 import { RecipeMeta } from '../components/common/RecipeMeta';
 import { uid } from '../utils/storage';
 
@@ -193,11 +194,9 @@ export function RecipeBankPage() {
               </div>
             </Field>
             <Field label="Tags (separados por coma)" className="sm:col-span-2">
-              <Input
-                value={draft.tags.join(', ')}
-                onChange={(e) =>
-                  setDraft({ ...draft, tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })
-                }
+              <ListaTexto
+                valor={draft.tags}
+                onChange={(tags) => setDraft({ ...draft, tags })}
                 placeholder="pollo, rápido, sin lactosa"
               />
             </Field>
@@ -375,15 +374,11 @@ export function RecipeBankPage() {
                     ))}
                     <option value="condimento">Condimento</option>
                   </Select>
-                  <Input
+                  <ListaTexto
                     className="sm:col-span-3"
                     placeholder="Sustitutos (coma)"
-                    value={(ing.sustitutos ?? []).join(', ')}
-                    onChange={(e) =>
-                      setIngrediente(i, {
-                        sustitutos: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-                      })
-                    }
+                    valor={ing.sustitutos ?? []}
+                    onChange={(sustitutos) => setIngrediente(i, { sustitutos })}
                   />
                   <div className="flex items-center gap-2 text-[11px] text-slate-500 sm:col-span-2">
                     <label className="flex items-center gap-1">

@@ -4,7 +4,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { AuthPage } from '../../pages/AuthPage';
 import { ClientAccountPanel } from '../client/ClientAccountPanel';
 import { useAuthStore } from '../../store/useAuthStore';
-import { guardarCuentas, hashear, leerSesion } from '../../utils/auth';
+import { guardarCuentas, hashear, leerCuentas as leerCuentasDeAhora, leerSesion } from '../../utils/auth';
 import { guardarPlantillasDia, guardarPlantillaDia } from '../../utils/plantillas';
 import type { Client } from '../../types/client';
 
@@ -84,6 +84,33 @@ describe('Pantalla de acceso', () => {
     fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'otracosa' } });
     fireEvent.click(screen.getByText('Entrar'));
     expect(await screen.findByText(/Email o contraseña incorrectos/)).toBeTruthy();
+  });
+
+  it('en cuanto hay una cuenta, ya nadie puede abrir consulta', () => {
+    // La app la lleva una nutricionista. "Crear cuenta" deja de ser una
+    // invitación abierta y pasa a ser sólo el sitio donde el cliente que ya
+    // está dado de alta elige su contraseña.
+    guardarCuentas([
+      {
+        id: 'cu1',
+        email: 'tats@correo.com',
+        nombre: 'Tats',
+        rol: 'nutricionista',
+        hash: hashear('plan12345'),
+        createdAt: '2026-01-01',
+      },
+    ]);
+    useAuthStore.setState({ cuentas: leerCuentasDeAhora() });
+
+    render(<AuthPage />);
+    expect(screen.queryByText('Crear una')).toBeNull();
+    expect(screen.getByText('Crear mi contraseña')).toBeTruthy();
+    expect(screen.getByText(/te ha dado de alta/)).toBeTruthy();
+  });
+
+  it('pero en un navegador estrenado sí, para poder darse de alta', () => {
+    render(<AuthPage />);
+    expect(screen.getByText('Crear una')).toBeTruthy();
   });
 
   it('un cliente invitado ve la pantalla de elegir contraseña con su nombre', async () => {

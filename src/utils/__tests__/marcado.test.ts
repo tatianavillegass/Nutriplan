@@ -9,7 +9,7 @@ import {
   seleccionPorBucket,
   seleccionPorGrupo,
 } from '../marcado';
-import { balanceSubgrupo, balanceSubgruposDeBucket } from '../dailyBudget';
+import { balanceSubgrupo, balanceSubgruposDeBucket, esCambioALaBaja } from '../dailyBudget';
 import { generarCombinaciones, objetivoDeBucket } from '../combos';
 import { FOOD_CATALOG } from '../../data/foodCatalog';
 import type { DayType, Meal } from '../../types/plan';
@@ -185,5 +185,77 @@ describe('Fase 3 — avisos por subgrupo', () => {
     const porGrupo = seleccionPorGrupo(p, FOOD_CATALOG);
     expect(balanceSubgrupo(DIA, MEALS[0], 'proteicos_semigrasos', porGrupo).estado).toBe('completo');
     expect(balanceSubgrupo(DIA, MEALS[0], 'proteicos_magros', porGrupo).estado).toBe('completo');
+  });
+});
+
+/**
+ * Un día donde la grasa del desayuno son frutos secos y nada más. El cliente
+ * tiene que poder desayunar aceite o aguacate sin que le riñan: la misma
+ * grasa, menos calorías.
+ */
+const DIA_NUECES: DayType = {
+  ...DIA,
+  grid: {
+    desayuno: { proteicos_magros: 2, almidones: 2, frutos_secos: 1 },
+    comida: { proteicos_magros: 5, almidones: 4, frutos_secos: 1, verduras: 2 },
+    cena: { proteicos_magros: 2, almidones: 2, verduras: 2 },
+  },
+};
+
+/** Y el contrario: pautado el aceite, elegidos los frutos secos. */
+const DIA_ACEITE: DayType = {
+  ...DIA,
+  grid: {
+    desayuno: { proteicos_magros: 2, almidones: 2, grasas: 1 },
+    comida: { proteicos_magros: 5, almidones: 4, grasas: 2, verduras: 2 },
+    cena: { proteicos_magros: 2, almidones: 2, verduras: 2 },
+  },
+};
+
+describe('Cambiar de grasa dentro de la familia', () => {
+  it('aceite donde estaban pautados los frutos secos: sin aviso', () => {
+    // Las dos porciones aportan 5 g de grasa; las nueces además traen
+    // hidratos y proteína, así que el aceite sale más barato.
+    const b = balanceSubgrupo(DIA_NUECES, MEALS[0], 'grasas', { desayuno: { grasas: 1 } });
+    expect(b.mensaje).toBeUndefined();
+    expect(b.estado).toBe('completo');
+  });
+
+  it('aunque coja de más, sigue sin haber nada que avisar', () => {
+    const b = balanceSubgrupo(DIA_NUECES, MEALS[0], 'grasas', { desayuno: { grasas: 3 } });
+    expect(b.mensaje).toBeUndefined();
+  });
+
+  it('el aviso de los frutos secos donde había aceite se mantiene', () => {
+    // Al revés sí importa: las nueces cuestan más que el aceite pautado.
+    const b = balanceSubgrupo(DIA_ACEITE, MEALS[0], 'frutos_secos', {
+      desayuno: { frutos_secos: 2 },
+    });
+    expect(b.mensaje).toBeTruthy();
+  });
+
+  it('esCambioALaBaja distingue en qué sentido va el cambio', () => {
+    expect(esCambioALaBaja(DIA_NUECES, 'grasas')).toBe(true);
+    expect(esCambioALaBaja(DIA_ACEITE, 'frutos_secos')).toBe(false);
+    // Contra sí mismo siempre empata, y empatar es libre.
+    expect(esCambioALaBaja(DIA_ACEITE, 'grasas')).toBe(true);
+  });
+
+  it('sin nada de grasa pautada en el día no hay contra qué comparar', () => {
+    const sinGrasa: DayType = {
+      ...DIA,
+      grid: { desayuno: { proteicos_magros: 2, almidones: 2 }, comida: {}, cena: {} },
+    };
+    expect(esCambioALaBaja(sinGrasa, 'grasas')).toBe(false);
+    // Y entonces sí se avisa: no entraba en el plan de hoy.
+    const b = balanceSubgrupo(sinGrasa, MEALS[0], 'grasas', { desayuno: { grasas: 2 } });
+    expect(b.mensaje).toContain('no entra en tu plan');
+  });
+
+  it('la proteína magra sigue siendo libre pase lo que pase', () => {
+    const b = balanceSubgrupo(DIA_NUECES, MEALS[0], 'proteicos_magros', {
+      desayuno: { proteicos_magros: 6 },
+    });
+    expect(b.mensaje).toBeUndefined();
   });
 });

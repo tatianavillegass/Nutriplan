@@ -154,6 +154,49 @@ function limitadaPorGrasa(familia: string): boolean {
 /** Grasa por porción por debajo de la cual pasarse da igual. */
 const UMBRAL_GRASA_LIBRE = 1;
 
+/** Lo que cuesta una porción de ese subgrupo. */
+function kcalDeUnaPorcion(g: ExchangeGroupId): number {
+  const i = EXCHANGE_GROUPS[g];
+  if (!i) return 0;
+  return i.hc * 4 + i.proteina * 4 + i.grasa * 9;
+}
+
+/**
+ * ¿ES UN CAMBIO A LA BAJA?
+ *
+ * Dentro de una familia, bajar de escalón nunca descuadra el plan:
+ *
+ *   · pollo donde había queso curado — misma proteína, menos grasa
+ *   · aceite donde había nueces      — la misma grasa, pero las nueces
+ *                                      además traen hidratos y proteína
+ *
+ * En los dos casos el cliente come menos calorías de las previstas, así que
+ * no hay nada que avisar. Lo que sí se avisa es lo contrario: coger nueces
+ * donde estaba pautado el aceite, o queso donde estaba el pollo.
+ *
+ * Se compara contra lo más barato que se le pautó ese día en esa familia:
+ * si su elección no cuesta más que eso, es libre.
+ */
+export function esCambioALaBaja(dayType: DayType, grupo: ExchangeGroupId): boolean {
+  const info = EXCHANGE_GROUPS[grupo];
+  if (!info) return false;
+
+  let masBarato = Infinity;
+  for (const m of dayType.meals) {
+    for (const [g, n] of Object.entries(dayType.grid[m.id] ?? {}) as [ExchangeGroupId, number][]) {
+      if (n > 0 && EXCHANGE_GROUPS[g]?.familia === info.familia) {
+        masBarato = Math.min(masBarato, kcalDeUnaPorcion(g));
+      }
+    }
+  }
+
+  // Nada pautado de esa familia: entonces no hay contra qué comparar.
+  if (masBarato === Infinity) return false;
+  // Medio kcal de margen para que dos grupos iguales no se descarten por un
+  // redondeo de la tabla.
+  return kcalDeUnaPorcion(grupo) <= masBarato + 0.5;
+}
+
 export interface BalanceGrasa {
   /** Gramos de grasa que aporta lo pautado del día en esa familia. */
   pautadaDia: number;
@@ -244,9 +287,15 @@ export function balanceSubgrupo(
    * En proteína y grasa lo que importa es la grasa, no el recuento.
    * Pasarse de proteicos magros no cambia las calorías de forma apreciable
    * (0.5 g de grasa por porción), así que no se avisa: sólo se cuenta.
+   * Lo mismo vale para cualquier cambio a la baja dentro de la familia,
+   * como coger aceite donde estaban pautadas las nueces.
    * El aviso de verdad lo da `balanceGrasa`, que mira los gramos del día.
    */
-  if (info && limitadaPorGrasa(info.familia) && info.grasa <= UMBRAL_GRASA_LIBRE) {
+  if (
+    info &&
+    limitadaPorGrasa(info.familia) &&
+    (info.grasa <= UMBRAL_GRASA_LIBRE || esCambioALaBaja(dayType, grupo))
+  ) {
     return {
       grupo,
       nombre: info.nombre,

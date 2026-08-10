@@ -88,6 +88,20 @@ function cuentaDePerfil(id: string, perfil: Perfil): Cuenta {
   };
 }
 
+/**
+ * Algo ha ido mal después de que Supabase ya nos dejara pasar — típicamente,
+ * un email que no está dado de alta en ninguna ficha. Hay que cerrar la
+ * sesión: si no, quedaría dentro pero sin nada que ver.
+ */
+async function abortar(e: unknown): Promise<{ ok: false; error: string }> {
+  try {
+    await nube().auth.signOut();
+  } catch {
+    // Da igual: lo que importa es el mensaje.
+  }
+  return { ok: false, error: mensajeDeError(e) };
+}
+
 /** Lo que se hace tras un acceso correcto en la nube. */
 async function tras(user: User) {
   const perfil = await resolverPerfil(user);
@@ -129,7 +143,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ perfil, cuentas: [cuenta], sesion, cargando: false });
     } catch (e) {
       console.error('[auth] no se pudo recuperar la sesión', e);
-      set({ cargando: false });
+      // Una sesión que no lleva a ningún sitio es peor que ninguna.
+      await abortar(e);
+      set({ cargando: false, sesion: null, perfil: null, cuentas: [] });
     }
   },
 
@@ -166,7 +182,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ perfil, cuentas: [cuenta], sesion });
       return { ok: true, valor: cuenta };
     } catch (e) {
-      return { ok: false, error: mensajeDeError(e) };
+      return abortar(e);
     }
   },
 
@@ -188,7 +204,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ perfil, cuentas: [cuenta], sesion });
       return { ok: true, valor: sesion };
     } catch (e) {
-      return { ok: false, error: mensajeDeError(e) };
+      return abortar(e);
     }
   },
 
@@ -262,7 +278,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ perfil, cuentas: [cuenta], sesion });
         return { ok: true, valor: sesion };
       } catch (e) {
-        return { ok: false, error: mensajeDeError(e) };
+        return abortar(e);
       }
     }
 
