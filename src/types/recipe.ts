@@ -1,5 +1,5 @@
 import type { ExchangeGroupId } from '../data/exchangeGroups';
-import type { MealSlot } from './food';
+import type { MealSlot, Alergeno } from './food';
 
 /** Los condimentos no pertenecen a ningún grupo de intercambio. */
 export type IngredientGroup = ExchangeGroupId | 'condimento';
@@ -7,6 +7,12 @@ export type IngredientGroup = ExchangeGroupId | 'condimento';
 export interface Ingrediente {
   id: string;
   nombre: string;
+  /**
+   * Id del alimento en la base de datos. Cuando está presente, el grupo y los
+   * intercambios que aporta el ingrediente se calculan solos: la receta no
+   * guarda macros propios, siempre los deriva del catálogo.
+   */
+  foodId?: string;
   /** null = "al gusto" (verduras, condimentos). */
   cantidad_base: number | null;
   unidad: string;               // "g", "g crudo", "ml", "al gusto"
@@ -21,12 +27,30 @@ export interface Ingrediente {
 /** Composición base en intercambios; "ilimitado" para verduras. */
 export type RecipeBase = Partial<Record<ExchangeGroupId, number | 'ilimitado'>>;
 
+/** Minutos de preparación, en tramos: es lo que mira el cliente al elegir. */
+export const TIEMPOS = ['<5 min', '5-15 min', '15-30 min', '30-60 min', '+1 h'] as const;
+export type TiempoReceta = (typeof TIEMPOS)[number];
+
+export const DIFICULTADES = ['Muy fácil', 'Fácil', 'Media', 'Elaborada'] as const;
+export type Dificultad = (typeof DIFICULTADES)[number];
+
 export interface Receta {
   id: string;
   nombre: string;
+  /** Foto en data URL (subida por la nutricionista) o enlace externo. */
   foto_url?: string;
+  tiempo?: TiempoReceta;
+  dificultad?: Dificultad;
+  /** Si aguanta preparada de un día para otro. */
+  tupper?: boolean;
   categorias: MealSlot[];
   tags: string[];
+  /** Alérgenos declarados a mano, para recetas sin ingredientes enlazados. */
+  alergenos?: Alergeno[];
+  /**
+   * Composición base en intercambios. Si los ingredientes están enlazados al
+   * catálogo, se recalcula sola con `composicionDesdeIngredientes`.
+   */
   base: RecipeBase;
   ingredientes: Ingrediente[];
   preparacion: string;

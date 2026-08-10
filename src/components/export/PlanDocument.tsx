@@ -23,10 +23,10 @@ export function PlanDocument({
 }) {
   return (
     <div className="print-only">
-      {plan.fase === 2 ? (
-        <PlanPDF client={client} plan={plan} foods={foods} />
-      ) : (
+      {plan.fase === 1 ? (
         <RecipeSheetPDF client={client} plan={plan} recipes={recipes} foods={foods} />
+      ) : (
+        <PlanPDF client={client} plan={plan} foods={foods} />
       )}
     </div>
   );

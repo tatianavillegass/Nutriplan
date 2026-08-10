@@ -33,8 +33,10 @@ export const DEMO_CLIENT: Client = {
 export const DEMO_PLAN: Plan = {
   id: 'pl_demo',
   clientId: 'cl_demo',
-  nombre: 'Plan',
+  nombre: 'Planificación 1',
   fase: 2,
+  fecha: now,
+  envio: { fecha: now, mensaje: 'Este es el plan de ejemplo para ver cómo funciona la app.' },
   createdAt: now,
   updatedAt: now,
   dayTypes: [
@@ -63,8 +65,8 @@ export const DEMO_PLAN: Plan = {
       },
       postre: '1 onza de chocolate negro 85% o una infusión.',
       recetasAsignadas: {
-        comida: 'rc_wok_pollo',
-        cena: 'rc_bowl_salmon',
+        comida: ['rc_wok_pollo', 'rc_lentejas'],
+        cena: ['rc_bowl_salmon'],
       },
     },
     {

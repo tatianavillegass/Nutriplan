@@ -17,9 +17,9 @@ describe('Escalado proporcional por grupo (§5)', () => {
   const byName = (n: string) => esc.ingredientes.find((i) => i.nombre === n)!;
 
   it('el ejemplo del brief: pollo 150 g · arroz 60 g · aceite 10 g', () => {
-    expect(byName('Pechuga de pollo').cantidad_final).toBe(150); // 30 × 5
-    expect(byName('Arroz').cantidad_final).toBe(60); //             20 × 3
-    expect(byName('Aceite de oliva').cantidad_final).toBe(10); //    5 × 2
+    expect(byName('Pechuga de pollo cruda').cantidad_final).toBe(150); // 30 × 5
+    expect(byName('Arroz blanco crudo').cantidad_final).toBe(60); //             20 × 3
+    expect(byName('Aceite de oliva virgen extra').cantidad_final).toBe(10); //    5 × 2
   });
 
   it('cada grupo escala con SU factor, no con uno global', () => {
@@ -29,8 +29,8 @@ describe('Escalado proporcional por grupo (§5)', () => {
   });
 
   it('las verduras no escalan y se muestran como ilimitadas', () => {
-    expect(byName('Brócoli').display).toMatch(/al gusto/);
-    expect(byName('Brócoli').display).toMatch(/200 g/);
+    expect(byName('Brocoli').display).toMatch(/al gusto/);
+    expect(byName('Brocoli').display).toMatch(/200 g/);
   });
 
   it('avisa de los grupos que la receta no cubre', () => {
@@ -41,9 +41,9 @@ describe('Escalado proporcional por grupo (§5)', () => {
   it('con medios intercambios el gramaje sigue la regla de redondeo', () => {
     const e = scaleRecipe(wok, { proteicos_magros: 5.5, almidones: 3, grasas: 1 });
     // 30 × 5.5 = 165 → múltiplo de 5
-    expect(e.ingredientes.find((i) => i.nombre === 'Pechuga de pollo')!.cantidad_final).toBe(165);
+    expect(e.ingredientes.find((i) => i.nombre === 'Pechuga de pollo cruda')!.cantidad_final).toBe(165);
     // 5 × 1 = 5 → por debajo de 20 g se redondea a 1 g
-    expect(e.ingredientes.find((i) => i.nombre === 'Aceite de oliva')!.cantidad_final).toBe(5);
+    expect(e.ingredientes.find((i) => i.nombre === 'Aceite de oliva virgen extra')!.cantidad_final).toBe(5);
   });
 });
 
@@ -52,12 +52,12 @@ describe('Reglas de edición del cliente (§5)', () => {
   const ing = (n: string) => esc.ingredientes.find((i) => i.nombre === n)!;
 
   it('quitar una verdura o un condimento está permitido', () => {
-    expect(canRemoveIngredient(ing('Brócoli')).allowed).toBe(true);
+    expect(canRemoveIngredient(ing('Brocoli')).allowed).toBe(true);
     expect(canRemoveIngredient(ing('Salsa de soja')).allowed).toBe(true);
   });
 
   it('quitar un ingrediente escalable está bloqueado con su motivo', () => {
-    const r = canRemoveIngredient(ing('Arroz'));
+    const r = canRemoveIngredient(ing('Arroz blanco crudo'));
     expect(r.allowed).toBe(false);
     expect(r.reason).toMatch(/composición de tu plan/i);
   });
@@ -67,11 +67,11 @@ describe('Reglas de edición del cliente (§5)', () => {
     const out = applyCustomization(
       esc,
       req,
-      { quitados: [ing('Arroz').id, ing('Brócoli').id], sustituciones: {} },
+      { quitados: [ing('Arroz blanco crudo').id, ing('Brocoli').id], sustituciones: {} },
       FOOD_CATALOG,
     );
-    expect(out.ingredientes.some((i) => i.nombre === 'Arroz')).toBe(true);
-    expect(out.ingredientes.some((i) => i.nombre === 'Brócoli')).toBe(false);
+    expect(out.ingredientes.some((i) => i.nombre === 'Arroz blanco crudo')).toBe(true);
+    expect(out.ingredientes.some((i) => i.nombre === 'Brocoli')).toBe(false);
     // Quitar verdura no toca macros.
     expect(out.exchangesDespues).toEqual(req);
   });
@@ -79,43 +79,43 @@ describe('Reglas de edición del cliente (§5)', () => {
 
 describe('Sustituciones trazables al catálogo (§5, §10.6)', () => {
   it('resuelve el sustituto contra el catálogo aunque el nombre sea parcial', () => {
-    expect(findFood('Pavo', FOOD_CATALOG)?.nombre).toBe('Pechuga de pavo');
-    expect(findFood('Aguacate', FOOD_CATALOG)?.nombre).toBe('Aguacate hass');
+    expect(findFood('Pavo', FOOD_CATALOG)?.nombre).toBe('Pavo pechuga cruda');
+    expect(findFood('Aguacate', FOOD_CATALOG)?.nombre).toMatch(/^Aguacate/);
   });
 
   it('recalcula el gramaje según los gramos por intercambio del sustituto', () => {
     const esc = scaleRecipe(wok, { proteicos_magros: 5, almidones: 3, grasas: 2 });
-    const pollo = esc.ingredientes.find((i) => i.nombre === 'Pechuga de pollo')!;
+    const pollo = esc.ingredientes.find((i) => i.nombre === 'Pechuga de pollo cruda')!;
     const out = applyCustomization(
       esc,
       { proteicos_magros: 5, almidones: 3, grasas: 2 },
-      { quitados: [], sustituciones: { [pollo.id]: 'Merluza' } },
+      { quitados: [], sustituciones: { [pollo.id]: 'Merluza cruda' } },
       FOOD_CATALOG,
     );
-    // Merluza: 35 g = 1 intercambio → 5 intercambios = 175 g
-    expect(out.ingredientes.find((i) => i.nombre === 'Merluza')!.cantidad_final).toBe(175);
+    // Merluza cruda: 18 g de proteína/100 g → 40 g por intercambio → ×5
+    expect(out.ingredientes.find((i) => i.nombre === 'Merluza cruda')!.cantidad_final).toBe(200);
   });
 
   it('una sustitución dentro del mismo grupo NO altera los macros (§10.4)', () => {
     const req = { proteicos_magros: 5, almidones: 3, grasas: 2 };
     const esc = scaleRecipe(wok, req);
-    const arroz = esc.ingredientes.find((i) => i.nombre === 'Arroz')!;
+    const arroz = esc.ingredientes.find((i) => i.nombre === 'Arroz blanco crudo')!;
     const out = applyCustomization(
       esc,
       req,
-      { quitados: [], sustituciones: { [arroz.id]: 'Quinoa' } },
+      { quitados: [], sustituciones: { [arroz.id]: 'Quinoa cruda' } },
       FOOD_CATALOG,
     );
     expect(out.exchangesDespues).toEqual(req);
     expect(exchangesToMacros(out.exchangesDespues)).toEqual(exchangesToMacros(req));
-    // Quinoa: 20 g crudo por intercambio → 3 intercambios = 60 g
-    expect(out.ingredientes.find((i) => i.nombre === 'Quinoa')!.cantidad_final).toBe(60);
+    // Quinoa cruda: 64 g de HC/100 g → 20 g por intercambio → ×3
+    expect(out.ingredientes.find((i) => i.nombre === 'Quinoa cruda')!.cantidad_final).toBe(60);
   });
 
   it('un sustituto de otro grupo mueve el intercambio y genera aviso', () => {
     const req = { proteicos_magros: 5, almidones: 3, grasas: 2 };
     const esc = scaleRecipe(wok, req);
-    const pollo = esc.ingredientes.find((i) => i.nombre === 'Pechuga de pollo')!;
+    const pollo = esc.ingredientes.find((i) => i.nombre === 'Pechuga de pollo cruda')!;
     const out = applyCustomization(
       esc,
       req,
@@ -136,14 +136,14 @@ describe('Sustituciones trazables al catálogo (§5, §10.6)', () => {
     const req = { proteicos_grasos: 4, almidones: 2 };
     const bowl = SEED_RECIPES.find((r) => r.id === 'rc_bowl_salmon')!;
     const esc = scaleRecipe(bowl, req);
-    const salmon = esc.ingredientes.find((i) => i.nombre === 'Salmón')!;
+    const salmon = esc.ingredientes.find((i) => i.nombre === 'Salmón crudo')!;
     const out = applyCustomization(
       esc,
       req,
-      { quitados: [], sustituciones: { [salmon.id]: 'Caballa' } },
+      { quitados: [], sustituciones: { [salmon.id]: 'Pez espada' } },
       FOOD_CATALOG,
     );
-    const nuevo = out.ingredientes.find((i) => i.nombre === 'Caballa')!;
+    const nuevo = out.ingredientes.find((i) => i.nombre === 'Pez espada')!;
     expect(nuevo.cantidad_final).toBe(salmon.cantidad_final);
     expect(out.exchangesDespues).toEqual(req);
   });
@@ -193,7 +193,7 @@ describe('Cambio de fase y trazabilidad (§10.5, §10.6)', () => {
     expect(bucketExchanges(grid.desayuno!)).toEqual({ proteina: 2, carbohidrato: 3, grasa: 1 });
     // Fase 1: la comida escala la receta con esos mismos intercambios.
     const esc = scaleRecipe(wok, grid.comida!);
-    expect(esc.ingredientes.find((i) => i.nombre === 'Pechuga de pollo')!.cantidad_final).toBe(150);
+    expect(esc.ingredientes.find((i) => i.nombre === 'Pechuga de pollo cruda')!.cantidad_final).toBe(150);
   });
 
   it('cambiar de fase no altera los totales del día', () => {
@@ -226,13 +226,14 @@ describe('Cambio de fase y trazabilidad (§10.5, §10.6)', () => {
 });
 
 describe('Catálogo de alimentos (§7)', () => {
-  it('todo alimento declara grupo, medida casera, gramos e intercambios', () => {
+  it('todo alimento declara medida casera, gramos e intercambios', () => {
     for (const f of FOOD_CATALOG) {
-      expect(f.intercambios).toBeGreaterThan(0);
-      expect(f.gramos).toBeGreaterThan(0);
-      expect(f.medida_casera.length).toBeGreaterThan(0);
-      expect(EXCHANGE_GROUP_LIST.some((g) => g.id === f.grupo)).toBe(true);
-      expect(f.comidas_sugeridas.length).toBeGreaterThan(0);
+      expect(f.intercambios, f.nombre).toBeGreaterThan(0);
+      expect(f.gramos, f.nombre).toBeGreaterThan(0);
+      expect(f.medida_casera.length, f.nombre).toBeGreaterThan(0);
+      expect(f.comidas_sugeridas.length, f.nombre).toBeGreaterThan(0);
+      // Los libres (bebidas, alcohol) no tienen subgrupo de intercambio.
+      if (f.grupo) expect(EXCHANGE_GROUP_LIST.some((g) => g.id === f.grupo), f.nombre).toBe(true);
     }
   });
 

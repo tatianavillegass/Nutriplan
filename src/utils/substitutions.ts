@@ -42,12 +42,38 @@ export interface SustitutoResuelto {
 /** Busca el alimento del catálogo que corresponde a un nombre de sustituto. */
 export function findFood(nombre: string, foods: Alimento[], grupoPreferido?: string): Alimento | undefined {
   const n = norm(nombre);
-  const candidatos = foods.filter((f) => {
+  if (!n) return undefined;
+
+  /**
+   * El orden importa: "Aguacate" debe encontrar el aguacate, no el aceite de
+   * aguacate. Primero la coincidencia exacta, luego la que empieza igual y
+   * sólo al final la que lo contiene en medio.
+   */
+  const puntuar = (f: Alimento): number | undefined => {
     const fn = norm(f.nombre);
-    return fn === n || fn.includes(n) || n.includes(fn);
-  });
+    if (fn === n) return 0;
+    if (fn.startsWith(n)) return 1;
+    if (fn.split(/[\s,()]+/).some((p) => p === n)) return 2;
+    if (fn.includes(n) || n.includes(fn)) return 3;
+    return undefined;
+  };
+
+  const candidatos = foods
+    .map((f) => ({ f, p: puntuar(f) }))
+    .filter((x): x is { f: Alimento; p: number } => x.p !== undefined)
+    .sort(
+      (a, b) =>
+        a.p - b.p ||
+        Number(b.f.grupo === grupoPreferido) - Number(a.f.grupo === grupoPreferido) ||
+        a.f.nombre.length - b.f.nombre.length,
+    );
+
   if (!candidatos.length) return undefined;
-  return candidatos.find((f) => f.grupo === grupoPreferido) ?? candidatos[0];
+  return (
+    candidatos.find((c) => c.p === 0)?.f ??
+    candidatos.find((c) => c.f.grupo === grupoPreferido)?.f ??
+    candidatos[0].f
+  );
 }
 
 export function resolveSubstitute(

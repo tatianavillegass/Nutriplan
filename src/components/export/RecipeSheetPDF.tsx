@@ -1,5 +1,6 @@
 import type { Client } from '../../types/client';
 import type { Plan } from '../../types/plan';
+import { recetasDeComida } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
@@ -50,19 +51,31 @@ export function RecipeSheetPDF({
 
             <div className="space-y-5">
               {d.meals.map((m) => {
-                const receta = recipes.find((r) => r.id === d.recetasAsignadas?.[m.id]);
-                if (!receta) return null;
+                const opciones = recetasDeComida(d.recetasAsignadas, m.id)
+                  .map((id) => recipes.find((r) => r.id === id))
+                  .filter(Boolean) as Receta[];
+                if (!opciones.length) return null;
                 return (
                   <div key={m.id} className="break-inside-avoid">
                     <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-brand-700 uppercase">
                       {m.nombre}
+                      {opciones.length > 1 && (
+                        <span className="ml-1.5 font-normal text-slate-400 normal-case">
+                          — elige una de {opciones.length}
+                        </span>
+                      )}
                     </p>
-                    <ScaledRecipeView
-                      receta={receta}
-                      requeridos={d.grid[m.id] ?? {}}
-                      foods={foods}
-                      soloLectura
-                    />
+                    <div className="space-y-3">
+                      {opciones.map((receta) => (
+                        <ScaledRecipeView
+                          key={receta.id}
+                          receta={receta}
+                          requeridos={d.grid[m.id] ?? {}}
+                          foods={foods}
+                          soloLectura
+                        />
+                      ))}
+                    </div>
                   </div>
                 );
               })}

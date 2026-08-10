@@ -4,6 +4,7 @@ import type { Alimento } from '../../types/food';
 import { formatFoodOption } from '../../types/food';
 import type { DayType, Meal } from '../../types/plan';
 import { bucketExchanges } from '../../utils/exchanges';
+import { alimentosDeComida, notaAceite, repartoElegible } from '../../utils/pantry';
 
 export type BoardMode = 'documento' | 'interactivo' | 'editor';
 
@@ -33,20 +34,26 @@ export function MealOptionsBoard({
   onPostre,
 }: Props) {
   const excluidos = dayType.alimentosExcluidos ?? [];
-  const counts = bucketExchanges(dayType.grid[meal.id] ?? {});
+  const { reparto, reserva } = repartoElegible(dayType, meal);
+  const aceite = notaAceite(foods, reserva);
+  const counts = bucketExchanges(reparto);
+  /** La despensa de esta comida manda sobre el catálogo general. */
+  const despensa = useMemo(
+    () => alimentosDeComida(dayType, meal, foods),
+    [dayType, meal, foods],
+  );
   const [picked, setPicked] = useState<Record<string, number>>({});
 
   const porBucket = useMemo(() => {
     const out: Record<MacroBucket, Alimento[]> = { proteina: [], carbohidrato: [], grasa: [] };
-    for (const f of foods) {
-      const g = EXCHANGE_GROUPS[f.grupo];
+    const lista = mode === 'editor' ? foods.filter((f) => f.comidas_sugeridas.includes(meal.slot)) : despensa;
+    for (const f of lista) {
+      const g = f.grupo ? EXCHANGE_GROUPS[f.grupo] : undefined;
       if (!g || g.ilimitado) continue;
-      if (!f.comidas_sugeridas.includes(meal.slot)) continue;
-      if (mode !== 'editor' && excluidos.includes(f.id)) continue;
       out[g.bucket].push(f);
     }
     return out;
-  }, [foods, meal.slot, excluidos, mode]);
+  }, [foods, despensa, meal.slot, mode]);
 
   const grasaProt = useMemo(
     () => foods.filter((f) => f.grasa_prot && f.comidas_sugeridas.includes(meal.slot) && !excluidos.includes(f.id)),
@@ -149,6 +156,12 @@ export function MealOptionsBoard({
             {grasaProt.map((f) => formatFoodOption(f)).join(' · ')}
           </p>
         </div>
+      )}
+
+      {aceite && (
+        <p className="mt-3 text-[11px] text-amber-800">
+          <strong className="font-medium">{aceite}</strong> — ya reservado.
+        </p>
       )}
 
       {esComidaPrincipal && (

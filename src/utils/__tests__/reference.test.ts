@@ -99,6 +99,11 @@ describe('Tabla de intercambios', () => {
       almidones: 14 * 4 + 2 * 4 + 0.5 * 9,        // 68.5
       legumbres: 14 * 4 + 7 * 4 + 0.5 * 9,        // 88.5
       azucares: 40,
+      lacteos_desnatados: 12 * 4 + 8 * 4,          // 80
+      lacteos_proteicos: 4 * 4 + 10 * 4,           // 56
+      lacteos_semi: 12 * 4 + 8 * 4 + 4 * 9,        // 116
+      lacteos_enteros: 12 * 4 + 8 * 4 + 8 * 9,     // 152
+      frutos_secos: 1.5 * 4 + 2 * 4 + 5 * 9,       // 59
       proteicos_magros: 7 * 4 + 0.5 * 9,          // 32.5
       proteicos_semigrasos: 7 * 4 + 2 * 9,        // 46
       proteicos_grasos: 7 * 4 + 5 * 9,            // 73

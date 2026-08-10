@@ -1,4 +1,5 @@
 import type { Client } from '../../types/client';
+import { edadDe } from '../../types/client';
 import type { Plan } from '../../types/plan';
 import { PlanSchemaTable } from '../phase2/PlanSchemaTable';
 import { fechaLarga } from './printing';
@@ -16,7 +17,7 @@ export function SchemaPDF({ client, plan }: { client: Client; plan: Plan }) {
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-brand-900">{client.nombre}</h1>
         <p className="tnum mt-1 text-xs text-slate-500">
-          {client.peso} kg · {client.altura} cm · {client.edad} años · {fechaLarga()}
+          {client.peso} kg · {client.altura} cm · {edadDe(client)} años · {fechaLarga()}
         </p>
       </header>
 

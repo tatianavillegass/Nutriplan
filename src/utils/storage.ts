@@ -47,6 +47,8 @@ export const STORAGE_KEYS = {
   plans: 'plans',
   recipes: 'recipes',
   foods: 'foods',
+  mediciones: 'mediciones',
+  registros: 'registros',
 } as const;
 
 export function uid(prefix = ''): string {

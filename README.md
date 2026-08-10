@@ -1,80 +1,81 @@
 # NutriPlan
 
-App de planes de alimentación por intercambios (equivalencias) para nutricionistas.
-React + TypeScript + Vite + Tailwind. Los datos se guardan en el navegador (LocalStorage).
+App de planes nutricionales por intercambios: cálculo del GET, reparto de
+porciones por comida y tres formas de entregárselo al cliente según su
+autonomía.
 
-## Verla funcionando
+## Qué hace
 
-**Opción rápida — sin instalar nada:** abre `NutriPlan.html` (en la carpeta del proyecto)
-haciendo doble clic. Es la app entera en un solo archivo.
+- **Cálculo GET** — TMB por Harris-Benedict, Owen y Mifflin-St. Jeor, factor de
+  actividad, termogénesis y objetivo.
+- **Antropometría ISAK** — pliegues, perímetros y diámetros; % graso por
+  Faulkner, Yuhasz y Durnin-Womersley, masa muscular, somatotipo y evolución.
+- **Cálculo del plan** — g/kg de proteína e hidrato, grasa por diferencia, y
+  reparto en intercambios comida a comida con validación por semáforo.
+- **Tres fases de entrega**
+  - Fase 1 · recetas cerradas, con cambio de ingredientes por equivalentes.
+  - Fase 2 · combinaciones con las cantidades ya hechas.
+  - Fase 3 · el cliente marca porciones alimento a alimento.
+- **Base de 280 alimentos** con nutrientes por 100 g; las porciones se derivan
+  solas del macro ancla de cada subgrupo.
+- **Seguimiento** — adherencia, evolución corporal y qué alimentos elige de
+  verdad.
+- **Cuentas** — la nutricionista se registra e invita a sus clientes.
 
-**Opción desarrollo:**
+## Desarrollo
 
 ```bash
-cd nutriplan
 npm install
-npm run dev        # http://localhost:5173
+npm run dev          # http://localhost:5173
+npm test             # 492 tests
+npm run lint
+npm run build        # dist/ — lo que despliega Vercel
+npm run build:file   # dist-file/index.html — un solo archivo, sin servidor
 ```
 
-## Comandos
+## Desplegar en Vercel
 
-| Comando | Qué hace |
-|---|---|
-| `npm run dev` | Servidor de desarrollo con recarga en caliente |
-| `npm run build` | Compila a `dist/` (varios archivos) — para subir a un hosting |
-| `npm run build:file` | Compila a `dist-file/index.html` — todo en un archivo |
-| `npm test` | 47 tests de los cálculos y las reglas de negocio |
-| `npm run lint` | Oxlint |
+El repositorio ya trae `vercel.json` con el build configurado, así que Vercel
+lo detecta solo.
 
-## Desplegar
+1. Crea el repositorio en GitHub (sin README ni .gitignore, ya los hay aquí).
+2. Conéctalo y sube la rama:
 
-La app es 100% estática (no necesita servidor ni base de datos).
+   ```bash
+   git remote add origin https://github.com/TU-USUARIO/nutriplan.git
+   git push -u origin main
+   ```
 
-- **Netlify / Vercel:** arrastra la carpeta `dist/` a su panel, o conecta el repo
-  con `build: npm run build` y `publish: dist`.
-- **GitHub Pages:** sube el contenido de `dist/`. Las rutas son relativas
-  (`base: './'`) y el router es `HashRouter`, así que funciona en subdirectorios
-  sin configurar redirecciones.
-- **Compartir un archivo suelto:** manda `NutriPlan.html` por email o WeTransfer.
+3. En [vercel.com](https://vercel.com) → **Add New… → Project** → importa el
+   repositorio. Framework *Vite*, build `npm run build`, salida `dist`.
+4. **Deploy**. A partir de ahí, cada `git push` publica sola la versión nueva.
+
+## Dónde viven los datos
+
+Hoy todo se guarda en el navegador (LocalStorage): clientes, planes, recetas,
+alimentos y cuentas. Esto tiene dos consecuencias que conviene tener claras:
+
+- Cada navegador tiene sus propios datos. Lo que crees en el ordenador no
+  aparece en el móvil.
+- **Las contraseñas no están cifradas de verdad.** Se guardan con un hash
+  simple; sirve para separar sesiones y probar el flujo, no para proteger
+  datos reales.
+
+Toda la persistencia pasa por `src/utils/storage.ts` y toda la lógica de
+cuentas por `src/utils/auth.ts`. Migrar a Supabase es reimplementar esos dos
+módulos: las pantallas no cambian.
 
 ## Estructura
 
 ```
 src/
-  data/       exchangeGroups.ts  ← tabla de intercambios (fuente de verdad)
-              activityFactors.ts · foodCatalog.ts · seedRecipes.ts · demoSeed.ts
-  types/      client · plan · recipe · food · calculations
-  utils/      bmr · energy · macros · exchanges · validation
-              recipeScaling · recipeMatcher · substitutions · storage
-  components/ common · planning · phase1 · phase2 · export
-  pages/      Clients · ClientDetail · ClientView · RecipeBankPage · FoodCatalogPage
-  store/      useAppStore.ts (Zustand + LocalStorage)
+  data/         tabla de intercambios, catálogo de alimentos, plantillas
+  types/        modelos: cliente, plan, receta, alimento, cuenta
+  utils/        cálculos puros — GET, macros, porciones, combinaciones…
+  components/   por fase (phase1, phase2, phase3) y por área
+  pages/        clientes, ficha, vista del cliente, recetas, plantillas
+  store/        estado (zustand) de datos y de sesión
 ```
 
-Todos los cálculos son funciones puras en `src/utils/`, separadas de la interfaz
-y cubiertas por tests.
-
-## Notas de cálculo
-
-- Se calculan **tres fórmulas de TMB** (Harris-Benedict revisada, Owen,
-  Mifflin-St. Jeor) y su media. La nutricionista elige cuál usar.
-- El caso de referencia de la hoja original (hombre, 27 a, 69 kg, 185 cm →
-  TMB 1686 · GET 2781 · ×1.2 → 3337 kcal) sólo se reproduce con la
-  **Harris-Benedict de 1919**, que se incluye como opción. Con la revisada
-  la media es 1682 y el objetivo 3330.
-- El GET se **trunca** a entero antes de aplicar el ajuste de objetivo, igual
-  que hacía la hoja de cálculo (`getRounding: 'truncate'` en `utils/energy.ts`).
-- La **grasa nunca se introduce a mano**: es el residuo calórico tras proteína
-  y carbohidratos.
-- Los intercambios admiten medios (0.5).
-- Redondeo de gramajes: múltiplos de 5 g a partir de 20 g; 1 g por debajo.
-
-## Migrar a backend
-
-`src/utils/storage.ts` es la única capa que toca LocalStorage. Para pasar a
-Supabase basta reimplementar ese módulo; los componentes no cambian.
-
-## Datos de ejemplo
-
-La primera vez que se abre, la app carga un cliente de ejemplo con dos tipos de
-día ya repartidos. Se puede borrar desde la lista de clientes.
+Los cálculos están en funciones puras y con tests: cambiar una fórmula es
+tocar un archivo de `utils/` y ver qué test se rompe.

@@ -1,8 +1,10 @@
 import type { ExchangeGroupId } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 import type { Receta } from '../types/recipe';
-import type { MealSlot } from '../types/food';
+import type { Alimento, MealSlot } from '../types/food';
+import type { Client } from '../types/client';
 import type { ExchangeCounts } from './exchanges';
+import { evaluarReceta, puntuarPreferencias } from './restrictions';
 
 export interface MatchOptions {
   slot: MealSlot;
@@ -13,6 +15,11 @@ export interface MatchOptions {
   /** Recetas ya asignadas esta semana → penaliza para dar variedad. */
   yaAsignadas?: string[];
   limite?: number;
+  /** Cliente y catálogo: si están, se bloquean las recetas no aptas. */
+  client?: Pick<Client, 'patologias' | 'alergias' | 'aversiones' | 'preferidos' | 'preferencias'>;
+  foods?: Alimento[];
+  /** Incluir las bloqueadas en el resultado, marcadas (para poder explicarlas). */
+  incluirBloqueadas?: boolean;
 }
 
 export interface MatchResult {
@@ -23,6 +30,11 @@ export interface MatchResult {
   /** Grupos que la receta aporta y el reparto no pide. */
   sobrantes: ExchangeGroupId[];
   motivos: string[];
+  /** Bloqueada por patología, alergia o aversión del cliente. */
+  bloqueada?: boolean;
+  motivosBloqueo?: string[];
+  /** Ingredientes opcionales que hay que retirar para que encaje. */
+  ingredientesAQuitar?: string[];
 }
 
 function requiredGroups(counts: ExchangeCounts): ExchangeGroupId[] {
@@ -48,11 +60,22 @@ export function matchRecipes(
   opts: MatchOptions,
 ): MatchResult[] {
   const req = requiredGroups(reparto);
-  const { slot, preferencias = [], evitar = [], yaAsignadas = [], limite = 4 } = opts;
+  const {
+    slot,
+    preferencias = [],
+    evitar = [],
+    yaAsignadas = [],
+    limite = 4,
+    client,
+    foods = [],
+    incluirBloqueadas = false,
+  } = opts;
 
   const results: MatchResult[] = recetas
     .filter((r) => !r.tags.some((t) => evitar.includes(t)))
     .map((r) => {
+      // 0. Restricciones del cliente: mandan sobre cualquier puntuación.
+      const ev = client ? evaluarReceta(r, client, foods) : undefined;
       const rg = recipeGroups(r);
       const faltantes = req.filter((g) => !rg.includes(g));
       const sobrantes = rg.filter((g) => !req.includes(g));
@@ -88,9 +111,31 @@ export function matchRecipes(
         motivos.push('Ya usada esta semana');
       }
 
-      return { receta: r, score, faltantes, sobrantes, motivos };
+      // 5. Alimentos que le gustan al cliente.
+      if (client) {
+        const pref = puntuarPreferencias(r, client);
+        if (pref > 0) {
+          score += pref * 8;
+          motivos.push('Lleva alimentos que le gustan');
+        }
+        if (ev?.ingredientesAQuitar.length) {
+          motivos.push(`Se retiran ${ev.ingredientesAQuitar.length} ingrediente(s) opcional(es)`);
+        }
+      }
+
+      return {
+        receta: r,
+        score,
+        faltantes,
+        sobrantes,
+        motivos,
+        bloqueada: ev?.bloqueado ?? false,
+        motivosBloqueo: ev?.motivos ?? [],
+        ingredientesAQuitar: ev?.ingredientesAQuitar ?? [],
+      };
     })
-    .sort((a, b) => b.score - a.score);
+    .filter((r) => incluirBloqueadas || !r.bloqueada)
+    .sort((a, b) => Number(a.bloqueada) - Number(b.bloqueada) || b.score - a.score);
 
   return results.slice(0, limite);
 }

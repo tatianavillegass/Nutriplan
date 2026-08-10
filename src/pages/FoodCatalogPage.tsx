@@ -1,221 +1,229 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { EXCHANGE_GROUP_LIST, EXCHANGE_GROUPS, type ExchangeGroupId } from '../data/exchangeGroups';
-import type { Alimento, MealSlot, Alergeno } from '../types/food';
-import { Button, Card, Field, Input, Select, Badge } from '../components/common/ui';
+import { FoodForm, type FoodFormValue } from '../components/food/FoodForm';
+import {
+  EXCHANGE_GROUPS,
+  EXCHANGE_GROUP_LIST,
+  type ExchangeGroupId,
+} from '../data/exchangeGroups';
+import { ALERGENO_LABELS, type Alimento } from '../types/food';
+import { calcularPorcion } from '../utils/portions';
+import { Badge, Button, Card, EmptyState, Input, Select, fmt } from '../components/common/ui';
 
-const SLOTS: MealSlot[] = ['desayuno', 'almuerzo', 'comida', 'merienda', 'cena', 'extra'];
-const ALERGENOS: Alergeno[] = ['gluten', 'lactosa', 'frutos_secos', 'huevo', 'soja', 'pescado'];
-
-const NUEVO: Omit<Alimento, 'id'> = {
-  nombre: '',
-  grupo: 'proteicos_magros',
-  medida_casera: '',
-  gramos: 0,
-  intercambios: 1,
-  comidas_sugeridas: ['comida'],
-  alergenos: [],
-  apto: [],
-};
-
+/**
+ * Base de datos de alimentos. De aquí salen los intercambios: se introducen
+ * los nutrientes por 100 g y la app deduce cuántos gramos son una porción.
+ */
 export function FoodCatalogPage() {
   const foods = useAppStore((s) => s.foods);
-  const { addFood, deleteFood } = useAppStore();
-  const [draft, setDraft] = useState(NUEVO);
-  const [abierto, setAbierto] = useState(false);
-  const [grupoFiltro, setGrupoFiltro] = useState<ExchangeGroupId | 'todos'>('todos');
+  const addFood = useAppStore((s) => s.addFood);
+  const updateFood = useAppStore((s) => s.updateFood);
+  const deleteFood = useAppStore((s) => s.deleteFood);
 
-  const agrupados = useMemo(() => {
-    const out = new Map<ExchangeGroupId, Alimento[]>();
-    for (const f of foods) {
-      if (grupoFiltro !== 'todos' && f.grupo !== grupoFiltro) continue;
-      if (!out.has(f.grupo)) out.set(f.grupo, []);
-      out.get(f.grupo)!.push(f);
-    }
-    return out;
-  }, [foods, grupoFiltro]);
+  const [q, setQ] = useState('');
+  const [grupo, setGrupo] = useState<ExchangeGroupId | ''>('');
+  const [editando, setEditando] = useState<Alimento | null>(null);
+  const [creando, setCreando] = useState(false);
+
+  const filtrados = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return foods
+      .filter((f) => (!t || f.nombre.toLowerCase().includes(t)) && (!grupo || f.grupo === grupo))
+      .sort(
+        (a, b) =>
+          (a.grupo ? EXCHANGE_GROUPS[a.grupo].orden : 99) -
+            (b.grupo ? EXCHANGE_GROUPS[b.grupo].orden : 99) || a.nombre.localeCompare(b.nombre),
+      );
+  }, [foods, q, grupo]);
+
+  const conNutrientes = foods.filter((f) => f.nutrientes).length;
+
+  const guardar = (v: FoodFormValue) => {
+    const datos = {
+      nombre: v.nombre,
+      grupo: v.grupo,
+      bucket: EXCHANGE_GROUPS[v.grupo].bucket,
+      medida_casera: v.medida_casera,
+      gramos: v.gramos ?? 0,
+      intercambios: 1,
+      nutrientes: v.nutrientes,
+      equivalencia_cocido: v.equivalencia_cocido,
+      comidas_sugeridas: v.comidas_sugeridas,
+      alergenos: v.alergenos,
+      apto: v.apto,
+      notas: v.notas,
+    };
+    if (editando) updateFood(editando.id, datos);
+    else addFood(datos);
+    setEditando(null);
+    setCreando(false);
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-brand-900">Catálogo de alimentos</h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            {foods.length} alimentos. Cada uno declara su medida casera, gramaje y grupo de intercambio.
+          <h1 className="text-xl font-semibold tracking-tight text-brand-900">Alimentos</h1>
+          <p className="text-sm text-slate-500">
+            {foods.length} alimentos · {conNutrientes} con datos nutricionales completos
           </p>
         </div>
-        <div className="flex gap-2">
-          <Select value={grupoFiltro} onChange={(e) => setGrupoFiltro(e.target.value as ExchangeGroupId)} className="w-52">
-            <option value="todos">Todos los grupos</option>
-            {EXCHANGE_GROUP_LIST.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.nombre}
-              </option>
-            ))}
-          </Select>
-          <Button onClick={() => setAbierto((v) => !v)}>{abierto ? 'Cancelar' : '+ Alimento'}</Button>
-        </div>
+        {!creando && !editando && (
+          <Button onClick={() => setCreando(true)}>Añadir alimento</Button>
+        )}
       </div>
 
-      {abierto && (
-        <Card title="Nuevo alimento">
-          <div className="grid gap-3 sm:grid-cols-4">
-            <Field label="Nombre" className="sm:col-span-2">
-              <Input value={draft.nombre} onChange={(e) => setDraft({ ...draft, nombre: e.target.value })} />
-            </Field>
-            <Field label="Grupo" className="sm:col-span-2">
-              <Select
-                value={draft.grupo}
-                onChange={(e) => setDraft({ ...draft, grupo: e.target.value as ExchangeGroupId })}
-              >
-                {EXCHANGE_GROUP_LIST.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nombre}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Medida casera" className="sm:col-span-2">
-              <Input
-                value={draft.medida_casera}
-                placeholder="1/4 taza"
-                onChange={(e) => setDraft({ ...draft, medida_casera: e.target.value })}
-              />
-            </Field>
-            <Field label="Gramos">
-              <Input
-                type="number"
-                step="0.5"
-                value={draft.gramos}
-                onChange={(e) => setDraft({ ...draft, gramos: Number(e.target.value) })}
-              />
-            </Field>
-            <Field label="g cocido (opcional)">
-              <Input
-                type="number"
-                value={draft.equivalencia_cocido ?? ''}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    equivalencia_cocido: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
-              />
-            </Field>
-            <Field label="Comidas sugeridas" className="sm:col-span-2">
-              <div className="flex flex-wrap gap-1">
-                {SLOTS.map((s) => {
-                  const on = draft.comidas_sugeridas.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      onClick={() =>
-                        setDraft({
-                          ...draft,
-                          comidas_sugeridas: on
-                            ? draft.comidas_sugeridas.filter((x) => x !== s)
-                            : [...draft.comidas_sugeridas, s],
-                        })
-                      }
-                      className={`rounded border px-2 py-0.5 text-[11px] capitalize ${
-                        on ? 'border-brand-500 bg-brand-600 text-white' : 'border-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-            <Field label="Alérgenos" className="sm:col-span-2">
-              <div className="flex flex-wrap gap-1">
-                {ALERGENOS.map((a) => {
-                  const on = draft.alergenos.includes(a);
-                  return (
-                    <button
-                      key={a}
-                      onClick={() =>
-                        setDraft({
-                          ...draft,
-                          alergenos: on ? draft.alergenos.filter((x) => x !== a) : [...draft.alergenos, a],
-                        })
-                      }
-                      className={`rounded border px-2 py-0.5 text-[11px] ${
-                        on ? 'border-amber-400 bg-amber-100 text-amber-800' : 'border-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {a.replace('_', ' ')}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Button
-              onClick={() => {
-                addFood(draft);
-                setDraft(NUEVO);
-                setAbierto(false);
-              }}
-              disabled={!draft.nombre.trim() || !draft.medida_casera.trim()}
-            >
-              Añadir al catálogo
-            </Button>
-          </div>
+      {(creando || editando) && (
+        <Card
+          title={editando ? `Editar ${editando.nombre}` : 'Nuevo alimento'}
+          subtitle="Introduce los datos por 100 g: la porción se calcula sola"
+        >
+          <FoodForm
+            key={editando?.id ?? 'nuevo'}
+            inicial={editando ?? undefined}
+            onGuardar={guardar}
+            onCancelar={() => {
+              setEditando(null);
+              setCreando(false);
+            }}
+          />
         </Card>
       )}
 
-      <div className="space-y-4">
-        {[...agrupados.entries()]
-          .sort((a, b) => EXCHANGE_GROUPS[a[0]].orden - EXCHANGE_GROUPS[b[0]].orden)
-          .map(([gid, items]) => {
-            const g = EXCHANGE_GROUPS[gid];
-            return (
-              <Card
-                key={gid}
-                title={
-                  <span className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: g.color }} />
-                    {g.nombre}
-                  </span>
-                }
-                subtitle={`1 intercambio = HC ${g.hc} g · Proteína ${g.proteina} g · Grasa ${g.grasa} g`}
-              >
-                <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {items.map((f) => (
-                    <li
-                      key={f.id}
-                      className="group flex items-baseline justify-between gap-2 rounded px-2 py-1 text-xs hover:bg-slate-50"
-                    >
-                      <span className="text-slate-700">
-                        {f.medida_casera}{' '}
-                        <span className="tnum text-slate-400">
-                          ({f.gramos} {f.unidad ?? 'g'}
-                          {f.equivalencia_cocido ? ` / ${f.equivalencia_cocido} coc.` : ''})
+      <Card
+        title="Alimentos"
+        actions={
+          <div className="flex gap-2">
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar…"
+              className="w-44 text-xs"
+            />
+            <Select
+              value={grupo}
+              onChange={(e) => setGrupo(e.target.value as ExchangeGroupId | '')}
+              className="w-44 text-xs"
+            >
+              <option value="">Todos los subgrupos</option>
+              {EXCHANGE_GROUP_LIST.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.nombre}
+                </option>
+              ))}
+            </Select>
+          </div>
+        }
+      >
+        {filtrados.length === 0 ? (
+          <EmptyState title="Sin resultados">Prueba con otro nombre o cambia el subgrupo.</EmptyState>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-[11px] text-slate-400">
+                  <th className="py-1.5 text-left font-medium">Alimento</th>
+                  <th className="py-1.5 text-left font-medium">Subgrupo</th>
+                  <th className="py-1.5 text-right font-medium">Porción</th>
+                  <th className="py-1.5 text-left font-medium">Medida casera</th>
+                  <th className="py-1.5 text-right font-medium">Por 100 g</th>
+                  <th className="py-1.5 text-left font-medium">Alérgenos</th>
+                  <th className="py-1.5"> </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map((f) => {
+                  const g = f.grupo ? EXCHANGE_GROUPS[f.grupo] : undefined;
+                  const porcion =
+                    f.nutrientes && f.grupo ? calcularPorcion(f.nutrientes, f.grupo) : undefined;
+                  const desvia =
+                    porcion && f.gramos
+                      ? Math.abs(porcion.gramos - f.gramos) / f.gramos > 0.2
+                      : false;
+                  return (
+                    <tr key={f.id} className="group border-b border-slate-50">
+                      <td className="py-1.5">
+                        <span className="text-slate-800">{f.nombre}</span>
+                        {f.custom && <span className="ml-1.5 text-[10px] text-brand-600">propio</span>}
+                      </td>
+                      <td className="py-1.5">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-sm"
+                            style={{ backgroundColor: g?.color ?? "#cbd5e1" }}
+                          />
+                          {g?.nombre ?? 'Libre (sin intercambio)'}
                         </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-1">
-                        {f.custom && <Badge tone="brand">propio</Badge>}
-                        {f.alergenos.map((a) => (
-                          <Badge key={a} tone="warn">
-                            {a[0].toUpperCase()}
-                          </Badge>
-                        ))}
+                      </td>
+                      <td className="tnum py-1.5 text-right font-medium text-brand-800">
+                        {f.gramos || porcion?.gramos} {f.unidad ?? 'g'}
+                        {desvia && (
+                          <span
+                            className="ml-1 cursor-help text-[10px] font-normal text-amber-600"
+                            title={`Por sus nutrientes la porción saldría de ${porcion!.gramos} g`}
+                          >
+                            ≠{porcion!.gramos}
+                          </span>
+                        )}
+                        {f.equivalencia_cocido && (
+                          <span className="ml-1 text-[10px] font-normal text-slate-400">
+                            / {f.equivalencia_cocido} coc.
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-1.5 text-xs text-slate-500">{f.medida_casera}</td>
+                      <td className="tnum py-1.5 text-right text-[11px] text-slate-500">
+                        {f.nutrientes ? (
+                          <>
+                            {fmt(f.nutrientes.hc, 1)} / {fmt(f.nutrientes.proteina, 1)} /{' '}
+                            {fmt(f.nutrientes.grasa, 1)}
+                          </>
+                        ) : (
+                          <span className="text-slate-300">sin datos</span>
+                        )}
+                      </td>
+                      <td className="py-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          {f.alergenos.map((a) => (
+                            <Badge key={a} tone="warn">
+                              {ALERGENO_LABELS[a]}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-1.5 text-right whitespace-nowrap">
                         <button
-                          onClick={() => deleteFood(f.id)}
-                          className="hidden text-red-400 group-hover:block hover:text-red-600"
+                          onClick={() => {
+                            setEditando(f);
+                            setCreando(false);
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-brand-700"
                         >
-                          ×
+                          Editar
                         </button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            );
-          })}
-      </div>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Eliminar ${f.nombre} de la base de datos?`)) {
+                              deleteFood(f.id);
+                            }
+                          }}
+                          className="ml-2 text-[11px] text-slate-300 hover:text-red-600"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-[11px] text-slate-400">
+              La columna "Por 100 g" muestra carbohidrato / proteína / grasa. La porción es la cantidad
+              que aporta 1 intercambio de su subgrupo.
+            </p>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

@@ -1,29 +1,92 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { PlanSchemaTable } from '../components/phase2/PlanSchemaTable';
 import { MealOptionsBoard } from '../components/phase2/MealOptionsBoard';
+import { ScaledOptionsBoard } from '../components/phase2/ScaledOptionsBoard';
+import { FoodPortionPicker } from '../components/phase3/FoodPortionPicker';
 import { ScaledRecipeView } from '../components/phase1/ScaledRecipeView';
+import { WeekStrip } from '../components/client/WeekStrip';
+import { DayProgressBar } from '../components/client/DayProgressBar';
+import { RecipeShortcuts } from '../components/client/RecipeShortcuts';
+import { ExtrasPanel } from '../components/client/ExtrasPanel';
 import { PlanDocument } from '../components/export/PlanDocument';
 import { usePrintDocument } from '../components/export/printing';
-import { Button, EmptyState } from '../components/common/ui';
+import { Button, EmptyState, fmt } from '../components/common/ui';
+import { recetasDeComida, FASE_POR_NUMERO } from '../types/plan';
+import { claveFecha, fechaLegible } from '../types/diary';
+import { balanceDelDia } from '../utils/diary';
+import { elegirOpcion, fijarAlimento, marcarAlimento } from '../utils/marcado';
 
-/** Lo que ve el cliente. Fase 1 → recetas escaladas · Fase 2 → esquema + "escoge X". */
+/** Lo que ve el cliente: su día, lo pautado y lo que va cumpliendo. */
 export function ClientView() {
   const { id = '' } = useParams();
   const client = useAppStore((s) => s.clients.find((c) => c.id === id));
-  const plan = useAppStore((s) => s.plans.find((p) => p.clientId === id));
+  // El cliente sólo ve la planificación en uso, nunca las archivadas.
+  const plan = useAppStore((s) => s.plans.find((p) => p.clientId === id && !p.archivado));
   const foods = useAppStore((s) => s.foods);
   const recipes = useAppStore((s) => s.recipes);
+  const registros = useAppStore((s) => s.registros);
+  const upsertRegistro = useAppStore((s) => s.upsertRegistro);
 
-  const [dtIndex, setDtIndex] = useState(0);
+  const [fecha, setFecha] = useState(claveFecha(new Date()));
   const [interactivo, setInteractivo] = useState(true);
+
   const imprimir = usePrintDocument(
     `Plan ${client?.nombre ?? ''} — Fase ${plan?.fase ?? ''}`.trim(),
   );
 
-  if (!client || !plan) return <EmptyState title="Plan no disponible" />;
-  const dayType = plan.dayTypes[Math.min(dtIndex, plan.dayTypes.length - 1)];
+  const mios = useMemo(() => registros.filter((r) => r.clientId === id), [registros, id]);
+  const registro = mios.find((r) => r.fecha === fecha);
+
+  const dayType = useMemo(() => {
+    if (!plan) return undefined;
+    return plan.dayTypes.find((d) => d.id === registro?.dayTypeId) ?? plan.dayTypes[0];
+  }, [plan, registro?.dayTypeId]);
+
+  const balance = useMemo(
+    () => balanceDelDia(dayType, registro, foods, { asumirPlanCumplido: true }),
+    [dayType, registro, foods],
+  );
+
+  if (!client || !plan || !dayType) return <EmptyState title="Plan no disponible" />;
+
+  // Hasta que la nutricionista lo envía, aquí no hay nada que ver.
+  if (!plan.envio) {
+    return (
+      <EmptyState title="Tu plan todavía se está preparando">
+        En cuanto tu nutricionista lo envíe, aparecerá aquí con las comidas del día.
+      </EmptyState>
+    );
+  }
+
+  const guardar = (patch: Parameters<typeof upsertRegistro>[2]) =>
+    upsertRegistro(client.id, fecha, { dayTypeId: dayType.id, ...patch });
+
+  const porciones = registro?.porciones ?? {};
+
+  const marcarPorcion = (mealId: string, foodId: string, delta: number) =>
+    guardar({ porciones: marcarAlimento(porciones, mealId, foodId, delta) });
+
+  /** Fase 2: al pulsar una opción sustituye lo que hubiera de ese macro. */
+  const elegirOpcionComida = (mealId: string, opcion: Parameters<typeof elegirOpcion>[2]) =>
+    guardar({ porciones: elegirOpcion(porciones, mealId, opcion, foods) });
+
+  /** Recetas sugeridas: marcan de golpe todos sus ingredientes. */
+  const usarReceta = (mealId: string, aportes: { foodId: string; intercambios: number }[]) => {
+    let out = porciones;
+    for (const a of aportes) out = fijarAlimento(out, mealId, a.foodId, a.intercambios);
+    guardar({ porciones: out });
+  };
+
+  const alternarCumplida = (mealId: string) => {
+    const actual = registro?.cumplidas ?? [];
+    guardar({
+      cumplidas: actual.includes(mealId) ? actual.filter((x) => x !== mealId) : [...actual, mealId],
+    });
+  };
+
+  const cumplida = (mealId: string) => (registro?.cumplidas ?? []).includes(mealId);
 
   return (
     <>
@@ -37,53 +100,268 @@ export function ClientView() {
               ← Volver al plan
             </Link>
             <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-brand-900">
-              Plan de {client.nombre}
+              Hola, {client.nombre.split(' ')[0]}
             </h1>
             <p className="text-sm text-slate-500">
-              Fase {plan.fase} — {plan.fase === 1 ? 'recetas cerradas' : 'intercambios abiertos'}
+              {fechaLegible(fecha)} · Fase {plan.fase} —{' '}
+              {FASE_POR_NUMERO[plan.fase].titulo.toLowerCase()}
             </p>
           </div>
           <div className="flex gap-2">
-            {plan.fase === 2 && (
+            {plan.fase === 3 && (
               <Button variant="outline" onClick={() => setInteractivo((v) => !v)}>
-                {interactivo ? 'Modo documento' : 'Modo interactivo'}
+                {interactivo ? 'Ver como documento' : 'Marcar lo que como'}
               </Button>
             )}
             <Button onClick={imprimir}>Exportar PDF</Button>
           </div>
         </div>
 
+        {plan.envio.mensaje && (
+          <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 no-print">
+            <p className="text-[10px] font-medium tracking-wide text-brand-700 uppercase">
+              Mensaje de tu nutricionista
+            </p>
+            <p className="mt-1 text-sm leading-snug text-brand-900">{plan.envio.mensaje}</p>
+          </div>
+        )}
+
+        <WeekStrip
+          fecha={fecha}
+          onFecha={setFecha}
+          dayTypes={plan.dayTypes}
+          registros={mios}
+          inicioPlan={plan.createdAt?.slice(0, 10)}
+        />
+
+        {/* Tipo de día */}
         {plan.dayTypes.length > 1 && (
-          <div className="flex flex-wrap gap-1.5 no-print">
-            {plan.dayTypes.map((d, i) => (
-              <button
-                key={d.id}
-                onClick={() => setDtIndex(i)}
-                className={`rounded-lg border px-3 py-1.5 text-sm transition ${
-                  d.id === dayType.id
-                    ? 'border-brand-500 bg-brand-600 text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
-                }`}
-              >
-                {d.nombre}
-              </button>
+          <div className="no-print">
+            <p className="mb-1.5 text-[11px] font-medium tracking-wide text-slate-400 uppercase">
+              ¿Qué día tienes hoy?
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {plan.dayTypes.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => guardar({ dayTypeId: d.id })}
+                  className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                    d.id === dayType.id
+                      ? 'border-brand-500 bg-brand-600 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                  }`}
+                >
+                  {d.nombre}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Las comidas del día, que se van llenando */}
+        <DayProgressBar
+          dayType={dayType}
+          porciones={porciones}
+          cumplidas={registro?.cumplidas ?? []}
+          onIr={(mealId) =>
+            document.getElementById(`comida-${mealId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        />
+
+        {/* Cómo va el día */}
+        <div className="tnum flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl bg-slate-50 px-4 py-2.5 text-xs no-print">
+          <span className="font-medium text-slate-700">
+            {fmt(balance.kcalTotal)} kcal
+            <span className="ml-1 font-normal text-slate-400">
+              de {fmt(balance.kcalPautado)} pautadas
+            </span>
+          </span>
+          <span className="text-slate-500">
+            P {fmt(balance.total.proteina, 0)} · HC {fmt(balance.total.hc, 0)} · G{' '}
+            {fmt(balance.total.grasa, 0)} g
+          </span>
+          <span className="text-slate-500">
+            {(registro?.cumplidas ?? []).length}/{dayType.meals.length} comidas hechas
+          </span>
+          {Math.abs(balance.kcalDiferencia) > 20 && (
+            <span
+              className={balance.kcalDiferencia > 0 ? 'text-amber-700' : 'text-slate-500'}
+            >
+              {balance.kcalDiferencia > 0 ? '+' : '−'}
+              {fmt(Math.abs(balance.kcalDiferencia))} kcal sobre lo pautado
+            </span>
+          )}
+        </div>
+
+        {/* Esquema: sólo en fase 3, que es donde el cliente cuenta porciones */}
+        {plan.fase === 3 && (
+          <div>
+            <h2 className="mb-3 text-sm font-bold tracking-widest text-brand-800 uppercase">
+              Tu esquema
+            </h2>
+            <PlanSchemaTable dayType={dayType} />
+          </div>
+        )}
+
+        {/* ── FASE 1 ─────────────────────────────── */}
+        {plan.fase === 1 && (
+          <div className="space-y-5">
+            {dayType.meals.map((m) => {
+              const opciones = recetasDeComida(dayType.recetasAsignadas, m.id)
+                .map((rid) => recipes.find((r) => r.id === rid))
+                .filter(Boolean) as typeof recipes;
+              if (!opciones.length) return null;
+
+              const elegida = registro?.recetaElegida?.[m.id] ?? opciones[0].id;
+              const receta = opciones.find((r) => r.id === elegida) ?? opciones[0];
+              const hecha = cumplida(m.id);
+
+              return (
+                <div key={m.id}>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                      {m.nombre}
+                    </p>
+                    {hecha && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700">
+                        hecha ✓
+                      </span>
+                    )}
+                    {opciones.length > 1 && (
+                      <div className="flex flex-wrap gap-1 no-print">
+                        {opciones.map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={() =>
+                              guardar({
+                                recetaElegida: {
+                                  ...(registro?.recetaElegida ?? {}),
+                                  [m.id]: r.id,
+                                },
+                              })
+                            }
+                            className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
+                              r.id === receta.id
+                                ? 'border-brand-500 bg-brand-600 text-white'
+                                : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                            }`}
+                          >
+                            {r.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <ScaledRecipeView
+                    receta={receta}
+                    requeridos={dayType.grid[m.id] ?? {}}
+                    foods={foods}
+                    equivalentes={registro?.sustituciones?.[m.id] ?? {}}
+                    onEquivalente={(ingId, foodId) => {
+                      const porComida = { ...(registro?.sustituciones?.[m.id] ?? {}) };
+                      if (foodId) porComida[ingId] = foodId;
+                      else delete porComida[ingId];
+                      guardar({
+                        sustituciones: { ...(registro?.sustituciones ?? {}), [m.id]: porComida },
+                      });
+                    }}
+                    acciones={
+                      <Button
+                        variant={hecha ? 'primary' : 'outline'}
+                        onClick={() => alternarCumplida(m.id)}
+                      >
+                        {hecha ? 'Hecha ✓' : 'Marcar como hecha'}
+                      </Button>
+                    }
+                  />
+                </div>
+              );
+            })}
+            {!dayType.meals.some((m) => recetasDeComida(dayType.recetasAsignadas, m.id).length) && (
+              <EmptyState title="Aún no hay recetas asignadas">
+                Tu nutricionista todavía no ha elegido las recetas de este día.
+              </EmptyState>
+            )}
+          </div>
+        )}
+
+        {/* ── FASE 2 ─────────────────────────────── */}
+        {plan.fase === 2 && (
+          <div className="space-y-4">
+            {dayType.meals.map((m) => (
+              <div key={m.id} id={`comida-${m.id}`} className="scroll-mt-20">
+                <ScaledOptionsBoard
+                  dayType={dayType}
+                  meal={m}
+                  foods={foods}
+                  porciones={porciones}
+                  onElegir={(o) => elegirOpcionComida(m.id, o)}
+                />
+                <RecipeShortcuts
+                  dayType={dayType}
+                  meal={m}
+                  recetas={recipes}
+                  foods={foods}
+                  client={client}
+                  porciones={porciones}
+                  onUsar={usarReceta}
+                />
+                <div className="mt-1.5 flex justify-end no-print">
+                  <button
+                    onClick={() => alternarCumplida(m.id)}
+                    className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
+                      cumplida(m.id)
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                        : 'border-slate-200 text-slate-500 hover:border-brand-300'
+                    }`}
+                  >
+                    {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}
 
-        {plan.fase === 2 ? (
-          <div className="space-y-5">
-            <div>
-              <h2 className="mb-3 text-sm font-bold tracking-widest text-brand-800 uppercase">
-                Esquema del plan
-              </h2>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {plan.dayTypes.map((d) => (
-                  <PlanSchemaTable key={d.id} dayType={d} />
-                ))}
-              </div>
+        {/* ── FASE 3 ─────────────────────────────── */}
+        {plan.fase === 3 &&
+          (interactivo ? (
+            <div className="space-y-4">
+              {dayType.meals.map((m) => (
+                <div key={m.id} id={`comida-${m.id}`} className="scroll-mt-20">
+                  <FoodPortionPicker
+                    dayType={dayType}
+                    meal={m}
+                    foods={foods}
+                    porciones={porciones}
+                    onMarcar={marcarPorcion}
+                  />
+                  <RecipeShortcuts
+                    dayType={dayType}
+                    meal={m}
+                    recetas={recipes}
+                    foods={foods}
+                    client={client}
+                    porciones={porciones}
+                    onUsar={usarReceta}
+                  />
+                  <div className="mt-1.5 flex justify-end no-print">
+                    <button
+                      onClick={() => alternarCumplida(m.id)}
+                      className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
+                        cumplida(m.id)
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                          : 'border-slate-200 text-slate-500 hover:border-brand-300'
+                      }`}
+                    >
+                      {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-
+          ) : (
             <div className="space-y-4">
               {dayType.meals.map((m) => (
                 <MealOptionsBoard
@@ -91,37 +369,18 @@ export function ClientView() {
                   dayType={dayType}
                   meal={m}
                   foods={foods}
-                  mode={interactivo ? 'interactivo' : 'documento'}
+                  mode="documento"
                 />
               ))}
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {dayType.meals.map((m) => {
-              const rid = dayType.recetasAsignadas?.[m.id];
-              const receta = recipes.find((r) => r.id === rid);
-              if (!receta) return null;
-              return (
-                <div key={m.id}>
-                  <p className="mb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                    {m.nombre}
-                  </p>
-                  <ScaledRecipeView
-                    receta={receta}
-                    requeridos={dayType.grid[m.id] ?? {}}
-                    foods={foods}
-                  />
-                </div>
-              );
-            })}
-            {!Object.values(dayType.recetasAsignadas ?? {}).some(Boolean) && (
-              <EmptyState title="Aún no hay recetas asignadas">
-                La nutricionista debe elegir una receta por comida en la pestaña de entrega.
-              </EmptyState>
-            )}
-          </div>
-        )}
+          ))}
+
+        <ExtrasPanel
+          extras={registro?.extras ?? []}
+          foods={foods}
+          balance={balance}
+          onChange={(extras) => guardar({ extras })}
+        />
       </div>
 
       {/* Documento que sale al imprimir / exportar a PDF */}

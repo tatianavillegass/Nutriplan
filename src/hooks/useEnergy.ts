@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Client } from '../types/client';
+import { edadDe } from '../types/client';
 import { calcBmr, pickBmr } from '../utils/bmr';
 import { calcEnergy } from '../utils/energy';
 import { getActivityFactor, THERMOGENESIS_FACTOR } from '../data/activityFactors';
@@ -11,7 +12,7 @@ export function useEnergy(client: Client | undefined) {
       sexo: client.sexo,
       peso: client.peso,
       altura: client.altura,
-      edad: client.edad,
+      edad: edadDe(client),
     });
     const tmb = pickBmr(bmr, client.bmrFormula);
     const activityFactor = getActivityFactor(client.activityFactorId);
