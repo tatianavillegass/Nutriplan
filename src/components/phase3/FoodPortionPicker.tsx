@@ -9,7 +9,7 @@ import { seleccionPorBucket, seleccionPorGrupo } from '../../utils/marcado';
 import { BUCKET_LABEL } from '../../utils/mealOptions';
 import { gramosMarcados } from '../../utils/diary';
 import { escalarMedida } from '../../utils/measures';
-import { avisoGrasaExtra, coincide } from '../../utils/similitud';
+import { coincide } from '../../utils/similitud';
 import { PortionRing, SubgrupoBarra } from '../common/PortionRing';
 import { fmt } from '../common/ui';
 
@@ -110,7 +110,6 @@ function BotonAlimento({
   sangria?: boolean;
 }) {
   const gpi = gramosMarcados(food, 1);
-  const aviso = avisoGrasaExtra(food);
   return (
     <button
       onClick={onElegir}
@@ -126,7 +125,6 @@ function BotonAlimento({
         <span className="tnum text-slate-400">
           {food.medida_casera} ({gpi} {food.unidad ?? 'g'})
         </span>
-        {aviso && <span className="ml-1 text-[10px] text-amber-600">{aviso}</span>}
       </span>
       {n > 0 && (
         <span className="tnum shrink-0 text-[10px] font-medium text-brand-700">
@@ -217,6 +215,11 @@ function GrupoGenerico({
 /**
  * FASE 3 — el cliente pulsa el alimento y se le va sumando la porción.
  * Cada pulsación muestra la cantidad acumulada: 3 toques a pollo → 3/3 y 90 g.
+ *
+ * Aquí no se avisa de la grasa escondida de un alimento ("+5 g sobre su
+ * grupo"): es información para decidir qué ofrecer, no para quien come. El
+ * cliente ve el alimento y sus gramos; el aviso vive en la despensa de la
+ * nutricionista, que es quien decide si lo pone o no.
  */
 export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar }: Props) {
   // El presupuesto se mira a dos niveles: por macro y por subgrupo.

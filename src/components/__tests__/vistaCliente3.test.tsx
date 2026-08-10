@@ -89,6 +89,24 @@ describe('Pasarse de proteína magra no genera aviso', () => {
   });
 });
 
+describe('El aviso de grasa escondida es sólo para la nutricionista', () => {
+  it('el cliente no ve "+X g de grasa" al lado de los alimentos', () => {
+    pintar();
+    // El feta lo lleva; en la despensa de la nutricionista sí se marca.
+    expect(avisoGrasaExtra(FOOD_CATALOG.find((f) => f.nombre === 'Queso feta')!)).toMatch(
+      /g de grasa/,
+    );
+    // Pero en la pantalla del cliente no aparece por ningún lado.
+    expect(document.body.textContent).not.toMatch(/g de grasa sobre su grupo/);
+    expect(document.body.textContent).not.toMatch(/cuenta también .* porciones de grasa/);
+  });
+
+  it('lo que sí ve son los gramos de su porción', () => {
+    pintar();
+    expect(screen.getAllByText(/Queso cottage/).length).toBeGreaterThan(0);
+  });
+});
+
 describe('Quesos con más grasa de la que dice su grupo', () => {
   const buscar = (n: string) => FOOD_CATALOG.find((f) => f.nombre === n)!;
 
