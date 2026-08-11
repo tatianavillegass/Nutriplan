@@ -95,6 +95,14 @@ function tope(
   return candidatos.filter((c) => c.valor < 0.999).sort((a, b) => a.valor - b.valor)[0];
 }
 
+/** Los mismos macros, multiplicados. */
+function porFactor(
+  m: ReturnType<typeof exchangesToMacros>,
+  f: number,
+): ReturnType<typeof exchangesToMacros> {
+  return { hc: m.hc * f, proteina: m.proteina * f, grasa: m.grasa * f };
+}
+
 /**
  * Cuánto cabe de la parte flexible sin pasarse, dado lo que ya ocupa la
  * parte fija. Negativo significa que ni con la flexible a cero cabe.
@@ -168,11 +176,12 @@ export function scaleRecipe(
     let factor = mReq[ancla] / mBase[ancla];
 
     /**
-     * EL PROTEICO MANDA, EL LÁCTEO ACOMPAÑA
+     * LA PROTEÍNA VIENE DEL PROTEICO; EL LÁCTEO REMATA
      *
-     * Un plato con pollo y un yogur al lado no es medio pollo y medio yogur:
-     * el yogur es el acompañamiento y se queda como está en la receta, y es
-     * el pollo el que sube o baja para cuadrar la proteína del día.
+     * En un plato con pollo y un yogur, la proteína pautada la pone el pollo:
+     * el yogur va de complemento, nunca de fuente principal. Así que el pollo
+     * cuadra la proteína del día y el yogur se queda con el sitio que sobre.
+     * Si no sobra sitio, lo que se recorta es el yogur, no el pollo.
      */
     if (familia === 'proteicos') {
       const esLacteo = (g: ExchangeGroupId) => g.startsWith('lacteos_');
@@ -180,37 +189,44 @@ export function scaleRecipe(
       const proteicos = filtrar(enReceta, (g) => !esLacteo(g));
 
       if (Object.keys(lacteos).length && Object.keys(proteicos).length) {
-        const deLacteos = exchangesToMacros(lacteos).proteina;
-        const deProteicos = exchangesToMacros(proteicos).proteina;
-        const restante = Math.max(0, mReq.proteina - deLacteos);
-        const factorProteico = deProteicos > 0 ? restante / deProteicos : 0;
-
-        /**
-         * Si con eso se pasa de lo pautado, lo que se recorta es el proteico,
-         * que es la parte que flexiona. Sólo si ni quitándolo entero cabe, se
-         * toca el lácteo.
-         */
         const mLacteos = exchangesToMacros(lacteos);
         const mProteicos = exchangesToMacros(proteicos);
-        const cabe = factorQueCabe(familia, mLacteos, mProteicos, mReq);
 
-        let fLacteo = 1;
-        let fProteico = Math.min(factorProteico, Math.max(0, cabe));
+        /**
+         * El lácteo sólo cubre el lácteo que esté pautado. Si no hay ninguno
+         * pautado, entra de complemento con el sitio que sobre — pero nunca
+         * quita proteína al proteico, que es de donde tiene que venir.
+         */
+        const lacteoPautado = exchangesToMacros(filtrar(pautado, esLacteo)).proteina;
+        const paraElProteico = Math.max(0, mReq.proteina - lacteoPautado);
 
-        if (cabe < 0) {
-          // Ni el lácteo solo cabe: hay que recortarlo también.
-          fProteico = 0;
-          fLacteo = tope(familia, mLacteos, mReq)?.valor ?? 1;
-          notas.push('El lácteo solo ya se pasa de lo pautado: se ha reducido.');
-        } else if (fProteico < factorProteico - 0.001) {
+        let fProteico = mProteicos.proteina > 0 ? paraElProteico / mProteicos.proteina : 0;
+        const ocupado = porFactor(mProteicos, fProteico);
+
+        const sitio = factorQueCabe(familia, ocupado, mLacteos, mReq);
+        const suyo = lacteoPautado > 0 ? lacteoPautado / mLacteos.proteina : 1;
+        let fLacteo = Math.min(suyo, Math.max(0, sitio));
+
+        if (sitio <= 0.001) {
+          fLacteo = 0;
+          notas.push(
+            `Con lo pautado no queda sitio para ${nombres(lacteos)}: pauta un lácteo o quítalo del plato.`,
+          );
+        } else if (fLacteo < suyo - 0.001) {
+          notas.push(
+            `${nombres(lacteos)} se ha reducido: la proteína pautada la cubre ${nombres(proteicos)}.`,
+          );
+        }
+
+        // Sólo si ni el proteico solo cabe se le toca a él.
+        const soloProteico = tope(familia, ocupado, mReq);
+        if (fLacteo === 0 && soloProteico) {
+          fProteico *= soloProteico.valor;
           notas.push(`Se ha recortado ${nombres(proteicos)} para no pasarse de lo pautado.`);
         }
 
         for (const g of Object.keys(lacteos) as ExchangeGroupId[]) factores[g] = fLacteo;
         for (const g of Object.keys(proteicos) as ExchangeGroupId[]) factores[g] = fProteico;
-        notas.push(
-          `El lácteo se queda como está y ${nombres(proteicos)} cuadra la proteína pautada.`,
-        );
         continue;
       }
     }
