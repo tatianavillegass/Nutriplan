@@ -308,7 +308,19 @@ export function scaleRecipe(
     };
   });
 
-  return { receta, ingredientes, factores, gruposSinCubrir, notas };
+  /**
+   * Lo que la receta cubre de verdad: su base por el factor con el que se ha
+   * escalado. Si el yogur se ha recortado a 0 porque no había sitio, aquí
+   * sale 0 — y por eso la comida aparecerá incompleta en vez de fingir que
+   * está cuadrada.
+   */
+  const cubiertos: Partial<Record<ExchangeGroupId, number>> = {};
+  for (const [gid, n] of Object.entries(base) as [ExchangeGroupId, number][]) {
+    const v = n * (factores[gid] ?? 1);
+    if (v > 0.001) cubiertos[gid] = v;
+  }
+
+  return { receta, ingredientes, factores, cubiertos, gruposSinCubrir, notas };
 }
 
 /**

@@ -71,6 +71,12 @@ export interface RecetaEscalada {
   receta: Receta;
   ingredientes: IngredienteEscalado[];
   factores: Partial<Record<ExchangeGroupId, number>>;
+  /**
+   * Intercambios que la receta cubre de verdad, ya escalada. Es la base de la
+   * receta multiplicada por su factor, así que es con lo que se compara lo
+   * pautado para saber si la comida está completa o le falta algo.
+   */
+  cubiertos: Partial<Record<ExchangeGroupId, number>>;
   /** Grupos requeridos que la receta no cubre con ninguna de su familia. */
   gruposSinCubrir: ExchangeGroupId[];
   /**

@@ -1,0 +1,144 @@
+import { describe, it, expect } from 'vitest';
+import { estadoComida, huecos, TOLERANCIA_INT } from '../completitud';
+import { scaleRecipe } from '../recipeScaling';
+import { applyCustomization } from '../substitutions';
+import { exchangesToMacros, type ExchangeCounts } from '../exchanges';
+import { kcalFromMacros } from '../macros';
+import { FOOD_CATALOG } from '../../data/foodCatalog';
+import { SEED_RECIPES } from '../../data/seedRecipes';
+
+const wok = SEED_RECIPES.find((r) => r.id === 'rc_wok_pollo')!;
+
+describe('¿Está la comida completa?', () => {
+  const pautado = { proteicos_magros: 5, almidones: 3, grasas: 2 } as const;
+
+  it('lo pautado cubierto al detalle sale completo', () => {
+    const r = estadoComida(pautado, pautado);
+    expect(r.estado).toBe('completa');
+    expect(r.cuadradas).toBe(r.total);
+    expect(r.mensaje).toMatch(/completa/i);
+  });
+
+  it('sin nada en el plato, falta todo', () => {
+    const r = estadoComida(pautado, {});
+    expect(r.estado).toBe('incompleta');
+    expect(r.cuadradas).toBe(0);
+    expect(huecos(r).map((h) => h.familia).sort()).toEqual(['almidones', 'grasas', 'proteicos']);
+  });
+
+  it('dice cuánto falta, no sólo que falta', () => {
+    const r = estadoComida(pautado, { proteicos_magros: 3, almidones: 3, grasas: 2 });
+    const prot = r.filas.find((f) => f.familia === 'proteicos')!;
+    expect(prot.falta).toBe(2);
+    expect(prot.cubierto).toBe(3);
+    expect(prot.pautado).toBe(5);
+  });
+
+  it('pasarse también se avisa, y no como si faltara', () => {
+    const r = estadoComida(pautado, { proteicos_magros: 5, almidones: 5, grasas: 2 });
+    expect(r.estado).toBe('excedida');
+    expect(r.filas.find((f) => f.familia === 'almidones')!.estado).toBe('exceso');
+    expect(r.mensaje).toMatch(/pasas/i);
+  });
+
+  it('las verduras no entran en la cuenta: son ilimitadas', () => {
+    const r = estadoComida({ ...pautado, verduras: 3 }, { ...pautado, verduras: 99 });
+    expect(r.filas.some((f) => f.familia === 'verduras')).toBe(false);
+    expect(r.estado).toBe('completa');
+  });
+});
+
+describe('Se compara por familia, no subgrupo contra subgrupo', () => {
+  it('un proteico semigraso cubre el magro pautado', () => {
+    const r = estadoComida({ proteicos_magros: 4 }, { proteicos_semigrasos: 4 });
+    expect(r.estado).toBe('completa');
+    expect(r.filas[0].cubiertoCon).toEqual(['proteicos_semigrasos']);
+  });
+
+  it('la fruta no cubre un almidón por mucho que cuadren las calorías', () => {
+    const r = estadoComida({ almidones: 2 }, { fruta: 2 });
+    expect(r.estado).not.toBe('completa');
+    expect(huecos(r).map((h) => h.familia)).toContain('almidones');
+    expect(r.filas.some((f) => f.familia === 'fruta' && f.pautado === 0)).toBe(true);
+  });
+
+  it('la cuenta se lleva en el macro ancla, no en el número de porciones', () => {
+    // 1 lácteo proteico = 10 g de proteína = 1,43 proteicos magros de 7 g.
+    const r = estadoComida({ proteicos_magros: 2 }, { lacteos_proteicos: 2 });
+    const fila = r.filas[0];
+    expect(fila.pautado).toBe(2);
+    expect(fila.cubierto).toBeGreaterThan(2);
+    expect(fila.estado).toBe('exceso');
+  });
+});
+
+describe('Tolerancia', () => {
+  it('una diferencia de redondeo no marca la comida en rojo', () => {
+    const r = estadoComida({ grasas: 2 }, { grasas: 2 - TOLERANCIA_INT / 2 });
+    expect(r.estado).toBe('completa');
+  });
+
+  it('media porción sí se avisa', () => {
+    const r = estadoComida({ grasas: 2 }, { grasas: 1.5 });
+    expect(r.estado).toBe('incompleta');
+  });
+});
+
+describe('Comida sin nada pautado', () => {
+  it('no inventa un estado: no hay nada contra lo que medir', () => {
+    const r = estadoComida({}, {});
+    expect(r.estado).toBe('sin_pauta');
+    expect(r.filas).toEqual([]);
+  });
+});
+
+describe('Enganche con el escalado real', () => {
+  const pautado = { proteicos_magros: 5, almidones: 3, grasas: 2, fruta: 1 } as const;
+
+  it('lo que cubre la receta escalada cuadra con lo pautado salvo la fruta', () => {
+    const esc = scaleRecipe(wok, pautado, FOOD_CATALOG);
+    const r = estadoComida(pautado, esc.cubiertos);
+
+    expect(esc.gruposSinCubrir).toContain('fruta');
+    expect(r.estado).toBe('incompleta');
+    expect(huecos(r).map((h) => h.familia)).toEqual(['fruta']);
+    // Lo demás sí está cuadrado: el escalado hace su trabajo.
+    expect(r.filas.filter((f) => f.familia !== 'fruta').every((f) => f.estado === 'ok')).toBe(true);
+  });
+
+  it('`cubiertos` es la base por el factor, no lo pautado copiado', () => {
+    const esc = scaleRecipe(wok, { proteicos_magros: 5, almidones: 3, grasas: 2 }, FOOD_CATALOG);
+    expect(esc.cubiertos.proteicos_magros).toBeCloseTo(5, 5);
+    expect(esc.cubiertos.almidones).toBeCloseTo(3, 5);
+    expect(esc.cubiertos.grasas).toBeCloseTo(2, 5);
+  });
+
+  /**
+   * La barra de macros pasó a mostrar lo que hay en el plato en vez de lo
+   * pautado. Con una receta que encaja no puede notarse la diferencia: si
+   * este test se pone rojo, es que la barra ha empezado a derivar.
+   */
+  it('ninguna receta semilla deriva respecto a su propia pauta', () => {
+    const problemas: string[] = [];
+
+    for (const r of SEED_RECIPES) {
+      const req: ExchangeCounts = {};
+      for (const [g, v] of Object.entries(r.base)) {
+        if (v !== 'ilimitado' && v) req[g as keyof ExchangeCounts] = v;
+      }
+      if (!Object.keys(req).length) continue;
+
+      const esc = scaleRecipe(r, req, FOOD_CATALOG);
+      const out = applyCustomization(esc, req, { quitados: [], sustituciones: {} }, FOOD_CATALOG);
+      const kPauta = kcalFromMacros(exchangesToMacros(req));
+      const kPlato = kcalFromMacros(exchangesToMacros(out.enPlato));
+      const st = estadoComida(req, out.enPlato).estado;
+
+      if (Math.abs(kPauta - kPlato) > 1 || st !== 'completa') {
+        problemas.push(`${r.nombre}: ${kPauta.toFixed(0)} vs ${kPlato.toFixed(0)} kcal → ${st}`);
+      }
+    }
+
+    expect(problemas).toEqual([]);
+  });
+});

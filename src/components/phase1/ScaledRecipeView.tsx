@@ -10,7 +10,10 @@ import {
   type CustomizationState,
 } from '../../utils/substitutions';
 import { EXCHANGE_GROUPS, MIN_VERDURA_G } from '../../data/exchangeGroups';
+import { estadoComida } from '../../utils/completitud';
+import { sumarIntercambios } from '../../utils/anadidos';
 import { RecipeCustomizer } from './RecipeCustomizer';
+import { CompletenessBadge } from './MealCompleteness';
 import { IngredientSwap } from './IngredientSwap';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 import { roundPortion } from '../../utils/macros';
@@ -85,7 +88,20 @@ export function ScaledRecipeView({
     [escalada, requeridos, custom, foods],
   );
 
-  const macros = exchangesToMacros(resultado.exchangesDespues);
+  /**
+   * Lo que se come de verdad: lo que cubre la receta escalada, más lo añadido
+   * que ocupa sitio en el plan, más lo marcado como extra. Los macros salen de
+   * ahí y no de lo pautado, que es lo que debería haber, no lo que hay.
+   */
+  const macros = exchangesToMacros(
+    sumarIntercambios(resultado.enPlato, resultado.extras),
+  );
+
+  /** Pautado vs plato: el badge y el checklist salen de aquí. */
+  const resumen = useMemo(
+    () => estadoComida(requeridos, resultado.enPlato),
+    [requeridos, resultado.enPlato],
+  );
 
   const mostrarAviso = (motivo: string) => {
     setAviso(motivo);
@@ -131,6 +147,17 @@ export function ScaledRecipeView({
 
           <div className="mb-4 border-y border-slate-100 py-3">
             <MacroBar macros={macros} />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <CompletenessBadge resumen={resumen} />
+              {resumen.estado === 'incompleta' && !soloLectura && !personalizando && (
+                <button
+                  onClick={() => setPersonalizando(true)}
+                  className="text-[11px] font-medium text-brand-600 underline decoration-dotted underline-offset-2 hover:text-brand-800 no-print"
+                >
+                  Completar la comida →
+                </button>
+              )}
+            </div>
           </div>
 
           {paraNutricionista && escalada.notas.length > 0 && (
@@ -223,6 +250,33 @@ export function ScaledRecipeView({
                 </li>
               );
             })}
+            {/* Lo que ha añadido el cliente va en la misma lista: al comer no
+                hay «ingredientes de la receta» y «lo mío», hay un plato. */}
+            {resultado.anadidos.map((a) => (
+              <li key={a.id} className="flex items-baseline gap-2 text-sm">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
+                <span className="flex-1 text-slate-700">
+                  {a.nombre}
+                  <span className="tnum ml-1.5 font-medium text-brand-800">
+                    {a.cantidad == null ? 'al gusto' : `${a.cantidad} ${a.unidad}`}
+                  </span>
+                  {caseras && a.medida && a.cantidad != null && (
+                    <span className="tnum ml-1.5 text-[10px] text-slate-400">{a.medida}</span>
+                  )}
+                  <span
+                    className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
+                      !a.grupo
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : a.cuenta
+                          ? 'bg-brand-50 text-brand-700'
+                          : 'bg-amber-50 text-amber-800'
+                    }`}
+                  >
+                    {!a.grupo ? 'libre' : a.cuenta ? 'añadido' : 'extra'}
+                  </span>
+                </span>
+              </li>
+            ))}
           </ul>
 
           <p className="mt-2 text-[11px] text-emerald-700">
@@ -273,6 +327,8 @@ export function ScaledRecipeView({
           onChange={setCustom}
           antes={requeridos}
           despues={resultado.exchangesDespues}
+          resumen={resumen}
+          extras={resultado.extras}
           avisos={resultado.avisos}
           onBloqueado={mostrarAviso}
         />

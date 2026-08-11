@@ -3,8 +3,10 @@ import type { IngredienteEscalado, RecetaEscalada } from '../types/recipe';
 import type { ExchangeGroupId } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 import { roundPortion } from './macros';
+import { gramosPorIntercambio } from './recipeComposition';
 import type { ExchangeCounts } from './exchanges';
 import { canRemoveIngredient } from './recipeScaling';
+import { aporteAnadidos, sumarIntercambios, type Anadido } from './anadidos';
 
 /**
  * SUSTITUCIONES DEL CLIENTE (§5)
@@ -104,14 +106,33 @@ export interface CustomizationState {
   quitados: string[];
   /** ingredienteId → nombre del sustituto elegido. */
   sustituciones: Record<string, string>;
+  /**
+   * Alimentos añadidos: verdura libre, lo que faltaba del plan, extras.
+   * Opcional para no romper el estado ya guardado de antes de existir.
+   */
+  anadidos?: Anadido[];
 }
 
-export const EMPTY_CUSTOMIZATION: CustomizationState = { quitados: [], sustituciones: {} };
+export const EMPTY_CUSTOMIZATION: CustomizationState = {
+  quitados: [],
+  sustituciones: {},
+  anadidos: [],
+};
 
 export interface CustomizationResult {
   ingredientes: IngredienteEscalado[];
   /** Intercambios efectivos tras las sustituciones (para el panel antes/después). */
   exchangesDespues: ExchangeCounts;
+  /**
+   * Lo que hay de verdad en el plato: lo que cubre la receta ya escalada más
+   * lo añadido que ocupa sitio en el plan. Es con esto con lo que se decide
+   * si la comida está completa.
+   */
+  enPlato: ExchangeCounts;
+  /** Añadidos marcados como extra: van encima del plan, no lo completan. */
+  extras: ExchangeCounts;
+  /** Los añadidos tal cual, para pintarlos en la lista de ingredientes. */
+  anadidos: Anadido[];
   /** Descripción legible de cada cambio aplicado. */
   cambios: string[];
   /** Sustituciones que cruzan de grupo y por tanto sí mueven macros. */
@@ -133,6 +154,12 @@ export function applyCustomization(
   foods: Alimento[],
 ): CustomizationResult {
   const exchangesDespues: ExchangeCounts = { ...requeridos };
+  /**
+   * Lo que la receta pone en el plato de verdad. Arranca de lo que cubre ya
+   * escalada y se va moviendo con los mismos cambios que `exchangesDespues`:
+   * si el cliente cambia de grupo, el intercambio se muda de fila aquí también.
+   */
+  const enPlato: ExchangeCounts = { ...escalada.cubiertos };
   const cambios: string[] = [];
   const avisos: string[] = [];
 
@@ -141,6 +168,23 @@ export function applyCustomization(
       if (!state.quitados.includes(ing.id)) return true;
       // Blindaje: nunca se quita un ingrediente bloqueado (§5).
       if (!canRemoveIngredient(ing).allowed) return true;
+
+      /**
+       * Un opcional puede aportar intercambios (unas nueces por encima). Si se
+       * quita, el plato deja de tenerlos y la comida pasa a estar incompleta:
+       * mejor decirlo que dejar que cuadre en falso.
+       */
+      const g = ing.grupo as ExchangeGroupId;
+      if (enPlato[g] != null && ing.cantidad_final != null && ing.foodId) {
+        const food = foods.find((f) => f.id === ing.foodId);
+        const gpi = food ? gramosPorIntercambio(food) : undefined;
+        if (gpi) {
+          const quita = Math.min(enPlato[g]!, ing.cantidad_final / gpi);
+          enPlato[g] = enPlato[g]! - quita;
+          if (enPlato[g]! < 0.001) delete enPlato[g];
+        }
+      }
+
       cambios.push(`Sin ${ing.nombre.toLowerCase()}`);
       return false;
     })
@@ -162,6 +206,16 @@ export function applyCustomization(
         exchangesDespues[grupoOriginal] = (exchangesDespues[grupoOriginal] ?? 0) - n;
         if (!exchangesDespues[grupoOriginal]) delete exchangesDespues[grupoOriginal];
         exchangesDespues[sust.grupo] = (exchangesDespues[sust.grupo] ?? 0) + n;
+
+        // El plato sigue al cambio: esos intercambios ya no son del grupo viejo.
+        const enPlatoOriginal = enPlato[grupoOriginal] ?? 0;
+        const mudado = Math.min(enPlatoOriginal, n);
+        if (mudado > 0) {
+          enPlato[grupoOriginal] = enPlatoOriginal - mudado;
+          if (enPlato[grupoOriginal]! < 0.001) delete enPlato[grupoOriginal];
+          enPlato[sust.grupo] = (enPlato[sust.grupo] ?? 0) + mudado;
+        }
+
         avisos.push(
           `${elegido} es del grupo "${EXCHANGE_GROUPS[sust.grupo].nombre}", no "${
             EXCHANGE_GROUPS[grupoOriginal].nombre
@@ -181,7 +235,32 @@ export function applyCustomization(
       };
     });
 
-  return { ingredientes, exchangesDespues, cambios, avisos };
+  /**
+   * Los añadidos. Los que "cuentan" tapan huecos del plan y por tanto entran
+   * en el plato; los marcados como extra van encima y se contabilizan aparte
+   * — así el café con leche no disfraza una comida a la que le falta la fruta.
+   */
+  const anadidos = state.anadidos ?? [];
+  const aporte = aporteAnadidos(anadidos);
+  const enPlatoFinal = sumarIntercambios(enPlato, aporte.cuenta);
+
+  for (const a of anadidos) {
+    cambios.push(
+      a.cantidad == null
+        ? `Con ${a.nombre.toLowerCase()}`
+        : `Con ${a.nombre.toLowerCase()} (${a.cantidad} ${a.unidad}${a.cuenta ? '' : ', extra'})`,
+    );
+  }
+
+  return {
+    ingredientes,
+    exchangesDespues,
+    enPlato: enPlatoFinal,
+    extras: aporte.extra,
+    anadidos,
+    cambios,
+    avisos,
+  };
 }
 
 /** Opciones de sustitución de un ingrediente, ya resueltas contra el catálogo. */

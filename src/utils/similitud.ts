@@ -1,5 +1,6 @@
 import type { Alimento } from '../types/food';
 import { gramosPorIntercambio } from './recipeComposition';
+import { singularizar } from './measures';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 
 /**
@@ -117,10 +118,24 @@ export function avisoGrasaExtra(food: Alimento): string | undefined {
     : `+${extra.toFixed(1)} g de grasa sobre su grupo`;
 }
 
-/** Filtro por texto para las listas largas: sin tildes y por cualquier palabra. */
+/**
+ * Filtro por texto para las listas largas: sin tildes y por cualquier palabra.
+ *
+ * También en singular. El catálogo dice "Espinaca" y "Nuez", pero nadie
+ * escribe eso: se escribe "espinacas" y "nueces". Sin esto la búsqueda no
+ * devolvía nada y parecía que el alimento no existía.
+ */
 export function coincide(nombre: string, consulta: string): boolean {
-  const q = norm(consulta.trim());
+  const bruto = consulta.trim();
+  const q = norm(bruto);
   if (!q) return true;
+
   const n = norm(nombre);
-  return n.includes(q) || n.split(/[\s,()]+/).some((p) => p.startsWith(q));
+  const palabras = n.split(/[\s,()]+/);
+  const casa = (t: string) => !!t && (n.includes(t) || palabras.some((p) => p.startsWith(t)));
+
+  if (casa(q)) return true;
+
+  const singular = norm(singularizar(bruto));
+  return singular !== q && casa(singular);
 }

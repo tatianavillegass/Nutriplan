@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { IngredienteEscalado } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import type { ExchangeCounts } from '../../utils/exchanges';
@@ -5,6 +6,10 @@ import { exchangesToMacros } from '../../utils/exchanges';
 import { kcalFromMacros } from '../../utils/macros';
 import { canRemoveIngredient } from '../../utils/recipeScaling';
 import { substitutionOptions, type CustomizationState } from '../../utils/substitutions';
+import { alternarCuenta, type Anadido } from '../../utils/anadidos';
+import type { ResumenComida } from '../../utils/completitud';
+import { MealCompleteness } from './MealCompleteness';
+import { AddFoodPanel } from './AddFoodPanel';
 import { fmt } from '../common/ui';
 
 interface Props {
@@ -18,6 +23,10 @@ interface Props {
   antes: ExchangeCounts;
   /** Intercambios efectivos tras los cambios del cliente. */
   despues: ExchangeCounts;
+  /** Pautado vs lo que hay en el plato: si la comida está completa. */
+  resumen: ResumenComida;
+  /** Intercambios añadidos por encima del plan. */
+  extras: ExchangeCounts;
   avisos: string[];
   onBloqueado: (motivo: string) => void;
 }
@@ -42,6 +51,8 @@ export function RecipeCustomizer({
   onChange,
   antes,
   despues,
+  resumen,
+  extras,
   avisos,
   onBloqueado,
 }: Props) {
@@ -51,7 +62,16 @@ export function RecipeCustomizer({
   const kDespues = kcalFromMacros(mDespues);
   const identicos = Math.abs(kAntes - kDespues) < 0.01;
 
+  /** Kcal de lo marcado como extra: van por encima de lo pautado. */
+  const kExtra = kcalFromMacros(exchangesToMacros(extras));
+
+  /** Hueco pulsado en el checklist, para abrir el panel de añadir ahí. */
+  const [foco, setFoco] = useState<{ familia: string; nonce: number } | null>(null);
+
   const resultadoPorId = new Map(resultado.map((i) => [i.id, i]));
+
+  const anadidos = state.anadidos ?? [];
+  const setAnadidos = (a: Anadido[]) => onChange({ ...state, anadidos: a });
 
   const toggleQuitar = (ing: IngredienteEscalado) => {
     const r = canRemoveIngredient(ing);
@@ -75,10 +95,29 @@ export function RecipeCustomizer({
           Personalizar
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-          Puedes quitar verduras y condimentos, y cambiar un alimento por otro de su lista. Las
-          cantidades las calcula la app.
+          Puedes quitar verduras y condimentos, cambiar un alimento por otro de su lista y añadir lo
+          que falte. Las cantidades las calcula la app.
         </p>
       </div>
+
+      {/* ── ¿Está completa? ───────────────────────────────── */}
+      <MealCompleteness
+        resumen={resumen}
+        onCompletar={(f) => setFoco({ familia: f.familia, nonce: Date.now() })}
+      />
+
+      {/* ── Añadir: verdura libre, completar el plan, extras ── */}
+      <AddFoodPanel
+        foods={foods}
+        resumen={resumen}
+        anadidos={anadidos}
+        foco={foco}
+        onAnadir={(a) => setAnadidos([...anadidos, a])}
+        onQuitar={(id) => setAnadidos(anadidos.filter((a) => a.id !== id))}
+        onAlternarCuenta={(id) =>
+          setAnadidos(anadidos.map((a) => (a.id === id ? alternarCuenta(a) : a)))
+        }
+      />
 
       <ul className="space-y-2">
         {ingredientes.map((ing) => {
@@ -194,6 +233,12 @@ export function RecipeCustomizer({
             : 'Has elegido un sustituto de otro grupo. Sigue siendo válido, pero tus macros del día se mueven un poco.'}
         </p>
 
+        {kExtra > 0 && (
+          <p className="tnum mt-1.5 rounded bg-amber-50 px-2 py-1 text-[10px] leading-snug text-amber-800">
+            Además, {fmt(kExtra)} kcal en extras por encima de lo pautado.
+          </p>
+        )}
+
         {avisos.map((a) => (
           <p key={a} className="mt-1.5 text-[10px] leading-snug text-amber-700">
             {a}
@@ -201,9 +246,11 @@ export function RecipeCustomizer({
         ))}
       </div>
 
-      {(state.quitados.length > 0 || Object.values(state.sustituciones).some(Boolean)) && (
+      {(state.quitados.length > 0 ||
+        Object.values(state.sustituciones).some(Boolean) ||
+        anadidos.length > 0) && (
         <button
-          onClick={() => onChange({ quitados: [], sustituciones: {} })}
+          onClick={() => onChange({ quitados: [], sustituciones: {}, anadidos: [] })}
           className="text-[11px] text-brand-600 underline"
         >
           Deshacer todos los cambios
