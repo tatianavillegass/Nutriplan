@@ -6,6 +6,7 @@ import { MealOptionsBoard } from '../components/phase2/MealOptionsBoard';
 import { ScaledOptionsBoard } from '../components/phase2/ScaledOptionsBoard';
 import { FoodPortionPicker } from '../components/phase3/FoodPortionPicker';
 import { ScaledRecipeView } from '../components/phase1/ScaledRecipeView';
+import { MealCard } from '../components/client/MealCard';
 import { WeekStrip } from '../components/client/WeekStrip';
 import { DayProgressBar } from '../components/client/DayProgressBar';
 import { RecipeShortcuts } from '../components/client/RecipeShortcuts';
@@ -217,64 +218,35 @@ export function ClientView() {
               const hecha = cumplida(m.id);
 
               return (
-                <div key={m.id}>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                      {m.nombre}
-                    </p>
-                    {hecha && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700">
-                        hecha ✓
-                      </span>
-                    )}
-                    {opciones.length > 1 && (
-                      <div className="flex flex-wrap gap-1 no-print">
-                        {opciones.map((r) => (
-                          <button
-                            key={r.id}
-                            onClick={() =>
-                              guardar({
-                                recetaElegida: {
-                                  ...(registro?.recetaElegida ?? {}),
-                                  [m.id]: r.id,
-                                },
-                              })
-                            }
-                            className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
-                              r.id === receta.id
-                                ? 'border-brand-500 bg-brand-600 text-white'
-                                : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
-                            }`}
-                          >
-                            {r.nombre}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <ScaledRecipeView
+                <div key={m.id} id={`comida-${m.id}`} className="scroll-mt-20">
+                  <MealCard
+                    meal={m}
                     receta={receta}
-                    requeridos={dayType.grid[m.id] ?? {}}
-                    foods={foods}
-                    equivalentes={registro?.sustituciones?.[m.id] ?? {}}
-                    onEquivalente={(ingId, foodId) => {
-                      const porComida = { ...(registro?.sustituciones?.[m.id] ?? {}) };
-                      if (foodId) porComida[ingId] = foodId;
-                      else delete porComida[ingId];
+                    opciones={opciones}
+                    hecha={hecha}
+                    onElegir={(id) =>
                       guardar({
-                        sustituciones: { ...(registro?.sustituciones ?? {}), [m.id]: porComida },
-                      });
-                    }}
-                    acciones={
-                      <Button
-                        variant={hecha ? 'primary' : 'outline'}
-                        onClick={() => alternarCumplida(m.id)}
-                      >
-                        {hecha ? 'Hecha ✓' : 'Marcar como hecha'}
-                      </Button>
+                        recetaElegida: { ...(registro?.recetaElegida ?? {}), [m.id]: id },
+                      })
                     }
-                  />
+                    onAlternarHecha={() => alternarCumplida(m.id)}
+                  >
+                    <ScaledRecipeView
+                      receta={receta}
+                      requeridos={dayType.grid[m.id] ?? {}}
+                      foods={foods}
+                      sinCabecera
+                      equivalentes={registro?.sustituciones?.[m.id] ?? {}}
+                      onEquivalente={(ingId, foodId) => {
+                        const porComida = { ...(registro?.sustituciones?.[m.id] ?? {}) };
+                        if (foodId) porComida[ingId] = foodId;
+                        else delete porComida[ingId];
+                        guardar({
+                          sustituciones: { ...(registro?.sustituciones ?? {}), [m.id]: porComida },
+                        });
+                      }}
+                    />
+                  </MealCard>
                 </div>
               );
             })}

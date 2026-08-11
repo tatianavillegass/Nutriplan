@@ -51,6 +51,11 @@ interface Props {
    * decidir si la receta encaja, no para quien come.
    */
   paraNutricionista?: boolean;
+  /**
+   * Sin título ni foto: cuando la receta va dentro de una tarjeta de comida
+   * que ya los enseña, repetirlos sobra.
+   */
+  sinCabecera?: boolean;
 }
 
 export function ScaledRecipeView({
@@ -63,6 +68,7 @@ export function ScaledRecipeView({
   onEquivalente,
   acciones,
   paraNutricionista = false,
+  sinCabecera = false,
 }: Props) {
   const [custom, setCustom] = useState<CustomizationState>(EMPTY_CUSTOMIZATION);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -83,9 +89,9 @@ export function ScaledRecipeView({
 
   return (
     <div className={personalizando ? 'grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]' : ''}>
-      <article className="print-sheet overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm">
-        <div className={receta.foto_url ? 'gap-5 p-5 sm:grid sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)]' : 'p-5'}>
-          {receta.foto_url && (
+      <article className={sinCabecera ? 'print-sheet' : 'print-sheet overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm'}>
+        <div className={receta.foto_url && !sinCabecera ? 'gap-5 p-5 sm:grid sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)]' : 'p-5'}>
+          {receta.foto_url && !sinCabecera && (
             <img
               src={receta.foto_url}
               alt={receta.nombre}
@@ -93,11 +99,13 @@ export function ScaledRecipeView({
             />
           )}
           <div className="min-w-0">
-          <header className="mb-3 flex items-start justify-between gap-3">
+          <header className={sinCabecera ? 'mb-3 flex justify-end gap-1.5 no-print' : 'mb-3 flex items-start justify-between gap-3'}>
+            {sinCabecera ? null : (
             <div className="min-w-0">
               <h3 className="text-xl leading-tight font-semibold text-brand-900">{receta.nombre}</h3>
               <RecipeMeta receta={receta} className="mt-2" />
             </div>
+            )}
             {!soloLectura && (
               <div className="flex shrink-0 gap-1.5 no-print">
                 {acciones}
