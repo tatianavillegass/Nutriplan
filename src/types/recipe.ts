@@ -71,6 +71,12 @@ export interface RecetaEscalada {
   receta: Receta;
   ingredientes: IngredienteEscalado[];
   factores: Partial<Record<ExchangeGroupId, number>>;
-  /** Grupos requeridos que la receta no cubre. */
+  /** Grupos requeridos que la receta no cubre con ninguna de su familia. */
   gruposSinCubrir: ExchangeGroupId[];
+  /**
+   * Qué se ha tenido que ajustar y por qué: que las nueces cubran la grasa
+   * pautada, o que haya habido que recortar para no pasarse. Es información
+   * para la nutricionista, no para quien come.
+   */
+  notas: string[];
 }

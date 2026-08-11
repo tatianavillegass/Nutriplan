@@ -226,6 +226,7 @@ export function RecipeRecommender({
                   receta={r}
                   requeridos={reparto}
                   foods={foods}
+                  paraNutricionista
                   acciones={
                     onEditarReceta ? (
                       <Button variant="outline" onClick={() => setEditando(r.id)}>

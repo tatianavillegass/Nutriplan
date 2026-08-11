@@ -45,6 +45,12 @@ interface Props {
   onEquivalente?: (ingredienteId: string, foodId: string | undefined) => void;
   /** Acciones extra en la cabecera (editar, marcar como hecha…). */
   acciones?: React.ReactNode;
+  /**
+   * Enseña por qué han salido esas cantidades: que las nueces cubran la
+   * grasa pautada, o que se haya recortado algo para no pasarse. Es para
+   * decidir si la receta encaja, no para quien come.
+   */
+  paraNutricionista?: boolean;
 }
 
 export function ScaledRecipeView({
@@ -56,6 +62,7 @@ export function ScaledRecipeView({
   equivalentes,
   onEquivalente,
   acciones,
+  paraNutricionista = false,
 }: Props) {
   const [custom, setCustom] = useState<CustomizationState>(EMPTY_CUSTOMIZATION);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -112,6 +119,14 @@ export function ScaledRecipeView({
           <div className="mb-4 border-y border-slate-100 py-3">
             <MacroBar macros={macros} />
           </div>
+
+          {paraNutricionista && escalada.notas.length > 0 && (
+            <ul className="mb-3 space-y-1 rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2 text-[11px] leading-snug text-brand-900">
+              {escalada.notas.map((n) => (
+                <li key={n}>· {n}</li>
+              ))}
+            </ul>
+          )}
 
           {escalada.gruposSinCubrir.length > 0 && (
             <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
