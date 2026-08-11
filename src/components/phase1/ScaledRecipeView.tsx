@@ -68,7 +68,7 @@ export function ScaledRecipeView({
   const [aviso, setAviso] = useState<string | null>(null);
   const [personalizando, setPersonalizando] = useState(false);
 
-  const escalada = useMemo(() => scaleRecipe(receta, requeridos), [receta, requeridos]);
+  const escalada = useMemo(() => scaleRecipe(receta, requeridos, foods), [receta, requeridos, foods]);
   const resultado = useMemo(
     () => applyCustomization(escalada, requeridos, custom, foods),
     [escalada, requeridos, custom, foods],

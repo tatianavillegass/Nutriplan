@@ -1,8 +1,10 @@
 import type { ExchangeGroupId, Familia } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS, MIN_VERDURA_G } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
+import type { Alimento } from '../types/food';
 import { exchangesToMacros, type ExchangeCounts } from './exchanges';
 import { kcalFromMacros, roundPortion } from './macros';
+import { gramosPorPieza, redondearAPiezas } from './measures';
 
 /**
  * ESCALADO POR FAMILIA (§5)
@@ -59,6 +61,65 @@ function nombres(counts: ExchangeCounts): string {
     .join(' y ');
 }
 
+/** Los subgrupos de unos intercambios que cumplen una condición. */
+function filtrar(
+  counts: ExchangeCounts,
+  cumple: (g: ExchangeGroupId) => boolean,
+): ExchangeCounts {
+  const out: ExchangeCounts = {};
+  for (const [g, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
+    if (cumple(g)) out[g] = n;
+  }
+  return out;
+}
+
+/**
+ * ¿Hay que recortar? Devuelve por cuánto multiplicar para no pasarse, o
+ * `undefined` si cabe. En las grasas manda la grasa y no las calorías: una
+ * porción de nueces trae 59 kcal frente a las 45 del aceite, y medirlo en
+ * calorías las dejaría siempre cortas.
+ */
+function tope(
+  familia: Familia,
+  tiene: ReturnType<typeof exchangesToMacros>,
+  pautado: ReturnType<typeof exchangesToMacros>,
+): { valor: number; que: string } | undefined {
+  const candidatos: { valor: number; que: string }[] = [];
+  if (familia === 'grasas' || familia === 'proteicos') {
+    if (tiene.grasa > 0) candidatos.push({ valor: pautado.grasa / tiene.grasa, que: 'grasa' });
+  }
+  if (familia !== 'grasas') {
+    const k = kcalFromMacros(tiene);
+    if (k > 0) candidatos.push({ valor: kcalFromMacros(pautado) / k, que: 'calorías' });
+  }
+  return candidatos.filter((c) => c.valor < 0.999).sort((a, b) => a.valor - b.valor)[0];
+}
+
+/**
+ * Cuánto cabe de la parte flexible sin pasarse, dado lo que ya ocupa la
+ * parte fija. Negativo significa que ni con la flexible a cero cabe.
+ */
+function factorQueCabe(
+  familia: Familia,
+  fijo: ReturnType<typeof exchangesToMacros>,
+  porUnidad: ReturnType<typeof exchangesToMacros>,
+  pautado: ReturnType<typeof exchangesToMacros>,
+): number {
+  const limites: number[] = [];
+  const anotar = (queda: number, cuesta: number) => {
+    if (cuesta > 0) limites.push(queda / cuesta);
+  };
+
+  if (familia === 'grasas' || familia === 'proteicos') {
+    anotar(pautado.grasa - fijo.grasa, porUnidad.grasa);
+  }
+  if (familia !== 'grasas') {
+    anotar(kcalFromMacros(pautado) - kcalFromMacros(fijo), kcalFromMacros(porUnidad));
+  }
+
+  return limites.length ? Math.min(...limites) : Infinity;
+}
+
 /** Solo la parte numérica de la base de la receta. */
 function baseNumerica(receta: Receta): ExchangeCounts {
   const out: ExchangeCounts = {};
@@ -68,10 +129,24 @@ function baseNumerica(receta: Receta): ExchangeCounts {
   return out;
 }
 
-export function scaleRecipe(receta: Receta, requeridos: ExchangeCounts): RecetaEscalada {
+/** "2 huevos", "1 rebanada" — el nombre de la pieza, ya en plural si toca. */
+function formatPiezas(cuantas: number, medidaCasera: string): string {
+  const n = Math.max(1, Math.round(cuantas));
+  const palabra = (/^\d+\s+(.+)$/.exec(medidaCasera.trim())?.[1] ?? 'unidades').trim();
+  const singular = palabra.replace(/s\b/, '');
+  return n === 1 ? `1 ${singular}` : `${n} ${singular}s`;
+}
+
+export function scaleRecipe(
+  receta: Receta,
+  requeridos: ExchangeCounts,
+  /** El catálogo, para saber qué se cuenta por piezas y qué se pesa. */
+  foods: Alimento[] = [],
+): RecetaEscalada {
   const factores: Partial<Record<ExchangeGroupId, number>> = {};
   const gruposSinCubrir: ExchangeGroupId[] = [];
   const notas: string[] = [];
+  const porId = new Map(foods.map((f) => [f.id, f]));
 
   const base = baseNumerica(receta);
   const deLaReceta = porFamilia(base);
@@ -91,6 +166,54 @@ export function scaleRecipe(receta: Receta, requeridos: ExchangeCounts): RecetaE
     }
 
     let factor = mReq[ancla] / mBase[ancla];
+
+    /**
+     * EL PROTEICO MANDA, EL LÁCTEO ACOMPAÑA
+     *
+     * Un plato con pollo y un yogur al lado no es medio pollo y medio yogur:
+     * el yogur es el acompañamiento y se queda como está en la receta, y es
+     * el pollo el que sube o baja para cuadrar la proteína del día.
+     */
+    if (familia === 'proteicos') {
+      const esLacteo = (g: ExchangeGroupId) => g.startsWith('lacteos_');
+      const lacteos = filtrar(enReceta, esLacteo);
+      const proteicos = filtrar(enReceta, (g) => !esLacteo(g));
+
+      if (Object.keys(lacteos).length && Object.keys(proteicos).length) {
+        const deLacteos = exchangesToMacros(lacteos).proteina;
+        const deProteicos = exchangesToMacros(proteicos).proteina;
+        const restante = Math.max(0, mReq.proteina - deLacteos);
+        const factorProteico = deProteicos > 0 ? restante / deProteicos : 0;
+
+        /**
+         * Si con eso se pasa de lo pautado, lo que se recorta es el proteico,
+         * que es la parte que flexiona. Sólo si ni quitándolo entero cabe, se
+         * toca el lácteo.
+         */
+        const mLacteos = exchangesToMacros(lacteos);
+        const mProteicos = exchangesToMacros(proteicos);
+        const cabe = factorQueCabe(familia, mLacteos, mProteicos, mReq);
+
+        let fLacteo = 1;
+        let fProteico = Math.min(factorProteico, Math.max(0, cabe));
+
+        if (cabe < 0) {
+          // Ni el lácteo solo cabe: hay que recortarlo también.
+          fProteico = 0;
+          fLacteo = tope(familia, mLacteos, mReq)?.valor ?? 1;
+          notas.push('El lácteo solo ya se pasa de lo pautado: se ha reducido.');
+        } else if (fProteico < factorProteico - 0.001) {
+          notas.push(`Se ha recortado ${nombres(proteicos)} para no pasarse de lo pautado.`);
+        }
+
+        for (const g of Object.keys(lacteos) as ExchangeGroupId[]) factores[g] = fLacteo;
+        for (const g of Object.keys(proteicos) as ExchangeGroupId[]) factores[g] = fProteico;
+        notas.push(
+          `El lácteo se queda como está y ${nombres(proteicos)} cuadra la proteína pautada.`,
+        );
+        continue;
+      }
+    }
 
     /**
      * Topes. En las grasas manda la grasa y no las calorías: una porción de
@@ -157,12 +280,23 @@ export function scaleRecipe(receta: Receta, requeridos: ExchangeCounts): RecetaE
     }
 
     const bruto = ing.cantidad_base * factor;
-    const final = roundPortion(bruto);
+
+    /**
+     * Un huevo pesa 55 g y no se puede partir en 1,5. Si el ingrediente está
+     * enlazado a un alimento que se cuenta por piezas, el gramaje se ajusta
+     * al número entero de piezas más cercano.
+     */
+    const alimento = ing.foodId ? porId.get(ing.foodId) : undefined;
+    const pieza = alimento ? gramosPorPieza(alimento) : undefined;
+    const final = pieza ? redondearAPiezas(bruto, pieza) : roundPortion(bruto);
+
     return {
       ...ing,
       factor,
       cantidad_final: final,
-      display: `${final} ${ing.unidad}`,
+      display: pieza
+        ? `${final} ${ing.unidad} (${formatPiezas(final / pieza, alimento!.medida_casera)})`
+        : `${final} ${ing.unidad}`,
     };
   });
 

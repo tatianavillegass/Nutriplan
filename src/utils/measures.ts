@@ -99,6 +99,47 @@ export function singularizar(palabra: string): string {
  *   escalarMedida('2 lonchas', 2)    → '4 lonchas'
  *   escalarMedida('Filete pequeño', 3) → '3 × filete pequeño'
  */
+/**
+ * ALIMENTOS QUE SE CUENTAN, NO SE PESAN
+ *
+ * Un huevo pesa 55 g y no hay manera de comprar 1,5. Lo mismo con las
+ * lonchas, las rebanadas o las tortitas de maíz. Cuando la medida casera es
+ * una cuenta ("1 huevo", "2 unidades", "1 rebanada"), esto devuelve lo que
+ * pesa UNA pieza, para poder redondear a piezas enteras.
+ *
+ * Devuelve `undefined` para lo que sí se pesa: tazas, cucharadas, filetes de
+ * tamaño variable, o cualquier medida que no empiece por un número.
+ */
+const PIEZAS = /^(unidad|unidades|huevo|huevos|rebanada|rebanadas|loncha|lonchas|pieza|piezas|tortita|tortitas|biscote|biscotes|galleta|galletas)\b/i;
+
+export function gramosPorPieza(alimento: {
+  medida_casera?: string;
+  gramos?: number;
+}): number | undefined {
+  const txt = (alimento.medida_casera ?? '').trim();
+  const total = alimento.gramos;
+  if (!txt || !total || total <= 0) return undefined;
+
+  const m = /^(\d+)\s+(.+)$/.exec(txt);
+  if (!m) return undefined;
+  if (!PIEZAS.test(m[2])) return undefined;
+
+  const cuantas = Number(m[1]);
+  if (!cuantas || cuantas <= 0) return undefined;
+  return total / cuantas;
+}
+
+/**
+ * Redondea unos gramos al número entero de piezas más cercano, sin bajar
+ * nunca de una: media loncha de pavo no existe, pero cero tampoco sirve si
+ * la receta la lleva.
+ */
+export function redondearAPiezas(gramos: number, porPieza: number): number {
+  if (porPieza <= 0) return gramos;
+  const piezas = Math.max(1, Math.round(gramos / porPieza));
+  return Math.round(piezas * porPieza);
+}
+
 export function escalarMedida(medida: string, factor: number): string {
   const txt = (medida ?? '').trim();
   if (!txt) return '';
