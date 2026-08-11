@@ -73,6 +73,11 @@ export function ScaledRecipeView({
   const [custom, setCustom] = useState<CustomizationState>(EMPTY_CUSTOMIZATION);
   const [aviso, setAviso] = useState<string | null>(null);
   const [personalizando, setPersonalizando] = useState(false);
+  /**
+   * Gramos o medidas caseras. Se mezclaban las dos y confundía: ahora se
+   * elige, y la elección vale para toda la lista.
+   */
+  const [caseras, setCaseras] = useState(false);
 
   const escalada = useMemo(() => scaleRecipe(receta, requeridos, foods), [receta, requeridos, foods]);
   const resultado = useMemo(
@@ -144,6 +149,29 @@ export function ScaledRecipeView({
             </p>
           )}
 
+          <div className="mt-1 mb-2 flex items-center justify-between gap-3">
+            <h4 className="text-sm font-semibold text-brand-900">Ingredientes</h4>
+            <button
+              onClick={() => setCaseras((v) => !v)}
+              role="switch"
+              aria-checked={caseras}
+              className="flex items-center gap-2 text-[11px] text-slate-500 no-print"
+            >
+              <span
+                className={`flex h-5 w-9 items-center rounded-full p-0.5 transition ${
+                  caseras ? 'bg-brand-600' : 'bg-slate-200'
+                }`}
+              >
+                <span
+                  className={`h-4 w-4 rounded-full bg-white shadow transition ${
+                    caseras ? 'translate-x-4' : ''
+                  }`}
+                />
+              </span>
+              Medidas caseras
+            </button>
+          </div>
+
           <ul className="space-y-1.5">
             {resultado.ingredientes.map((ing) => {
               // Equivalente elegido por el cliente: mismo grupo, gramaje recalculado.
@@ -156,10 +184,22 @@ export function ScaledRecipeView({
               const gpi = equivalente ? gramosPorIntercambio(equivalente) : undefined;
 
               const nombreFinal = equivalente?.nombre ?? ing.nombre;
-              const displayFinal =
+              const enGramos =
                 equivalente && gpi && intercambios > 0
                   ? `${roundPortion(gpi * intercambios)} ${equivalente.unidad ?? 'g'}`
                   : ing.display;
+
+              // La medida casera sale del alimento: sus gramos por medida.
+              const alimento = equivalente ?? foods.find((f) => f.id === ing.foodId);
+              const gramosFinales =
+                equivalente && gpi && intercambios > 0
+                  ? roundPortion(gpi * intercambios)
+                  : ing.cantidad_final;
+              const casera =
+                alimento?.medida_casera && alimento.gramos > 0 && gramosFinales
+                  ? escalarMedida(alimento.medida_casera, gramosFinales / alimento.gramos)
+                  : undefined;
+              const displayFinal = caseras && casera ? casera : enGramos;
 
               return (
                 <li key={ing.id} className="flex items-baseline gap-2 text-sm">
@@ -167,15 +207,8 @@ export function ScaledRecipeView({
                   <span className="flex-1 text-slate-700">
                     {nombreFinal}
                     <span className="tnum ml-1.5 font-medium text-brand-800">{displayFinal}</span>
-                    {equivalente && intercambios > 0 && (
-                      <span className="ml-1.5 text-[10px] text-slate-400">
-                        {escalarMedida(equivalente.medida_casera, intercambios)}
-                      </span>
-                    )}
-                    {!equivalente && ing.factor !== 1 && ing.cantidad_base != null && (
-                      <span className="tnum ml-1.5 text-[10px] text-slate-400">
-                        ({ing.cantidad_base} × {ing.factor.toFixed(1)})
-                      </span>
+                    {caseras && casera && (
+                      <span className="tnum ml-1.5 text-[10px] text-slate-400">{enGramos}</span>
                     )}
                     {onEquivalente && !soloLectura && intercambios > 0 && (
                       <IngredientSwap

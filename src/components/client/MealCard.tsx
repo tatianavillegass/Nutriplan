@@ -56,87 +56,85 @@ export function MealCard({
         hecha ? 'border-emerald-200' : 'border-brand-100'
       }`}
     >
-      <div className="flex items-center gap-3 p-3">
+      <div className="p-3 sm:p-4">
+        <div className="mb-1 flex items-center gap-2">
+          <span className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+            {meal.nombre}
+          </span>
+          {hecha && (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+              ✓ hecha
+            </span>
+          )}
+        </div>
+
+        {/* El título, entero y con la anchura para él solo. */}
         <button
           onClick={() => setAbierta((v) => !v)}
           aria-expanded={desplegada}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className="block w-full text-left"
         >
-          {receta.foto_url ? (
-            <img
-              src={receta.foto_url}
-              alt=""
-              className="h-14 w-14 shrink-0 rounded-lg object-cover"
-            />
-          ) : (
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-lg text-brand-300">
-              🍽
-            </span>
-          )}
-
-          <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-                {meal.nombre}
-              </span>
-              {hecha && (
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                  ✓ hecha
-                </span>
-              )}
-            </span>
-            {/* El título tiene la línea entera: ya no lo pisa ningún botón. */}
-            <span className="mt-0.5 block truncate text-[15px] leading-tight font-semibold text-brand-900">
-              {receta.nombre}
-            </span>
-            <RecipeMeta receta={receta} className="mt-1" />
+          <span className="block text-lg leading-tight font-semibold text-balance text-brand-900">
+            {receta.nombre}
           </span>
         </button>
+        <RecipeMeta receta={receta} className="mt-1.5" />
 
-        <div className="flex shrink-0 items-center gap-1 no-print">
-          {varias && (
-            <>
-              <button
-                onClick={() => mover(-1)}
-                aria-label="Plato anterior"
-                className="rounded-lg px-2 py-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-              >
-                ‹
-              </button>
-              <span className="tnum text-[10px] text-slate-400">
-                {i + 1}/{opciones.length}
+        {/* La foto, en grande: es lo que hace apetecible el plato. */}
+        <div className="relative mt-3">
+          <button
+            onClick={() => setAbierta((v) => !v)}
+            aria-label={desplegada ? 'Cerrar la receta' : 'Ver la receta'}
+            className="block w-full"
+          >
+            {receta.foto_url ? (
+              <img
+                src={receta.foto_url}
+                alt={receta.nombre}
+                className="aspect-[4/3] w-full rounded-xl object-cover"
+              />
+            ) : (
+              <span className="flex aspect-[4/3] w-full items-center justify-center rounded-xl bg-brand-50 text-4xl text-brand-200">
+                🍽
               </span>
+            )}
+          </button>
+
+          {/* Los controles, encima de la foto como en la referencia. */}
+          <div className="absolute right-2 bottom-2 flex items-center gap-1.5 no-print">
+            {varias && (
               <button
                 onClick={() => mover(1)}
-                aria-label="Plato siguiente"
-                className="rounded-lg px-2 py-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Cambiar de plato"
+                title={`Cambiar de plato (${i + 1} de ${opciones.length})`}
+                className="flex h-9 items-center gap-1.5 rounded-full bg-black/55 px-3 text-xs font-medium text-white backdrop-blur transition hover:bg-black/75"
               >
-                ›
+                ⇄ <span className="tnum">{i + 1}/{opciones.length}</span>
               </button>
-            </>
-          )}
-          <button
-            onClick={onAlternarHecha}
-            aria-label={hecha ? 'Desmarcar como hecha' : 'Marcar como hecha'}
-            title={hecha ? 'Desmarcar' : 'Marcar como hecha'}
-            className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${
-              hecha
-                ? 'border-emerald-500 bg-emerald-500 text-white'
-                : 'border-slate-200 text-slate-300 hover:border-emerald-400 hover:text-emerald-500'
-            }`}
-          >
-            ✓
-          </button>
-          {!siempreAbierta && (
+            )}
             <button
-              onClick={() => setAbierta((v) => !v)}
-              aria-label={desplegada ? 'Cerrar la receta' : 'Ver la receta'}
-              className="rounded-lg px-2 py-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              onClick={onAlternarHecha}
+              aria-label={hecha ? 'Desmarcar como hecha' : 'Marcar como hecha'}
+              title={hecha ? 'Desmarcar' : 'Marcar como hecha'}
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-sm backdrop-blur transition ${
+                hecha
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-black/55 text-white/70 hover:bg-black/75 hover:text-white'
+              }`}
             >
-              {desplegada ? '⌃' : '⌄'}
+              ✓
             </button>
-          )}
+          </div>
         </div>
+
+        {!siempreAbierta && (
+          <button
+            onClick={() => setAbierta((v) => !v)}
+            className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium text-brand-600 transition hover:bg-brand-50 no-print"
+          >
+            {desplegada ? 'Ocultar la receta ⌃' : 'Ver ingredientes y preparación ⌄'}
+          </button>
+        )}
       </div>
 
       {desplegada && <div className="border-t border-slate-100">{children}</div>}

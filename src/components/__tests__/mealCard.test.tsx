@@ -88,24 +88,24 @@ describe('Marcar como hecha', () => {
   });
 });
 
-describe('Cambiar de plato con las flechas', () => {
-  it('con una sola opción no hay flechas que enseñar', () => {
+describe('Cambiar de plato', () => {
+  it('con una sola opción no hay nada que cambiar', () => {
     pintar();
-    expect(screen.queryByLabelText('Plato siguiente')).toBeNull();
+    expect(screen.queryByLabelText('Cambiar de plato')).toBeNull();
   });
 
-  it('con dos, las flechas pasan a la otra', () => {
+  it('con dos, el botón pasa a la otra y dice por dónde vas', () => {
     const onElegir = vi.fn();
     pintar({ opciones: [A, B], onElegir });
     expect(screen.getByText('1/2')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText('Plato siguiente'));
+    fireEvent.click(screen.getByLabelText('Cambiar de plato'));
     expect(onElegir).toHaveBeenCalledWith('r2');
   });
 
-  it('la flecha de atrás da la vuelta a la última', () => {
+  it('y desde la última vuelve a la primera', () => {
     const onElegir = vi.fn();
-    pintar({ opciones: [A, B], onElegir });
-    fireEvent.click(screen.getByLabelText('Plato anterior'));
-    expect(onElegir).toHaveBeenCalledWith('r2');
+    pintar({ opciones: [A, B], receta: B, onElegir });
+    fireEvent.click(screen.getByLabelText('Cambiar de plato'));
+    expect(onElegir).toHaveBeenCalledWith('r1');
   });
 });
