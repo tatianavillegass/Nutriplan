@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { FoodForm, type FoodFormValue } from '../components/food/FoodForm';
 import {
@@ -38,6 +38,19 @@ export function FoodCatalogPage() {
 
   const conNutrientes = foods.filter((f) => f.nutrientes).length;
 
+  /**
+   * Con casi trescientos alimentos, el que se edita casi nunca está a la
+   * vista del formulario, que sale arriba. Sin subir hasta él, pulsar
+   * "Editar" parece no hacer nada.
+   */
+  const formulario = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (creando || editando) {
+      formulario.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [creando, editando]);
+
   const guardar = (v: FoodFormValue) => {
     const datos = {
       nombre: v.nombre,
@@ -72,6 +85,8 @@ export function FoodCatalogPage() {
           <Button onClick={() => setCreando(true)}>Añadir alimento</Button>
         )}
       </div>
+
+      <div ref={formulario} className="scroll-mt-20" />
 
       {(creando || editando) && (
         <Card

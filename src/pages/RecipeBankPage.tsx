@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { EXCHANGE_GROUPS, EXCHANGE_GROUP_LIST, type ExchangeGroupId } from '../data/exchangeGroups';
 import { composicionDesdeIngredientes, gramosPorIntercambio } from '../utils/recipeComposition';
@@ -33,6 +33,17 @@ export function RecipeBankPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Omit<Receta, 'id' | 'createdAt' | 'updatedAt'>>(RECETA_VACIA);
   const [filtro, setFiltro] = useState('');
+
+  /**
+   * El formulario sale arriba del todo, y las recetas se editan desde su
+   * tarjeta, que suele estar mucho más abajo. Sin esto, pulsar "Editar"
+   * parecía no hacer nada: abría el formulario fuera de la pantalla.
+   */
+  const formulario = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editandoId) formulario.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [editandoId]);
 
   const abrirNueva = () => {
     setDraft(RECETA_VACIA);
@@ -93,6 +104,8 @@ export function RecipeBankPage() {
           <Button onClick={abrirNueva}>+ Nueva receta</Button>
         </div>
       </div>
+
+      <div ref={formulario} className="scroll-mt-20" />
 
       {editandoId && (
         <Card
