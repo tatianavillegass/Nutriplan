@@ -71,7 +71,9 @@ describe('Nunca hay huevo y medio', () => {
   it('para 3 proteicos grasos salen 3 huevos, no 2,7', () => {
     const e = scaleRecipe(tortilla, { proteicos_grasos: 3, almidones: 1 }, FOOD_CATALOG);
     expect(de(e, 'Huevo').cantidad_final).toBe(165);
-    expect(de(e, 'Huevo').display).toMatch(/3 huevos/);
+    // Tres huevos justos: 165 / 55. En pantalla salen los gramos, y las
+    // piezas sólo si se pide la medida casera.
+    expect(de(e, 'Huevo').display).toBe('165 g');
   });
 
   it('un intercambio y medio se resuelve en un huevo entero', () => {

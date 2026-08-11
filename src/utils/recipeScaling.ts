@@ -137,14 +137,6 @@ function baseNumerica(receta: Receta): ExchangeCounts {
   return out;
 }
 
-/** "2 huevos", "1 rebanada" — el nombre de la pieza, ya en plural si toca. */
-function formatPiezas(cuantas: number, medidaCasera: string): string {
-  const n = Math.max(1, Math.round(cuantas));
-  const palabra = (/^\d+\s+(.+)$/.exec(medidaCasera.trim())?.[1] ?? 'unidades').trim();
-  const singular = palabra.replace(/s\b/, '');
-  return n === 1 ? `1 ${singular}` : `${n} ${singular}s`;
-}
-
 export function scaleRecipe(
   receta: Receta,
   requeridos: ExchangeCounts,
@@ -310,9 +302,9 @@ export function scaleRecipe(
       ...ing,
       factor,
       cantidad_final: final,
-      display: pieza
-        ? `${final} ${ing.unidad} (${formatPiezas(final / pieza, alimento!.medida_casera)})`
-        : `${final} ${ing.unidad}`,
+      // Sólo los gramos: la medida casera tiene su propio interruptor y
+      // mezclar las dos en la misma línea era justo lo que confundía.
+      display: `${final} ${ing.unidad}`,
     };
   });
 

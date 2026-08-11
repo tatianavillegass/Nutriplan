@@ -93,11 +93,11 @@ export function IngredientSwap({
       {abierto && (
         <>
           <span
-            className="fixed inset-0 z-20"
+            className="fixed inset-0 z-20 bg-slate-900/20"
             onClick={() => setAbierto(false)}
             aria-hidden
           />
-          <span className="absolute top-full left-0 z-30 mt-1 block w-72 rounded-lg border border-slate-200 bg-white shadow-lg no-print">
+          <span className="fixed inset-x-3 top-1/2 z-30 block max-h-[70vh] -translate-y-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:left-auto sm:mt-1 sm:max-h-none sm:w-72 sm:translate-y-0 no-print">
             <span className="block border-b border-slate-100 p-2">
               <input
                 autoFocus

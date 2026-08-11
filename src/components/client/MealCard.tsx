@@ -107,19 +107,19 @@ export function MealCard({
                 onClick={() => mover(1)}
                 aria-label="Cambiar de plato"
                 title={`Cambiar de plato (${i + 1} de ${opciones.length})`}
-                className="flex h-9 items-center gap-1.5 rounded-full bg-black/55 px-3 text-xs font-medium text-white backdrop-blur transition hover:bg-black/75"
+                className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-xs font-semibold text-brand-800 shadow-md transition hover:bg-brand-50"
               >
-                ⇄ <span className="tnum">{i + 1}/{opciones.length}</span>
+                ⇄ Otro plato <span className="tnum text-brand-400">{i + 1}/{opciones.length}</span>
               </button>
             )}
             <button
               onClick={onAlternarHecha}
               aria-label={hecha ? 'Desmarcar como hecha' : 'Marcar como hecha'}
               title={hecha ? 'Desmarcar' : 'Marcar como hecha'}
-              className={`flex h-9 w-9 items-center justify-center rounded-full text-sm backdrop-blur transition ${
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-sm shadow-md transition ${
                 hecha
                   ? 'bg-emerald-500 text-white'
-                  : 'bg-black/55 text-white/70 hover:bg-black/75 hover:text-white'
+                  : 'bg-white text-slate-300 hover:text-emerald-500'
               }`}
             >
               ✓
