@@ -87,6 +87,13 @@ export function hcNeto(n: Nutrientes100): number {
 export function calcularPorcion(
   n: Nutrientes100,
   grupo: ExchangeGroupId,
+  /**
+   * Gramos escritos a mano encima del cálculo. Los avisos y la comparación
+   * tienen que hablar de la porción que se va a usar de verdad: si no, la
+   * tabla enseña 45 g y los avisos debajo siguen hablando de los 50 g
+   * calculados, que es de donde salían las cuentas que no cuadraban.
+   */
+  gramosForzados?: number,
 ): PorcionCalculada | undefined {
   const g = EXCHANGE_GROUPS[grupo];
   if (!g) return undefined;
@@ -119,7 +126,7 @@ export function calcularPorcion(
   if (por100 <= 0) return undefined;
 
   const gramosExactos = gramosCon(por100);
-  const gramos = roundPortion(gramosExactos);
+  const gramos = gramosForzados && gramosForzados > 0 ? gramosForzados : roundPortion(gramosExactos);
   const f = gramos / 100;
 
   /** El carbohidrato que se le cobra: el neto cuando la fibra es alta. */

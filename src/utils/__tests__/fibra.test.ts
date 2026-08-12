@@ -113,3 +113,26 @@ describe('Catalina Crunch declarado como compuesto', () => {
     expect(Math.abs(kcalDeclarado - p.aporta.kcal) / p.aporta.kcal).toBeLessThan(0.12);
   });
 });
+
+/**
+ * LOS AVISOS HABLAN DE LA PORCIÓN QUE SE VA A USAR
+ *
+ * La tabla enseñaba los gramos escritos a mano pero los avisos de debajo
+ * seguían hablando de los calculados: 45 g arriba y 50 g en los avisos, que es
+ * justo donde se mira para decidir si el alimento encaja en el subgrupo.
+ */
+describe('Porción escrita a mano', () => {
+  const PANDEBONO: Nutrientes100 = { hc: 11.8, proteina: 4.9, grasa: 10.4 };
+
+  it('sin tocarla, sale la calculada', () => {
+    expect(calcularPorcion(PANDEBONO, 'grasas')!.gramos).toBe(50);
+  });
+
+  it('con gramos forzados, los avisos son de esos gramos', () => {
+    const p = calcularPorcion(PANDEBONO, 'grasas', 45)!;
+    expect(p.gramos).toBe(45);
+    // 45 g dan 72 kcal, no las 80 de los 50 g calculados.
+    expect(Math.round(p.aporta.kcal)).toBe(72);
+    expect(p.avisos.join(' ')).toMatch(/72 kcal/);
+  });
+});

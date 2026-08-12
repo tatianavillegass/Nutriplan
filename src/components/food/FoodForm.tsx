@@ -87,10 +87,16 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const grupo = (grupoManual || sugerido) as ExchangeGroupId | undefined;
   const bucket = grupo ? EXCHANGE_GROUPS[grupo].bucket : undefined;
 
-  const porcion = useMemo(() => (grupo ? calcularPorcion(n, grupo) : undefined), [n, grupo]);
-  const gramosFinales = gramosManual ?? porcion?.gramos;
+  /** El cálculo puro, para poder ofrecer «volver a los X g calculados». */
+  const calculada = useMemo(() => (grupo ? calcularPorcion(n, grupo) : undefined), [n, grupo]);
+  const gramosFinales = gramosManual ?? calculada?.gramos;
+  /** Lo que se enseña: los avisos hablan de la porción que se va a usar. */
+  const porcion = useMemo(
+    () => (grupo ? calcularPorcion(n, grupo, gramosFinales) : undefined),
+    [n, grupo, gramosFinales],
+  );
   const ajustado =
-    gramosManual != null && porcion != null && Math.abs(gramosManual - porcion.gramos) > 0.5;
+    gramosManual != null && calculada != null && Math.abs(gramosManual - calculada.gramos) > 0.5;
 
   const setNut = (k: keyof Nutrientes100, v: string) =>
     setN((prev) => ({ ...prev, [k]: v === '' ? undefined : Number(v) } as Nutrientes100));
@@ -282,14 +288,14 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
                     onClick={() => setGramosManual(undefined)}
                     className="pb-2 text-[11px] text-brand-600 underline"
                   >
-                    Volver a los {porcion.gramos} g calculados
+                    Volver a los {calculada?.gramos} g calculados
                   </button>
                 )}
               </div>
               <p className="tnum mt-1.5 text-[11px] text-slate-500">
                 Cálculo: 100 g × {EXCHANGE_GROUPS[grupo][porcion.ancla]} g de{' '}
                 {porcion.ancla === 'hc' ? 'carbohidrato' : porcion.ancla === 'proteina' ? 'proteína' : 'grasa'} ÷{' '}
-                {n[porcion.ancla]} g por 100 g = {fmt(porcion.gramosExactos, 1)} g → {porcion.gramos} g
+                {n[porcion.ancla]} g por 100 g = {fmt(porcion.gramosExactos, 1)} g → {calculada?.gramos} g
               </p>
 
               <table className="tnum mt-3 w-full max-w-md text-[11px]">
