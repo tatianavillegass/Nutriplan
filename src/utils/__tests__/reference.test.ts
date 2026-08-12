@@ -100,7 +100,9 @@ describe('Tabla de intercambios', () => {
       legumbres: 14 * 4 + 7 * 4 + 0.5 * 9,        // 88.5
       azucares: 40,
       lacteos_desnatados: 12 * 4 + 8 * 4,          // 80
-      lacteos_proteicos: 4 * 4 + 10 * 4,           // 56
+      // Bajado a la porción de proteína de la familia (7 g) para que un yogur
+      // proteico y un proteico magro se cambien casi 1:1.
+      lacteos_proteicos: 3 * 4 + 7 * 4,            // 40, contra los 32,5 del magro
       lacteos_semi: 12 * 4 + 8 * 4 + 4 * 9,        // 116
       lacteos_enteros: 12 * 4 + 8 * 4 + 8 * 9,     // 152
       frutos_secos: 1.5 * 4 + 2 * 4 + 5 * 9,       // 59

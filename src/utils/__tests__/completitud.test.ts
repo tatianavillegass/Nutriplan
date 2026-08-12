@@ -63,12 +63,23 @@ describe('Se compara por familia, no subgrupo contra subgrupo', () => {
   });
 
   it('la cuenta se lleva en el macro ancla, no en el número de porciones', () => {
-    // 1 lácteo proteico = 10 g de proteína = 1,43 proteicos magros de 7 g.
-    const r = estadoComida({ proteicos_magros: 2 }, { lacteos_proteicos: 2 });
+    // Un lácteo entero son 8 g de proteína: 2 cubren 16 g, más que los 14
+    // pautados en proteicos magros.
+    const r = estadoComida({ proteicos_magros: 2 }, { lacteos_enteros: 2 });
     const fila = r.filas[0];
     expect(fila.pautado).toBe(2);
     expect(fila.cubierto).toBeGreaterThan(2);
     expect(fila.estado).toBe('exceso');
+  });
+
+  /**
+   * El lácteo proteico se igualó a 7 g de proteína justamente para esto: que
+   * cambiarlo por un proteico magro no mueva la cuenta.
+   */
+  it('un lácteo proteico y un proteico magro se cambian 1:1', () => {
+    const r = estadoComida({ proteicos_magros: 2 }, { lacteos_proteicos: 2 });
+    expect(r.filas[0].cubierto).toBeCloseTo(2, 5);
+    expect(r.estado).toBe('completa');
   });
 });
 

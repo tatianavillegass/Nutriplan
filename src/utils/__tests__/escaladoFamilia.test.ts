@@ -124,8 +124,10 @@ describe('El yogur proteico también sirve de proteína', () => {
 
   it('cubre lo pautado ajustando por la proteína', () => {
     const e = scaleRecipe(conYogur, { proteicos_grasos: 1, proteicos_magros: 1 });
-    // 14 g pautados / 20 g de la receta = 0.7
-    expect(e.factores.lacteos_proteicos).toBeCloseTo(0.7, 3);
+    // 14 g pautados / 14 g de la receta = 1. Con el lácteo proteico a 7 g de
+    // proteína, dos porciones de yogur son exactamente los dos proteicos
+    // pautados: ya no hay que encoger el yogur para cuadrar.
+    expect(e.factores.lacteos_proteicos).toBeCloseTo(1, 3);
   });
 
   it('sin pasarse de las calorías pautadas', () => {

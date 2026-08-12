@@ -117,7 +117,13 @@ describe('Integridad del catálogo ampliado', () => {
       // un grupo, sino el reparto entero que declara `equivale`.
       if (f.equivale) return false;
       const p = calcularPorcion(f.nutrientes!, f.grupo);
-      return p ? Math.abs(p.gramos - f.gramos) / f.gramos > 0.02 : false;
+      /**
+       * `gramos` es la medida casera, que no siempre es un intercambio: un
+       * bote de skyr son 90 g y 1,41 intercambios. Se compara lo que pesa UN
+       * intercambio, que es lo que tiene que salir de los nutrientes.
+       */
+      const porIntercambio = f.gramos / (f.intercambios || 1);
+      return p ? Math.abs(p.gramos - porIntercambio) / porIntercambio > 0.02 : false;
     }).map((f) => f.nombre);
     expect(desviados).toEqual([]);
   });

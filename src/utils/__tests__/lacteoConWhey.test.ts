@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { scaleRecipe } from '../recipeScaling';
 import { matchRecipes } from '../recipeMatcher';
 import { exchangesToMacros } from '../exchanges';
+import { kcalFromMacros } from '../macros';
+import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
+import { FOOD_CATALOG } from '../../data/foodCatalog';
 import type { Receta } from '../../types/recipe';
 
 /**
@@ -103,6 +106,51 @@ describe('El recomendador compara por familia', () => {
     };
     const [m] = matchRecipes([sinProteina], PAUTADO, { slot: 'desayuno' });
     expect(m.faltantes).toEqual(['lacteos_proteicos']);
+  });
+});
+
+/**
+ * EL LÁCTEO PROTEICO SE CAMBIA POR UN PROTEICO MAGRO SIN NOTARLO
+ *
+ * Iba a 10 g de proteína por porción y eso lo hacía un caso aparte dentro de
+ * su familia: cambiarlo perdía 3 g de proteína y 23 kcal. Con 7 g el cambio es
+ * casi 1:1, que es lo que hace que pautar «lácteo» en el desayuno no ate a la
+ * clienta a tomarse un yogur.
+ */
+describe('Lácteo proteico y proteico magro, casi lo mismo', () => {
+  const kcal = (g: 'lacteos_proteicos' | 'proteicos_magros') =>
+    kcalFromMacros(exchangesToMacros({ [g]: 1 }));
+
+  it('la porción es de 7 g de proteína, como el resto de la familia', () => {
+    expect(EXCHANGE_GROUPS.lacteos_proteicos.proteina).toBe(
+      EXCHANGE_GROUPS.proteicos_magros.proteina,
+    );
+  });
+
+  it('no se separan más de 10 kcal por porción', () => {
+    expect(Math.abs(kcal('lacteos_proteicos') - kcal('proteicos_magros'))).toBeLessThan(10);
+  });
+
+  it('el hidrato que arrastra ya no llega a media porción de almidón', () => {
+    const hc = EXCHANGE_GROUPS.lacteos_proteicos.hc;
+    expect(hc / EXCHANGE_GROUPS.almidones.hc).toBeLessThan(0.5);
+  });
+
+  it('los otros lácteos se quedan como estaban', () => {
+    expect(EXCHANGE_GROUPS.lacteos_desnatados.proteina).toBe(8);
+    expect(EXCHANGE_GROUPS.lacteos_semi.proteina).toBe(8);
+    expect(EXCHANGE_GROUPS.lacteos_enteros.proteina).toBe(8);
+  });
+
+  it('el bote entero sigue siendo la medida casera, no dos tercios de bote', () => {
+    const yogures = FOOD_CATALOG.filter((f) => f.grupo === 'lacteos_proteicos');
+    expect(yogures.length).toBeGreaterThan(0);
+    for (const y of yogures) {
+      // Un envase pasa a valer ~1,4 intercambios, pero se sigue midiendo entero.
+      expect(y.intercambios).toBeGreaterThan(1.3);
+      expect(y.intercambios).toBeLessThan(1.5);
+      expect(y.medida_casera).toMatch(/unidad/i);
+    }
   });
 });
 

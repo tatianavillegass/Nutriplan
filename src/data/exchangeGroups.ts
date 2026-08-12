@@ -165,9 +165,27 @@ export const EXCHANGE_GROUPS: Record<ExchangeGroupId, ExchangeGroup> = {
   },
   lacteos_proteicos: {
     id: 'lacteos_proteicos',
+    /**
+     * UNA PORCIÓN AQUÍ ES UNA PORCIÓN DE PROTEÍNA
+     *
+     * Iba a 10 g de proteína, como el yogur del sistema clásico. Eso hacía que
+     * un lácteo proteico y un proteico magro no fueran intercambiables: cambiar
+     * uno por otro perdía 3 g de proteína y 23 kcal, y al escalar recetas el
+     * desajuste daba problemas de verdad (con los 10 g y 0 de grasa, el tope de
+     * grasa borraba la whey de una receta que cubriera el lácteo).
+     *
+     * Con 7 g el cambio es casi 1:1 —39 kcal contra 32,5— y el yogur deja de
+     * ser un caso aparte dentro de la familia. El hidrato baja en proporción
+     * (4 → 2,8) y se redondea a 3, que cae dentro de lo que traen los yogures
+     * proteicos reales del catálogo (entre 2,2 y 3,9 por intercambio).
+     *
+     * Consecuencia diaria: un envase entero ya no es un intercambio, son ~1,4.
+     * Por eso los cuatro yogures del catálogo llevan `intercambios: 1.4`, para
+     * que la medida casera siga siendo el bote y no dos tercios de bote.
+     */
     nombre: 'Lácteos proteicos',
-    hc: 4,
-    proteina: 10,
+    hc: 3,
+    proteina: 7,
     grasa: 0,
     bucket: 'proteina',
     ancla: 'proteina',
