@@ -54,6 +54,35 @@ export function kcalDeMacros(hc: number, proteina: number, grasa: number): numbe
   return hc * KCAL_PER_GRAM.hc + proteina * KCAL_PER_GRAM.proteina + grasa * KCAL_PER_GRAM.grasa;
 }
 
+/**
+ * CARBOHIDRATO QUE CUENTA DE VERDAD
+ *
+ * Regla clásica: si un alimento trae más de 5 g de fibra por ración, se le
+ * descuenta la mitad de esa fibra al carbohidrato. Por debajo de ahí no se
+ * toca nada, así que ni las legumbres ni la avena ni el pan integral se mueven
+ * de donde estaban.
+ *
+ * Hace falta por los procesados altos en fibra. Un cereal keto con 41 g de
+ * carbohidrato por 100 g, de los que 25 son fibra, salía a 110 kcal por
+ * porción cuando la caja dice 76: la app le cobraba la fibra a 4 kcal el
+ * gramo y lo dejaba fuera de cualquier subgrupo.
+ */
+export const FIBRA_MINIMA_PARA_DESCONTAR = 5;
+
+/** Fibra que se descuenta de una cantidad de fibra dada (por 100 g o por ración). */
+export function fibraDescontable(fibra: number | undefined): number {
+  const f = fibra ?? 0;
+  return f > FIBRA_MINIMA_PARA_DESCONTAR ? f / 2 : 0;
+}
+
+/**
+ * Carbohidrato de 100 g de alimento una vez descontada la fibra que toca.
+ * Es el que manda para calcular porciones y calorías.
+ */
+export function hcNeto(n: Nutrientes100): number {
+  return Math.max(0, n.hc - fibraDescontable(n.fibra));
+}
+
 /** Calcula la porción de un alimento dentro de un subgrupo de intercambio. */
 export function calcularPorcion(
   n: Nutrientes100,
@@ -63,22 +92,51 @@ export function calcularPorcion(
   if (!g) return undefined;
 
   const ancla = g.ancla;
-  const por100 = n[MACRO_EN_100[ancla]];
   const objetivo = g[ancla];
+  const bruto = n[MACRO_EN_100[ancla]];
 
-  if (!por100 || por100 <= 0 || !objetivo) return undefined;
+  if (!bruto || bruto <= 0 || !objetivo) return undefined;
 
-  const gramosExactos = (100 * objetivo) / por100;
+  /**
+   * DOS PASADAS POR LA FIBRA
+   *
+   * El descuento se decide por la fibra que trae LA RACIÓN, no los 100 g. Y en
+   * los grupos anclados al carbohidrato la ración depende del carbohidrato, que
+   * es lo que se está decidiendo. Así que se calcula una vez con el
+   * carbohidrato tal cual, se mira cuánta fibra ha caído dentro, y si pasa del
+   * umbral se rehace con el neto.
+   */
+  const neto = hcNeto(n);
+  const anclaEnHc = ancla === 'hc';
+
+  const gramosCon = (por100: number) => (100 * objetivo) / por100;
+  const fibraEnRacion = (gramos: number) => (n.fibra ?? 0) * (gramos / 100);
+
+  const primeraPasada = gramosCon(bruto);
+  const seDescuenta = fibraEnRacion(primeraPasada) > FIBRA_MINIMA_PARA_DESCONTAR;
+
+  const por100 = anclaEnHc && seDescuenta ? neto : bruto;
+  if (por100 <= 0) return undefined;
+
+  const gramosExactos = gramosCon(por100);
   const gramos = roundPortion(gramosExactos);
   const f = gramos / 100;
 
+  /** El carbohidrato que se le cobra: el neto cuando la fibra es alta. */
+  const hcQueCuenta = seDescuenta ? neto : n.hc;
+
   const aporta = {
-    hc: n.hc * f,
+    hc: hcQueCuenta * f,
     proteina: n.proteina * f,
     grasa: n.grasa * f,
     kcal: 0,
   };
   aporta.kcal = kcalDeMacros(aporta.hc, aporta.proteina, aporta.grasa);
+
+  /** Lo que saldría sin descontar, para poder explicar la diferencia. */
+  const sinDescontar = seDescuenta
+    ? kcalDeMacros(n.hc * f, n.proteina * f, n.grasa * f)
+    : aporta.kcal;
 
   const nominal = {
     hc: g.hc,
@@ -96,6 +154,12 @@ export function calcularPorcion(
   };
 
   const avisos: string[] = [];
+  if (seDescuenta) {
+    avisos.push(
+      `Trae ${fibraEnRacion(gramos).toFixed(1)} g de fibra por porción: contando el carbohidrato ` +
+        `neto son ${Math.round(aporta.kcal)} kcal en vez de ${Math.round(sinDescontar)}.`,
+    );
+  }
   if (Math.abs(desviacion.kcal) > 20) {
     avisos.push(
       `La porción aporta ${Math.round(aporta.kcal)} kcal frente a las ${Math.round(

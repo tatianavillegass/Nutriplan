@@ -7,7 +7,7 @@ import {
   type ExchangeGroupId,
   type MacroBucket,
 } from '../../data/exchangeGroups';
-import { calcularPorcion, sugerirSubgrupo, subgruposDeBucket } from '../../utils/portions';
+import { calcularPorcion, sugerirSubgrupo, subgruposDeBucket, hcNeto } from '../../utils/portions';
 import { exchangesToMacros } from '../../utils/exchanges';
 import { kcalFromMacros } from '../../utils/macros';
 import { Button, Field, Input, Select, fmt } from '../common/ui';
@@ -115,7 +115,20 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const macrosDeclarados = useMemo(() => exchangesToMacros(equivale), [equivale]);
   const macrosReales = useMemo(() => {
     const f = (gramosFinales ?? 0) / 100;
-    return { proteina: n.proteina * f, hc: n.hc * f, grasa: n.grasa * f };
+    return { proteina: n.proteina * f, hc: hcNeto(n) * f, grasa: n.grasa * f };
+  }, [n, gramosFinales]);
+
+  /**
+   * Lo que aporta la porción que hay escrita en la caja. La tabla usaba lo que
+   * calculó la app y no lo que Tats escribía encima: ponía 35 g y seguía
+   * enseñando los números de los 25 g calculados.
+   */
+  const aportaDeLaPorcion = useMemo(() => {
+    const f = (gramosFinales ?? 0) / 100;
+    const hc = hcNeto(n) * f;
+    const proteina = n.proteina * f;
+    const grasa = n.grasa * f;
+    return { hc, proteina, grasa, kcal: kcalFromMacros({ hc, proteina, grasa }) };
   }, [n, gramosFinales]);
   /**
    * Se juzga por calorías, no macro a macro. Cada grupo arrastra sus macros de
@@ -299,7 +312,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
                     <tr key={k} className="border-t border-brand-100">
                       <td className="py-0.5 text-slate-600">{label}</td>
                       <td className="py-0.5 text-right font-medium text-slate-800">
-                        {fmt(porcion.aporta[k], k === 'kcal' ? 0 : 1)} {u}
+                        {fmt(aportaDeLaPorcion[k], k === 'kcal' ? 0 : 1)} {u}
                       </td>
                       <td className="py-0.5 text-right text-slate-400">
                         {fmt(porcion.nominal[k], k === 'kcal' ? 0 : 1)} {u}

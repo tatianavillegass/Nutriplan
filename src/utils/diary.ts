@@ -7,6 +7,7 @@ import { EXCHANGE_GROUPS, type MacroBucket, type ExchangeGroupId } from '../data
 import { exchangesToMacros, gridTotals, bucketExchanges, aporteDeAlimento } from './exchanges';
 import { kcalFromMacros } from './macros';
 import { gramosPorIntercambio } from './recipeComposition';
+import { hcNeto } from './portions';
 
 /**
  * SEGUIMIENTO DEL DÍA
@@ -47,7 +48,9 @@ export function macrosDeExtra(
     const f = cantidad / 100;
     const macros = {
       proteina: food.nutrientes.proteina * f,
-      hc: food.nutrientes.hc * f,
+      // El carbohidrato neto, igual que en el cálculo de porciones: si no, un
+      // extra alto en fibra sumaría calorías que no se absorben.
+      hc: hcNeto(food.nutrientes) * f,
       grasa: food.nutrientes.grasa * f,
     };
     return { macros, kcal: kcalFromMacros(macros) };
