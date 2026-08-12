@@ -42,6 +42,12 @@ const ANCLA_DE_FAMILIA: Record<Familia, keyof ReturnType<typeof exchangesToMacro
 };
 
 /** Reparte unos intercambios por familia. */
+/** Lo que cuesta una porción de un subgrupo, para comparar escalones. */
+function kcalPorPorcion(g: ExchangeGroupId): number {
+  const i = EXCHANGE_GROUPS[g];
+  return i ? kcalFromMacros({ hc: i.hc, proteina: i.proteina, grasa: i.grasa }) : NaN;
+}
+
 function porFamilia(counts: ExchangeCounts): Map<Familia, ExchangeCounts> {
   const mapa = new Map<Familia, ExchangeCounts>();
   for (const [gid, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
@@ -237,6 +243,34 @@ export function scaleRecipe(
       const kBase = kcalFromMacros(mBase);
       if (kBase > 0) topes.push({ valor: kcalFromMacros(mReq) / kBase, que: 'calorías' });
     }
+
+    /**
+     * BAJAR DE ESCALÓN SIGUE SIENDO LIBRE
+     *
+     * Los topes existen para que nadie cambie pollo por queso curado y se
+     * pase de calorías. Pero cuando la receta usa algo MÁS barato que lo
+     * pautado, recortarlo es al revés de lo que se quiere.
+     *
+     * El caso que lo destapó: pautados 3 lácteos proteicos (0 g de grasa) y
+     * una avena trasnochada que pone la proteína con whey. El tope de grasa
+     * salía 0 entre algo, así que la whey se escalaba a CERO gramos y el
+     * desayuno se quedaba sin proteína, en silencio. Y la whey cuesta 32 kcal
+     * por porción frente a las 56 del lácteo: es una bajada de escalón, de las
+     * que tu plan permite sin avisar siquiera.
+     */
+    const masBaratoPautado = Math.min(
+      ...Object.keys(pautado).map((g) => kcalPorPorcion(g as ExchangeGroupId)),
+    );
+    const masCaroDeLaReceta = Math.max(
+      ...Object.keys(enReceta).map((g) => kcalPorPorcion(g as ExchangeGroupId)),
+    );
+    // Medio kcal de margen para que dos grupos iguales no se descarten por un
+    // redondeo de la tabla.
+    const esBajada =
+      Number.isFinite(masBaratoPautado) &&
+      Number.isFinite(masCaroDeLaReceta) &&
+      masCaroDeLaReceta <= masBaratoPautado + 0.5;
+    if (esBajada) topes.length = 0;
 
     const recorte = topes.filter((t) => t.valor < factor - 0.001).sort((a, b) => a.valor - b.valor)[0];
     if (recorte) {

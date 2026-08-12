@@ -77,9 +77,34 @@ export function matchRecipes(
       // 0. Restricciones del cliente: mandan sobre cualquier puntuación.
       const ev = client ? evaluarReceta(r, client, foods) : undefined;
       const rg = recipeGroups(r);
-      const faltantes = req.filter((g) => !rg.includes(g));
-      const sobrantes = rg.filter((g) => !req.includes(g));
       const motivos: string[] = [];
+
+      /**
+       * SE COMPARA POR FAMILIA, COMO EN TODO LO DEMÁS
+       *
+       * Antes esto miraba subgrupos: con 3 lácteos proteicos pautados, una
+       * avena que pone la proteína con whey salía como «no cubre lácteos
+       * proteicos» y encima perdía puntos por traer un proteico magro «de
+       * más». Eran dos castigos por hacer lo correcto, y la escondían de las
+       * ocho sugerencias.
+       *
+       * Falta de verdad lo que la receta no trae de ninguna manera: ni con ese
+       * subgrupo ni con ningún otro de su familia.
+       */
+      const familiaDe = (g: ExchangeGroupId) => EXCHANGE_GROUPS[g]?.familia;
+      const familiasReq = new Set(req.map(familiaDe));
+      const familiasReceta = new Set(rg.map(familiaDe));
+
+      const faltantes = req.filter((g) => !familiasReceta.has(familiaDe(g)));
+      const sobrantes = rg.filter((g) => !familiasReq.has(familiaDe(g)));
+
+      /** Cubre la familia, pero con otro subgrupo: la whey por el lácteo. */
+      const porFamilia = req.filter((g) => !rg.includes(g) && familiasReceta.has(familiaDe(g)));
+      if (porFamilia.length) {
+        motivos.push(
+          `Cubre ${porFamilia.map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase()).join(' y ')} con otro de su familia`,
+        );
+      }
 
       // 1. Cobertura de grupos: lo que más pesa.
       let score = 0;
@@ -89,8 +114,11 @@ export function matchRecipes(
       score -= sobrantes.length * 25;
       if (faltantes.length === 0 && sobrantes.length === 0) {
         score += 30;
-        motivos.push('Perfil de grupos exacto');
+        // Con los mismos subgrupos, no sólo la misma familia: si pautaste un
+        // lácteo, una receta con yogur de verdad va por delante de una con whey.
+        if (porFamilia.length === 0) motivos.push('Perfil de grupos exacto');
       }
+      score += (req.length - porFamilia.length) * 10;
 
       // 2. Categoría de comida.
       if (r.categorias.includes(slot)) {
