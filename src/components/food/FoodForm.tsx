@@ -8,6 +8,8 @@ import {
   type MacroBucket,
 } from '../../data/exchangeGroups';
 import { calcularPorcion, sugerirSubgrupo, subgruposDeBucket } from '../../utils/portions';
+import { exchangesToMacros } from '../../utils/exchanges';
+import { kcalFromMacros } from '../../utils/macros';
 import { Button, Field, Input, Select, fmt } from '../common/ui';
 
 const BUCKETS: [MacroBucket, string][] = [
@@ -45,6 +47,8 @@ export interface FoodFormValue {
   alergenos: Alergeno[];
   apto: Apto[];
   notas?: string;
+  /** Reparto de intercambios cuando el alimento no cabe en un solo grupo. */
+  equivale?: Partial<Record<ExchangeGroupId, number>>;
 }
 
 interface Props {
@@ -69,6 +73,15 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const [alergenos, setAlergenos] = useState<Alergeno[]>(inicial?.alergenos ?? []);
   const [apto, setApto] = useState<Apto[]>(inicial?.apto ?? []);
   const [notas, setNotas] = useState(inicial?.notas ?? '');
+  /**
+   * Alimentos que gastan dos cosas: una medida de mezcla de tortitas son
+   * 2 almidones Y 2 proteicos. Se declara a mano porque repartir los macros
+   * entre grupos automáticamente daría siempre más de una respuesta válida.
+   */
+  const [equivale, setEquivale] = useState<Partial<Record<ExchangeGroupId, number>>>(
+    inicial?.equivale ?? {},
+  );
+  const compuesto = Object.values(equivale).some((v) => (v ?? 0) > 0);
 
   const sugerido = useMemo(() => sugerirSubgrupo(n), [n]);
   const grupo = (grupoManual || sugerido) as ExchangeGroupId | undefined;
@@ -93,6 +106,32 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   const puedeGuardar = nombre.trim().length > 1 && !!grupo && !!porcion;
+
+  /**
+   * Comprobación del reparto: lo que dicen los intercambios declarados frente
+   * a lo que dice la etiqueta para esos gramos. Si no cuadran, uno de los dos
+   * está mal y más vale verlo aquí que descubrirlo en el plato.
+   */
+  const macrosDeclarados = useMemo(() => exchangesToMacros(equivale), [equivale]);
+  const macrosReales = useMemo(() => {
+    const f = (gramosFinales ?? 0) / 100;
+    return { proteina: n.proteina * f, hc: n.hc * f, grasa: n.grasa * f };
+  }, [n, gramosFinales]);
+  /**
+   * Se juzga por calorías, no macro a macro. Cada grupo arrastra sus macros de
+   * regalo —un almidón trae 2 g de proteína— así que el reparto declarado
+   * siempre sale algo por encima en proteína. Lo que tiene que cuadrar es la
+   * energía; los gramos sueltos son ruido de la tabla.
+   */
+  const kcalDeclaradas_ = kcalFromMacros(macrosDeclarados);
+  const kcalReales = kcalFromMacros(macrosReales);
+  const cuadra =
+    kcalReales > 0 &&
+    Math.abs(kcalDeclaradas_ - kcalReales) / kcalReales <= 0.12 &&
+    Math.abs(macrosDeclarados.proteina - macrosReales.proteina) <= 4 &&
+    Math.abs(macrosDeclarados.hc - macrosReales.hc) <= 4;
+
+  const fmtN = (v: number) => v.toFixed(1);
 
   return (
     <div className="space-y-4">
@@ -327,6 +366,84 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
           </div>
         </div>
 
+        {/* ── Alimentos que gastan más de un intercambio ───── */}
+        <div className="sm:col-span-2">
+          <p className="mb-1 text-xs font-medium text-slate-600">
+            ¿Gasta más de un intercambio?
+          </p>
+          <p className="mb-2 text-[11px] leading-snug text-slate-500">
+            Para productos que no caben en un grupo: una medida de mezcla de tortitas proteicas son
+            2 almidones <em>y</em> 2 proteicos magros. Déjalo vacío si el alimento es de un solo
+            grupo. Regla: si el segundo macro no llega a media porción, no hace falta.
+          </p>
+
+          <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5">
+            {(Object.entries(equivale) as [ExchangeGroupId, number][])
+              .filter(([, v]) => v > 0)
+              .map(([g, v]) => (
+                <div key={g} className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={v}
+                    onChange={(e) =>
+                      setEquivale((prev) => ({ ...prev, [g]: Number(e.target.value) || 0 }))
+                    }
+                    className="w-20 text-sm"
+                  />
+                  <span className="flex-1 text-xs text-slate-600">
+                    {EXCHANGE_GROUPS[g].nombre}
+                  </span>
+                  <button
+                    onClick={() => setEquivale((prev) => ({ ...prev, [g]: 0 }))}
+                    className="text-slate-300 transition hover:text-red-600"
+                    aria-label={`Quitar ${EXCHANGE_GROUPS[g].nombre}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+
+            <select
+              value=""
+              onChange={(e) => {
+                const g = e.target.value as ExchangeGroupId;
+                if (g) setEquivale((prev) => ({ ...prev, [g]: prev[g] || 1 }));
+              }}
+              className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 outline-none focus:border-brand-400"
+            >
+              <option value="">+ Añadir un grupo…</option>
+              {EXCHANGE_GROUP_LIST.filter((g) => !g.ilimitado && !(equivale[g.id]! > 0)).map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.nombre}
+                </option>
+              ))}
+            </select>
+
+            {compuesto && (
+              <div className="tnum mt-1 rounded border border-brand-200 bg-white px-2 py-1.5 text-[10px] leading-snug">
+                <p className="font-medium text-brand-800">Comprobación</p>
+                <p className="mt-0.5 text-slate-600">
+                  Lo declarado: {fmt(kcalDeclaradas_)} kcal · P{' '}
+                  {fmtN(macrosDeclarados.proteina)} · HC {fmtN(macrosDeclarados.hc)} · G{' '}
+                  {fmtN(macrosDeclarados.grasa)} g
+                </p>
+                <p className="text-slate-600">
+                  La etiqueta, para {gramosFinales ?? 0} g: {fmt(kcalReales)} kcal · P{' '}
+                  {fmtN(macrosReales.proteina)} · HC {fmtN(macrosReales.hc)} · G{' '}
+                  {fmtN(macrosReales.grasa)} g
+                </p>
+                <p className={`mt-0.5 ${cuadra ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {cuadra
+                    ? 'Cuadra: el reparto refleja lo que trae el producto.'
+                    : 'No cuadra del todo. Ajusta las porciones o los gramos de la medida.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div>
           <p className="mb-1.5 text-xs font-medium text-slate-600">Alérgenos</p>
           <div className="flex flex-wrap gap-1">
@@ -386,6 +503,11 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
               alergenos,
               apto,
               notas: notas.trim() || undefined,
+              equivale: compuesto
+                ? (Object.fromEntries(
+                    Object.entries(equivale).filter(([, v]) => (v ?? 0) > 0),
+                  ) as Partial<Record<ExchangeGroupId, number>>)
+                : undefined,
             })
           }
         >

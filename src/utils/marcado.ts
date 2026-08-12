@@ -2,6 +2,7 @@ import type { Alimento } from '../types/food';
 import type { PorcionesMarcadas } from '../types/diary';
 import type { OpcionEscalada } from './mealOptions';
 import { EXCHANGE_GROUPS, type ExchangeGroupId, type MacroBucket } from '../data/exchangeGroups';
+import { aporteDeAlimento, gruposDeAlimento } from './exchanges';
 import type { Seleccion, SeleccionGrupos } from './dailyBudget';
 
 /**
@@ -24,9 +25,16 @@ export function seleccionPorBucket(
     for (const [foodId, n] of Object.entries(porFood)) {
       const food = foods.find((f) => f.id === foodId);
       if (!food || !n) continue;
-      const g = food.grupo ? EXCHANGE_GROUPS[food.grupo] : undefined;
-      if (!g || g.ilimitado) continue;
-      acc[g.bucket] = (acc[g.bucket] ?? 0) + n;
+      // Un compuesto cae en más de un macro: la mezcla de tortitas suma en
+      // carbohidrato y en proteína a la vez.
+      for (const [gid, cuantos] of Object.entries(aporteDeAlimento(food, n)) as [
+        ExchangeGroupId,
+        number,
+      ][]) {
+        const g = EXCHANGE_GROUPS[gid];
+        if (!g || g.ilimitado || !cuantos) continue;
+        acc[g.bucket] = (acc[g.bucket] ?? 0) + cuantos;
+      }
     }
     out[mealId] = acc;
   }
@@ -44,8 +52,13 @@ export function seleccionPorGrupo(
     for (const [foodId, n] of Object.entries(porFood)) {
       const food = foods.find((f) => f.id === foodId);
       if (!food || !n) continue;
-      if (!food.grupo || EXCHANGE_GROUPS[food.grupo]?.ilimitado) continue;
-      acc[food.grupo] = (acc[food.grupo] ?? 0) + n;
+      for (const [gid, cuantos] of Object.entries(aporteDeAlimento(food, n)) as [
+        ExchangeGroupId,
+        number,
+      ][]) {
+        if (!cuantos || EXCHANGE_GROUPS[gid]?.ilimitado) continue;
+        acc[gid] = (acc[gid] ?? 0) + cuantos;
+      }
     }
     out[mealId] = acc;
   }
@@ -89,7 +102,12 @@ export function limpiarBucket(
   const comida = { ...(porciones[mealId] ?? {}) };
   for (const foodId of Object.keys(comida)) {
     const food = foods.find((f) => f.id === foodId);
-    if (food?.grupo && EXCHANGE_GROUPS[food.grupo]?.bucket === bucket) delete comida[foodId];
+    if (!food) continue;
+    // Un compuesto se va si alguno de sus grupos es de ese macro: no se puede
+    // quitar "la mitad" de una medida de mezcla de tortitas.
+    if (gruposDeAlimento(food).some((g) => EXCHANGE_GROUPS[g]?.bucket === bucket)) {
+      delete comida[foodId];
+    }
   }
   return { ...porciones, [mealId]: comida };
 }
@@ -133,8 +151,15 @@ export function marcadoDeBucket(
 ): number {
   return Object.entries(porciones[mealId] ?? {}).reduce((s, [foodId, n]) => {
     const food = foods.find((f) => f.id === foodId);
-    if (!food?.grupo) return s;
-    const g = EXCHANGE_GROUPS[food.grupo];
-    return g && !g.ilimitado && g.bucket === bucket ? s + (n || 0) : s;
+    if (!food || !n) return s;
+    let suma = 0;
+    for (const [gid, cuantos] of Object.entries(aporteDeAlimento(food, n)) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
+      const g = EXCHANGE_GROUPS[gid];
+      if (g && !g.ilimitado && g.bucket === bucket) suma += cuantos ?? 0;
+    }
+    return s + suma;
   }, 0);
 }

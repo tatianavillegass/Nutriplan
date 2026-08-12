@@ -3,8 +3,8 @@ import type { DayType } from '../types/plan';
 import { comidasConPauta } from '../types/plan';
 import type { Extra, RegistroDia } from '../types/diary';
 import type { MacroGrams } from '../types/calculations';
-import { EXCHANGE_GROUPS, type MacroBucket } from '../data/exchangeGroups';
-import { exchangesToMacros, gridTotals, bucketExchanges } from './exchanges';
+import { EXCHANGE_GROUPS, type MacroBucket, type ExchangeGroupId } from '../data/exchangeGroups';
+import { exchangesToMacros, gridTotals, bucketExchanges, aporteDeAlimento } from './exchanges';
 import { kcalFromMacros } from './macros';
 import { gramosPorIntercambio } from './recipeComposition';
 
@@ -105,8 +105,9 @@ export function macrosDePorciones(registro: RegistroDia, foods: Alimento[]): Mac
     for (const [foodId, n] of Object.entries(porComida)) {
       if (!n) continue;
       const food = foods.find((f) => f.id === foodId);
-      if (!food?.grupo) continue;
-      acc = suma(acc, exchangesToMacros({ [food.grupo]: n }));
+      if (!food) continue;
+      // `aporteDeAlimento` reparte los compuestos entre sus grupos.
+      acc = suma(acc, exchangesToMacros(aporteDeAlimento(food, n)));
     }
   }
   return acc;
@@ -177,9 +178,16 @@ export function porcionesDeBucket(
   const porComida = registro?.porciones?.[mealId] ?? {};
   return Object.entries(porComida).reduce((s, [foodId, n]) => {
     const food = foods.find((f) => f.id === foodId);
-    if (!food?.grupo) return s;
-    const g = EXCHANGE_GROUPS[food.grupo];
-    return g && !g.ilimitado && g.bucket === bucket ? s + (n || 0) : s;
+    if (!food || !n) return s;
+    let suma_ = 0;
+    for (const [gid, cuantos] of Object.entries(aporteDeAlimento(food, n)) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
+      const g = EXCHANGE_GROUPS[gid];
+      if (g && !g.ilimitado && g.bucket === bucket) suma_ += cuantos ?? 0;
+    }
+    return s + suma_;
   }, 0);
 }
 

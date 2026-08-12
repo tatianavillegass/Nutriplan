@@ -256,7 +256,14 @@ export const EXCHANGE_GROUPS: Record<ExchangeGroupId, ExchangeGroup> = {
   },
   frutos_secos: {
     id: 'frutos_secos',
-    nombre: 'Frutos secos y semillas',
+    /**
+     * Grasa que además arrastra proteína e hidrato. Se llamaba «Frutos secos y
+     * semillas», pero ahí caben también las cremas de frutos secos y los quesos
+     * untables ligeros: un queso crema light anclado a 5 g de grasa aporta casi
+     * lo mismo que un puñado de nueces, y ver «queso crema» bajo el epígrafe de
+     * los frutos secos confundía.
+     */
+    nombre: 'Grasas proteicas',
     hc: 1.5,
     proteina: 2,
     grasa: 5,

@@ -58,7 +58,9 @@ export function FoodCatalogPage() {
       bucket: EXCHANGE_GROUPS[v.grupo].bucket,
       medida_casera: v.medida_casera,
       gramos: v.gramos ?? 0,
+      // En un compuesto la medida es la unidad: gasta lo que diga `equivale`.
       intercambios: 1,
+      equivale: v.equivale,
       nutrientes: v.nutrientes,
       equivalencia_cocido: v.equivalencia_cocido,
       comidas_sugeridas: v.comidas_sugeridas,

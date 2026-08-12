@@ -50,6 +50,23 @@ export interface Alimento {
   equivalencia_cocido?: number;
   /** Cuántos intercambios de su grupo aporta esa medida. */
   intercambios: number;
+  /**
+   * ALIMENTOS QUE GASTAN DOS COSAS A LA VEZ
+   *
+   * Lo que consume UNA medida casera, repartido por grupos. Es para los
+   * productos que no caben en un solo grupo: una medida de mezcla de tortitas
+   * proteicas son 2 almidones Y 2 proteicos magros, los dos enteros. Meterla a
+   * la fuerza en un grupo mentiría siempre en el otro.
+   *
+   * Cuando está, manda sobre `grupo` para las cuentas: al marcar la porción se
+   * descuenta de todos los grupos que lista. `grupo` se sigue usando para
+   * ordenar y para saber bajo qué epígrafe enseñarlo.
+   *
+   * Regla para decidir si un alimento lo necesita: pasa cada macro de una
+   * medida real a porciones; si el segundo no llega a media porción, se ignora
+   * como se ignoran los 2 g de proteína de cualquier almidón.
+   */
+  equivale?: Partial<Record<ExchangeGroupId, number>>;
   /** Composición por 100 g. Si está, la porción se calcula sola. */
   nutrientes?: Nutrientes100;
   comidas_sugeridas: MealSlot[];

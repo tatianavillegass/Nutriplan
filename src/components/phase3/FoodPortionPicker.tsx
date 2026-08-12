@@ -8,6 +8,7 @@ import { balanceComida, balanceGrasa, balanceSubgruposDeBucket } from '../../uti
 import { seleccionPorBucket, seleccionPorGrupo } from '../../utils/marcado';
 import { BUCKET_LABEL } from '../../utils/mealOptions';
 import { gramosMarcados } from '../../utils/diary';
+import { describeEquivalencia } from '../../utils/exchanges';
 import { escalarMedida } from '../../utils/measures';
 import { coincide } from '../../utils/similitud';
 import { PortionRing, SubgrupoBarra } from '../common/PortionRing';
@@ -110,6 +111,8 @@ function BotonAlimento({
   sangria?: boolean;
 }) {
   const gpi = gramosMarcados(food, 1);
+  /** Lo que gasta una medida cuando el alimento ocupa dos grupos a la vez. */
+  const cuesta = describeEquivalencia(food);
   return (
     <button
       onClick={onElegir}
@@ -125,6 +128,11 @@ function BotonAlimento({
         <span className="tnum text-slate-400">
           {food.medida_casera} ({gpi} {food.unidad ?? 'g'})
         </span>
+        {cuesta && (
+          <span className="mt-0.5 block text-[10px] text-amber-700">
+            Cuenta como {cuesta}
+          </span>
+        )}
       </span>
       {n > 0 && (
         <span className="tnum shrink-0 text-[10px] font-medium text-brand-700">

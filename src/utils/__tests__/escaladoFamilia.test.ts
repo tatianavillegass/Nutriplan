@@ -76,7 +76,7 @@ describe('Los frutos secos cuentan como la grasa pautada', () => {
 
   it('se explica que la grasa la cubren los frutos secos', () => {
     const e = scaleRecipe(conNueces, { grasas: 1, almidones: 1 });
-    expect(e.notas.join(' ')).toMatch(/frutos secos/i);
+    expect(e.notas.join(' ')).toMatch(/grasas proteicas/i);
   });
 
   it('sin grasa pautada de ninguna clase, no hay grasa que repartir', () => {

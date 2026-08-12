@@ -2,7 +2,7 @@ import type { Alimento } from '../types/food';
 import type { Ingrediente, Receta, RecipeBase } from '../types/recipe';
 import type { ExchangeGroupId } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
-import { exchangesToMacros } from './exchanges';
+import { exchangesToMacros, esCompuesto } from './exchanges';
 import { kcalFromMacros, snapHalf } from './macros';
 import { calcularPorcion } from './portions';
 
@@ -46,6 +46,14 @@ export interface ComposicionReceta {
 export function gramosPorIntercambio(food: Alimento): number | undefined {
   // Los alimentos libres (bebidas, alcohol) no tienen porción de intercambio.
   if (!food.grupo) return undefined;
+  /**
+   * En un compuesto la porción es la medida casera entera, no un intercambio
+   * de un grupo: no se puede coger «un almidón» de una mezcla de tortitas sin
+   * llevarse también su proteína.
+   */
+  if (esCompuesto(food)) return food.gramos && food.intercambios
+    ? food.gramos / food.intercambios
+    : food.gramos || undefined;
   if (food.gramos && food.intercambios) return food.gramos / food.intercambios;
   if (food.nutrientes) {
     const p = calcularPorcion(food.nutrientes, food.grupo);

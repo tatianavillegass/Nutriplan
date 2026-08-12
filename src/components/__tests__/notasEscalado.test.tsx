@@ -50,7 +50,7 @@ const PAUTADO = { grasas: 1, almidones: 2 } as const;
 describe('Por qué han salido esas cantidades', () => {
   it('la nutricionista ve que los frutos secos cubren la grasa pautada', () => {
     render(<ScaledRecipeView receta={CON_NUECES} requeridos={PAUTADO} paraNutricionista />);
-    expect(screen.getByText(/frutos secos/i)).toBeTruthy();
+    expect(screen.getByText(/grasas proteicas/i)).toBeTruthy();
   });
 
   it('el cliente solo ve su plato', () => {

@@ -113,6 +113,9 @@ describe('Integridad del catálogo ampliado', () => {
     // Toda la base viene migrada, así que no hay porciones heredadas sueltas.
     const desviados = FOOD_CATALOG.filter((f) => {
       if (!f.grupo || EXCHANGE_GROUPS[f.grupo].ilimitado) return false;
+      // Los compuestos no siguen esta regla: su medida no es un intercambio de
+      // un grupo, sino el reparto entero que declara `equivale`.
+      if (f.equivale) return false;
       const p = calcularPorcion(f.nutrientes!, f.grupo);
       return p ? Math.abs(p.gramos - f.gramos) / f.gramos > 0.02 : false;
     }).map((f) => f.nombre);

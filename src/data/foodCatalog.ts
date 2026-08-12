@@ -13,6 +13,13 @@ import { FOOD_CATALOG_COMPLEMENTOS } from './foodCatalogBase';
  * intercambios: sirven para registrarlos como extras.
  */
 const FOOD_CATALOG_HOJA: Alimento[] = [
+  /**
+   * Primer alimento compuesto del catálogo. Una medida son 2 almidones y
+   * 2 proteicos magros, los dos enteros: por eso lleva `equivale` en vez de
+   * forzarla dentro de un grupo, que mentiría siempre en el otro macro.
+   * Etiqueta: 55 g → 200 kcal, 15 g de proteína, 27 g de hidrato, 3 g de grasa.
+   */
+  { id: 'a-mezcla-tortitas-proteicas', nombre: 'Mezcla de tortitas proteicas (Birch Benders)', grupo: 'almidones', medida_casera: '1/3 taza', gramos: 55, intercambios: 1, equivale: { almidones: 2, proteicos_magros: 2 }, nutrientes: { kcal: 364.0, hc: 50.0, proteina: 27.3, grasa: 6.0 }, comidas_sugeridas: ['desayuno', 'merienda'], alergenos: ['gluten', 'lactosa'], apto: ['vegetariano'] },
   { id: 'a-arroz-blanco-crudo', nombre: 'Arroz blanco crudo', grupo: 'almidones', medida_casera: '1/4 taza', gramos: 18, intercambios: 1, nutrientes: { kcal: 345.0, hc: 78.0, proteina: 7.0, grasa: 0.6 }, comidas_sugeridas: ['desayuno', 'almuerzo', 'comida', 'merienda', 'cena'], alergenos: [], apto: ['vegetariano', 'vegano', 'sin_gluten', 'sin_lactosa'] },
   { id: 'a-arroz-blanco-cocido', nombre: 'Arroz blanco cocido', grupo: 'almidones', medida_casera: '1/2 taza', gramos: 50, intercambios: 1, nutrientes: { kcal: 130.0, hc: 28.0, proteina: 2.7, grasa: 0.3 }, comidas_sugeridas: ['desayuno', 'almuerzo', 'comida', 'merienda', 'cena'], alergenos: [], apto: ['vegetariano', 'vegano', 'sin_gluten', 'sin_lactosa'] },
   { id: 'a-arroz-blanco-microondas', nombre: 'Arroz blanco microondas', grupo: 'almidones', medida_casera: '1/2 taza', gramos: 50, intercambios: 1, nutrientes: { kcal: 125.0, hc: 27.0, proteina: 2.5, grasa: 0.3 }, comidas_sugeridas: ['desayuno', 'almuerzo', 'comida', 'merienda', 'cena'], alergenos: [], apto: ['vegetariano', 'vegano', 'sin_gluten', 'sin_lactosa'] },

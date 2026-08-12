@@ -6,11 +6,74 @@ import {
 } from '../data/exchangeGroups';
 import type { ExchangeGrid, Meal } from '../types/plan';
 import type { MacroGrams } from '../types/calculations';
+import type { Alimento } from '../types/food';
 import { kcalFromMacros } from './macros';
 
 export type ExchangeCounts = Partial<Record<ExchangeGroupId, number>>;
 
 const ZERO: MacroGrams = { proteina: 0, hc: 0, grasa: 0 };
+
+/** Un alimento que gasta intercambios de más de un grupo a la vez. */
+export function esCompuesto(food: Alimento): boolean {
+  return !!food.equivale && Object.values(food.equivale).some((n) => (n ?? 0) > 0);
+}
+
+/**
+ * QUÉ GASTA LO QUE SE HA MARCADO
+ *
+ * Para casi todo, marcar n porciones gasta n intercambios de su grupo. Para un
+ * alimento compuesto, cada porción es una medida casera y gasta el reparto que
+ * lleva declarado: una medida de mezcla de tortitas descuenta almidones y
+ * proteína a la vez, que es justo lo que se come.
+ */
+export function aporteDeAlimento(food: Alimento, porciones: number): ExchangeCounts {
+  if (!porciones) return {};
+  if (esCompuesto(food)) {
+    const out: ExchangeCounts = {};
+    for (const [g, n] of Object.entries(food.equivale!) as [ExchangeGroupId, number][]) {
+      if (n) out[g] = (out[g] ?? 0) + n * porciones;
+    }
+    return out;
+  }
+  return food.grupo ? { [food.grupo]: porciones } : {};
+}
+
+/** Los grupos que ocupa un alimento: uno normalmente, varios si es compuesto. */
+export function gruposDeAlimento(food: Alimento): ExchangeGroupId[] {
+  if (esCompuesto(food)) {
+    return (Object.entries(food.equivale!) as [ExchangeGroupId, number][])
+      .filter(([, n]) => n > 0)
+      .map(([g]) => g);
+  }
+  return food.grupo ? [food.grupo] : [];
+}
+
+/**
+ * Lo que gasta una medida, en palabras: «2 almidones + 2 proteicos magros».
+ * Es lo que hace entendible el alimento compuesto, porque si no la clienta no
+ * sabe por qué al marcarlo se le mueven dos contadores.
+ */
+export function describeEquivalencia(food: Alimento): string {
+  if (!esCompuesto(food)) return '';
+  return (Object.entries(food.equivale!) as [ExchangeGroupId, number][])
+    .filter(([, n]) => n > 0)
+    .sort(([a], [b]) => (EXCHANGE_GROUPS[a]?.orden ?? 0) - (EXCHANGE_GROUPS[b]?.orden ?? 0))
+    .map(([g, n]) => {
+      const nombre = EXCHANGE_GROUPS[g]?.nombre.toLowerCase() ?? g;
+      const cantidad = n === 0.5 ? '½' : String(n);
+      return `${cantidad} ${nombre}`;
+    })
+    .join(' + ');
+}
+
+/** Suma dos repartos de intercambios. */
+export function sumarCounts(a: ExchangeCounts, b: ExchangeCounts): ExchangeCounts {
+  const out: ExchangeCounts = { ...a };
+  for (const [g, n] of Object.entries(b) as [ExchangeGroupId, number][]) {
+    if (n) out[g] = (out[g] ?? 0) + n;
+  }
+  return out;
+}
 
 /** Intercambios → macros. Única vía permitida (regla §10.6: todo trazable a la tabla). */
 export function exchangesToMacros(counts: ExchangeCounts): MacroGrams {
