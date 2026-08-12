@@ -178,6 +178,24 @@ export function recetasDeComida(
   return (Array.isArray(v) ? v : [v]).filter(Boolean);
 }
 
+/**
+ * LAS COMIDAS QUE EL DÍA TIENE DE VERDAD
+ *
+ * Un tipo de día arranca con las cinco de siempre, pero si a la merienda no se
+ * le reparte ningún intercambio es que ese día no hay merienda. No debe contar
+ * en «cómo va tu día» ni dejar el anillo a medias: quien desayuna, come y cena
+ * y lo marca todo, ha terminado el día.
+ *
+ * Si no hay nada repartido en ninguna comida el día está a medio hacer, así
+ * que se devuelven todas y ya se irá viendo.
+ */
+export function comidasConPauta(dayType: DayType): Meal[] {
+  const conPauta = dayType.meals.filter((m) =>
+    Object.values(dayType.grid[m.id] ?? {}).some((n) => (n ?? 0) > 0),
+  );
+  return conPauta.length ? conPauta : dayType.meals;
+}
+
 export const DEFAULT_MEALS: Meal[] = [
   { id: 'desayuno', nombre: 'Desayuno', slot: 'desayuno', orden: 1 },
   { id: 'almuerzo', nombre: 'Almuerzo', slot: 'almuerzo', orden: 2 },

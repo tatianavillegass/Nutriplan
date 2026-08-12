@@ -112,17 +112,19 @@ export function MealCard({
                 ⇄ Otro plato <span className="tnum text-brand-400">{i + 1}/{opciones.length}</span>
               </button>
             )}
+            {/* Con un ✓ gris sobre la foto no se veía que fuera pulsable:
+                ahora es una pastilla con su palabra, como «Otro plato». */}
             <button
               onClick={onAlternarHecha}
               aria-label={hecha ? 'Desmarcar como hecha' : 'Marcar como hecha'}
               title={hecha ? 'Desmarcar' : 'Marcar como hecha'}
-              className={`flex h-9 w-9 items-center justify-center rounded-full text-sm shadow-md transition ${
+              className={`flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold shadow-md transition ${
                 hecha
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-white text-slate-300 hover:text-emerald-500'
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-white text-brand-800 hover:bg-emerald-50 hover:text-emerald-700'
               }`}
             >
-              ✓
+              ✓ {hecha ? 'Hecha' : 'Marcar hecha'}
             </button>
           </div>
         </div>

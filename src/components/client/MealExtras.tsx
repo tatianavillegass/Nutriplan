@@ -53,10 +53,10 @@ export function MealExtras({
           <button
             onClick={() => setAbierto((v) => !v)}
             aria-expanded={abierto}
-            className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
               abierto
-                ? 'border-amber-300 bg-amber-50 text-amber-800'
-                : 'border-slate-200 text-slate-500 hover:border-amber-300 hover:text-amber-700'
+                ? 'border-amber-400 bg-amber-100 text-amber-900'
+                : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
             }`}
           >
             {abierto ? 'Cancelar' : '+ Añadir extra'}

@@ -1,5 +1,6 @@
 import type { Alimento } from '../types/food';
 import type { DayType } from '../types/plan';
+import { comidasConPauta } from '../types/plan';
 import type { Extra, RegistroDia } from '../types/diary';
 import type { MacroGrams } from '../types/calculations';
 import { EXCHANGE_GROUPS, type MacroBucket } from '../data/exchangeGroups';
@@ -205,8 +206,18 @@ export function adherenciaDelDia(
   registro: RegistroDia | undefined,
   dayType: DayType | undefined,
 ): AdherenciaDia {
-  const comidasTotales = dayType?.meals.length ?? 0;
-  const comidasCumplidas = registro?.cumplidas?.length ?? 0;
+  /**
+   * Sólo cuentan las comidas que ese día llevan algo pautado: si no hay
+   * merienda, el anillo no puede quedarse corto por una merienda que no
+   * existe.
+   */
+  const comidas = dayType ? comidasConPauta(dayType) : [];
+  const comidasTotales = comidas.length;
+  const ids = new Set(comidas.map((m) => m.id));
+  const cumplidas = registro?.cumplidas ?? [];
+  const comidasCumplidas = comidasTotales
+    ? cumplidas.filter((id) => ids.has(id)).length
+    : cumplidas.length;
   const { kcal } = totalExtras(registro?.extras ?? []);
   return {
     fecha: registro?.fecha ?? '',

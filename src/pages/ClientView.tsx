@@ -15,7 +15,7 @@ import { MealExtras } from '../components/client/MealExtras';
 import { PlanDocument } from '../components/export/PlanDocument';
 import { usePrintDocument } from '../components/export/printing';
 import { Button, EmptyState, fmt } from '../components/common/ui';
-import { recetasDeComida, FASE_POR_NUMERO } from '../types/plan';
+import { recetasDeComida, comidasConPauta, FASE_POR_NUMERO } from '../types/plan';
 import { claveFecha, fechaLegible } from '../types/diary';
 import { balanceDelDia, extrasDeComida } from '../utils/diary';
 import { elegirOpcion, fijarAlimento, marcarAlimento } from '../utils/marcado';
@@ -115,6 +115,12 @@ export function ClientView() {
   const nombreMomento = (momento: string) =>
     dayType.meals.find((m) => m.id === momento)?.nombre;
 
+  /**
+   * Las comidas de hoy: las que llevan algo pautado. Si un día no tiene
+   * merienda, no se enseña ni cuenta para el «3 de 3 hechas».
+   */
+  const comidas = comidasConPauta(dayType);
+
   return (
     <>
       <div className="screen-only space-y-5">
@@ -208,7 +214,7 @@ export function ClientView() {
             {fmt(balance.total.grasa, 0)} g
           </span>
           <span className="text-slate-500">
-            {(registro?.cumplidas ?? []).length}/{dayType.meals.length} comidas hechas
+            {comidas.filter((m) => cumplida(m.id)).length}/{comidas.length} comidas hechas
           </span>
           {Math.abs(balance.kcalDiferencia) > 20 && (
             <span
@@ -233,7 +239,7 @@ export function ClientView() {
         {/* ── FASE 1 ─────────────────────────────── */}
         {plan.fase === 1 && (
           <div className="space-y-5">
-            {dayType.meals.map((m) => {
+            {comidas.map((m) => {
               const opciones = recetasDeComida(dayType.recetasAsignadas, m.id)
                 .map((rid) => recipes.find((r) => r.id === rid))
                 .filter(Boolean) as typeof recipes;
@@ -277,7 +283,7 @@ export function ClientView() {
                 </div>
               );
             })}
-            {!dayType.meals.some((m) => recetasDeComida(dayType.recetasAsignadas, m.id).length) && (
+            {!comidas.some((m) => recetasDeComida(dayType.recetasAsignadas, m.id).length) && (
               <EmptyState title="Aún no hay recetas asignadas">
                 Tu nutricionista todavía no ha elegido las recetas de este día.
               </EmptyState>
@@ -288,7 +294,7 @@ export function ClientView() {
         {/* ── FASE 2 ─────────────────────────────── */}
         {plan.fase === 2 && (
           <div className="space-y-4">
-            {dayType.meals.map((m) => (
+            {comidas.map((m) => (
               <div key={m.id} id={`comida-${m.id}`} className="scroll-mt-20">
                 <ScaledOptionsBoard
                   dayType={dayType}
@@ -309,10 +315,10 @@ export function ClientView() {
                 <div className="mt-1.5 flex justify-end no-print">
                   <button
                     onClick={() => alternarCumplida(m.id)}
-                    className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                       cumplida(m.id)
-                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 text-slate-500 hover:border-brand-300'
+                        ? 'border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100'
                     }`}
                   >
                     {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
@@ -328,7 +334,7 @@ export function ClientView() {
         {plan.fase === 3 &&
           (interactivo ? (
             <div className="space-y-4">
-              {dayType.meals.map((m) => (
+              {comidas.map((m) => (
                 <div key={m.id} id={`comida-${m.id}`} className="scroll-mt-20">
                   <FoodPortionPicker
                     dayType={dayType}
@@ -349,10 +355,10 @@ export function ClientView() {
                   <div className="mt-1.5 flex justify-end no-print">
                     <button
                       onClick={() => alternarCumplida(m.id)}
-                      className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                         cumplida(m.id)
-                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                          : 'border-slate-200 text-slate-500 hover:border-brand-300'
+                          ? 'border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700'
+                          : 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100'
                       }`}
                     >
                       {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
@@ -364,7 +370,7 @@ export function ClientView() {
             </div>
           ) : (
             <div className="space-y-4">
-              {dayType.meals.map((m) => (
+              {comidas.map((m) => (
                 <MealOptionsBoard
                   key={m.id}
                   dayType={dayType}

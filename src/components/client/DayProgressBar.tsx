@@ -1,4 +1,5 @@
 import type { DayType } from '../../types/plan';
+import { comidasConPauta } from '../../types/plan';
 import type { PorcionesMarcadas } from '../../types/diary';
 
 interface Props {
@@ -27,7 +28,8 @@ function estadoDe(mealId: string, porciones: PorcionesMarcadas, cumplidas: strin
  * la página.
  */
 export function DayProgressBar({ dayType, porciones, cumplidas, onIr }: Props) {
-  const estados = dayType.meals.map((m) => ({
+  /** Sólo las comidas con algo pautado: las vacías ese día no existen. */
+  const estados = comidasConPauta(dayType).map((m) => ({
     meal: m,
     estado: estadoDe(m.id, porciones, cumplidas),
   }));
