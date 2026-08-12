@@ -5,10 +5,11 @@ import { RECETAS_POR_COMIDA } from '../../types/plan';
 import type { Client } from '../../types/client';
 import type { Alimento, MealSlot } from '../../types/food';
 import { matchRecipes } from '../../utils/recipeMatcher';
+import { coincide } from '../../utils/similitud';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { ScaledRecipeView } from './ScaledRecipeView';
 import { RecipeQuickEditor } from './RecipeQuickEditor';
-import { Badge, Button, EmptyState } from '../common/ui';
+import { Badge, Button, EmptyState, Input } from '../common/ui';
 import { RecipeMeta } from '../common/RecipeMeta';
 
 interface Props {
@@ -69,28 +70,54 @@ export function RecipeRecommender({
   onEditarReceta,
 }: Props) {
   const [editando, setEditando] = useState<string | null>(null);
-  /** Vacío = el tipo de comida que toca aquí. */
-  const [slot, setSlot] = useState<MealSlot | ''>('');
+  /**
+   * De entrada, el tipo de comida que toca aquí: en el desayuno se enseñan
+   * recetas de desayuno. Antes la categoría sólo sumaba puntos, así que un
+   * plato de comida cuyo perfil de grupos encajara bien con el reparto del
+   * desayuno se colaba por delante de los desayunos de verdad.
+   *
+   * `'todas'` es la vía de escape, para cuando una receta se esconde porque
+   * se le olvidó ponerle la categoría.
+   */
+  const [slot, setSlot] = useState<MealSlot | 'todas'>(meal.slot);
   const [tags, setTags] = useState<string[]>([]);
+  /** Ir a por una receta concreta, esté donde esté en la puntuación. */
+  const [busqueda, setBusqueda] = useState('');
   const reparto = dayType.grid[meal.id] ?? {};
 
   const todosLosTags = useMemo(() => tagsDisponibles(recetas), [recetas]);
 
-  /**
-   * De partida no se esconde nada: se ordenan poniendo delante las de esta
-   * comida. Al elegir un tipo de comida sí se recorta a las de esa categoría,
-   * que es lo que sirve para ir a buscar «algo de desayuno» a propósito.
-   *
-   * El filtro de tags es un Y: «dulce» + «huevos» son las que llevan ambos.
-   */
+  /** El filtro de tags es un Y: «dulce» + «huevos» son las que llevan ambos. */
   const candidatas = useMemo(
     () =>
       recetas.filter(
         (r) =>
-          (!slot || r.categorias.includes(slot)) && tags.every((t) => r.tags.includes(t)),
+          (slot === 'todas' || r.categorias.includes(slot)) &&
+          tags.every((t) => r.tags.includes(t)),
       ),
     [recetas, slot, tags],
   );
+
+  /**
+   * BUSCAR UNA RECETA CONCRETA
+   *
+   * El recomendador sólo enseña las ocho que mejor encajan con el reparto, y
+   * un batido de proteína pierde puntos por cada grupo que no cubre: puede
+   * quedar el decimocuarto y no verse nunca. Buscando por nombre se salta la
+   * puntuación entera y se busca en todo el banco, sin filtros.
+   *
+   * Las bloqueadas por las restricciones del cliente salen también, con el
+   * motivo: esconderlas sin explicación es lo que hacía parecer que faltaban.
+   */
+  const encontradas = useMemo(() => {
+    const q = busqueda.trim();
+    if (q.length < 2) return [];
+    return matchRecipes(
+      recetas.filter((r) => coincide(r.nombre, q)),
+      reparto,
+      { slot: meal.slot, limite: 12, client, foods, incluirBloqueadas: true },
+    );
+  }, [busqueda, recetas, reparto, meal.slot, client, foods]);
 
   const sugerencias = useMemo(
     () =>
@@ -117,9 +144,13 @@ export function RecipeRecommender({
     [candidatas, reparto, meal.slot, client, foods],
   );
 
-  const filtrando = !!slot || tags.length > 0;
+  const filtrando = slot !== meal.slot || tags.length > 0;
   const alternarTag = (t: string) =>
     setTags((v) => (v.includes(t) ? v.filter((x) => x !== t) : [...v, t]));
+
+  /** Cuántas se están escondiendo por no ser de este tipo de comida. */
+  const ocultasPorSlot =
+    slot === 'todas' ? 0 : recetas.filter((r) => !r.categorias.includes(slot)).length;
 
   const elegidas = seleccionadas
     .map((id) => recetas.find((r) => r.id === id))
@@ -169,15 +200,15 @@ export function RecipeRecommender({
           Tipo de comida
           <select
             value={slot}
-            onChange={(e) => setSlot(e.target.value as MealSlot | '')}
+            onChange={(e) => setSlot(e.target.value as MealSlot | 'todas')}
             className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-700 outline-none focus:border-brand-400"
           >
-            <option value="">Todas</option>
             {SLOTS.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}
               </option>
             ))}
+            <option value="todas">Todas ({recetas.length})</option>
           </select>
         </label>
 
@@ -206,13 +237,81 @@ export function RecipeRecommender({
         {filtrando && (
           <button
             onClick={() => {
-              setSlot('');
+              setSlot(meal.slot);
               setTags([]);
             }}
             className="ml-auto text-[10px] text-slate-400 underline hover:text-slate-600"
           >
             Quitar filtros
           </button>
+        )}
+      </div>
+
+      {/* ── Buscar una receta concreta ────────────────────── */}
+      <div className="mb-3">
+        <Input
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="¿Buscas una receta concreta? Escribe su nombre…"
+          className="w-full text-sm"
+        />
+
+        {busqueda.trim().length >= 2 && (
+          <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/40 p-2.5">
+            {encontradas.length === 0 ? (
+              <p className="text-[11px] text-slate-500">
+                No hay ninguna receta con ese nombre en el banco.
+              </p>
+            ) : (
+              <>
+                <p className="mb-1.5 text-[10px] tracking-wide text-brand-700 uppercase">
+                  En todo el banco, sin filtros
+                </p>
+                <ul className="space-y-1">
+                  {encontradas.map((s) => {
+                    const activa = seleccionadas.includes(s.receta.id);
+                    return (
+                      <li key={s.receta.id}>
+                        <button
+                          onClick={() => !s.bloqueada && onToggle(s.receta.id)}
+                          disabled={s.bloqueada || (!activa && completo)}
+                          className={`flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left text-xs transition disabled:cursor-not-allowed ${
+                            activa
+                              ? 'bg-brand-600 text-white'
+                              : s.bloqueada
+                                ? 'bg-white text-slate-400'
+                                : 'bg-white text-slate-700 hover:bg-brand-100'
+                          }`}
+                        >
+                          <span className="flex-1">
+                            {s.receta.nombre}
+                            {!!s.faltantes.length && !s.bloqueada && (
+                              <span
+                                className={`ml-1.5 text-[10px] ${activa ? 'text-brand-100' : 'text-amber-600'}`}
+                              >
+                                no cubre{' '}
+                                {s.faltantes.map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase()).join(', ')}
+                              </span>
+                            )}
+                            {s.bloqueada && (
+                              <span className="ml-1.5 text-[10px] text-red-600">
+                                bloqueada — {s.motivosBloqueo?.join(' · ')}
+                              </span>
+                            )}
+                          </span>
+                          {activa && <span className="shrink-0 text-[10px]">✓ elegida</span>}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-1.5 text-[10px] leading-snug text-slate-500">
+                  Aquí sale el banco entero: puedes asignar una receta aunque no cubra todo lo
+                  pautado. Lo que falte se completa con otra opción o en otra comida.
+                </p>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -277,11 +376,14 @@ export function RecipeRecommender({
 
         {!sugerencias.length && (
           <EmptyState title="Sin recetas compatibles">
-            {filtrando ? (
+            {slot !== 'todas' && ocultasPorSlot > 0 ? (
               <p>
-                Con estos filtros no queda ninguna que encaje con el reparto. Quita alguno para ver
-                más.
+                No hay recetas de {SLOTS.find((s) => s.id === slot)?.nombre.toLowerCase()} que
+                encajen con este reparto. Pon «Todas» en el tipo de comida para ver el resto del
+                banco, o búscala por su nombre.
               </p>
+            ) : tags.length > 0 ? (
+              <p>Con estos tags no queda ninguna que encaje con el reparto.</p>
             ) : bloqueadas.length > 0 ? (
               <>
                 <p>
@@ -307,6 +409,43 @@ export function RecipeRecommender({
       {completo && (
         <p className="mt-2 text-[11px] text-slate-400">
           Ya hay {RECETAS_POR_COMIDA} opciones. Quita una para poder cambiarla.
+        </p>
+      )}
+
+      {/*
+        Antes esto sólo se decía cuando no quedaba ninguna sugerencia: si había
+        ocho válidas, una receta descartada por una alergia desaparecía sin más
+        y parecía que faltaba del banco.
+      */}
+      {sugerencias.length > 0 && bloqueadas.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[11px] text-slate-400 hover:text-slate-600">
+            {bloqueadas.length}{' '}
+            {bloqueadas.length === 1
+              ? 'receta encajaba pero está descartada'
+              : 'recetas encajaban pero están descartadas'}{' '}
+            por lo que {client.nombre.split(' ')[0]} no puede tomar
+          </summary>
+          <ul className="mt-1 space-y-0.5">
+            {bloqueadas.map((b) => (
+              <li key={b.receta.id} className="text-[11px] text-red-600">
+                {b.receta.nombre}: {b.motivosBloqueo?.join(' · ')}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {sugerencias.length > 0 && slot !== 'todas' && ocultasPorSlot > 0 && (
+        <p className="mt-1 text-[11px] text-slate-400">
+          Se están enseñando sólo recetas de{' '}
+          {SLOTS.find((s) => s.id === slot)?.nombre.toLowerCase()}.{' '}
+          <button
+            onClick={() => setSlot('todas')}
+            className="underline hover:text-slate-600"
+          >
+            Ver las {ocultasPorSlot} restantes
+          </button>
         </p>
       )}
 

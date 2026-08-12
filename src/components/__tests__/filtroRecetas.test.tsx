@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { RecipeRecommender } from '../phase1/RecipeRecommender';
 import { FOOD_CATALOG } from '../../data/foodCatalog';
@@ -65,10 +65,54 @@ const pintar = () =>
   );
 
 describe('Filtrar las recetas al pautar', () => {
-  it('sin filtros salen todas las que encajan', () => {
+  it('de entrada sólo salen las del tipo de comida que toca', () => {
     pintar();
     expect(screen.getByText('Tostada con huevo')).toBeTruthy();
     expect(screen.getByText('Yogur con avena')).toBeTruthy();
+  });
+
+  /**
+   * Lo que hacía que el gyro bowl saliera en el desayuno: la categoría sólo
+   * sumaba puntos, no filtraba, así que un plato de comida con buen perfil de
+   * grupos se colaba por delante de los desayunos.
+   */
+  it('una receta de otra comida no se cuela aunque encaje de macros', () => {
+    const gyro = receta('r4', 'Gyro bowl', ['salado']);
+    gyro.categorias = ['comida', 'cena'];
+    render(
+      <RecipeRecommender
+        dayType={DIA}
+        meal={DESAYUNO}
+        recetas={[...BANCO, gyro]}
+        client={CLIENTE}
+        seleccionadas={[]}
+        yaAsignadas={[]}
+        onToggle={() => {}}
+        foods={FOOD_CATALOG}
+      />,
+    );
+    expect(screen.queryByText('Gyro bowl')).toBeNull();
+    // Y se avisa de que hay más banco detrás del filtro.
+    expect(screen.getByText(/Ver la 1 restantes|Ver las 1 restantes/)).toBeTruthy();
+  });
+
+  it('poniendo «Todas» vuelve a salir', () => {
+    const gyro = receta('r4', 'Gyro bowl', ['salado']);
+    gyro.categorias = ['comida', 'cena'];
+    render(
+      <RecipeRecommender
+        dayType={DIA}
+        meal={DESAYUNO}
+        recetas={[...BANCO, gyro]}
+        client={CLIENTE}
+        seleccionadas={[]}
+        yaAsignadas={[]}
+        onToggle={() => {}}
+        foods={FOOD_CATALOG}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/Tipo de comida/), { target: { value: 'todas' } });
+    expect(screen.getByText('Gyro bowl')).toBeTruthy();
   });
 
   it('al pulsar un tag deja sólo las que lo llevan', () => {
@@ -100,6 +144,76 @@ describe('Filtrar las recetas al pautar', () => {
     const selector = screen.getByLabelText(/Tipo de comida/);
     fireEvent.change(selector, { target: { value: 'cena' } });
     // Ninguna receta del banco es de cena: el aviso lo explica.
-    expect(screen.getByText(/Con estos filtros no queda ninguna/)).toBeTruthy();
+    expect(screen.getByText(/No hay recetas de cena/)).toBeTruthy();
+  });
+});
+
+/**
+ * El batido de proteína pierde puntos por cada grupo que no cubre y se queda
+ * fuera de las ocho sugerencias. Buscándolo por su nombre se salta la
+ * puntuación: si no, no habría manera de asignarlo.
+ */
+describe('Buscar una receta concreta por su nombre', () => {
+  const batido = receta('r9', 'Batido de café y proteína', ['dulce']);
+  batido.base = { proteicos_magros: 2 };
+  batido.categorias = ['desayuno'];
+
+  const conBatido = () =>
+    render(
+      <RecipeRecommender
+        dayType={DIA}
+        meal={DESAYUNO}
+        // Banco grande: el batido nunca llegaría al top 8.
+        recetas={[
+          ...BANCO,
+          ...Array.from({ length: 10 }, (_, i) => receta(`x${i}`, `Relleno ${i}`, ['salado'])),
+          batido,
+        ]}
+        client={CLIENTE}
+        seleccionadas={[]}
+        yaAsignadas={[]}
+        onToggle={() => {}}
+        foods={FOOD_CATALOG}
+      />,
+    );
+
+  it('no aparece entre las sugerencias, pero sí al buscarlo', () => {
+    conBatido();
+    expect(screen.queryByText('Batido de café y proteína')).toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText(/Buscas una receta concreta/), {
+      target: { value: 'batido' },
+    });
+    expect(screen.getByText('Batido de café y proteína')).toBeTruthy();
+  });
+
+  it('se puede asignar aunque no cubra todo lo pautado', () => {
+    const onToggle = vi.fn();
+    render(
+      <RecipeRecommender
+        dayType={DIA}
+        meal={DESAYUNO}
+        recetas={[batido]}
+        client={CLIENTE}
+        seleccionadas={[]}
+        yaAsignadas={[]}
+        onToggle={onToggle}
+        foods={FOOD_CATALOG}
+      />,
+    );
+    fireEvent.change(screen.getByPlaceholderText(/Buscas una receta concreta/), {
+      target: { value: 'batido' },
+    });
+    // El de la lista de búsqueda, no el de las sugerencias.
+    fireEvent.click(screen.getAllByText('Batido de café y proteína')[0]);
+    expect(onToggle).toHaveBeenCalledWith('r9');
+  });
+
+  it('si no existe, lo dice en vez de callarse', () => {
+    conBatido();
+    fireEvent.change(screen.getByPlaceholderText(/Buscas una receta concreta/), {
+      target: { value: 'paella' },
+    });
+    expect(screen.getByText(/No hay ninguna receta con ese nombre/)).toBeTruthy();
   });
 });
