@@ -1,5 +1,5 @@
 import type { ExchangeGroupId, Familia } from '../data/exchangeGroups';
-import { EXCHANGE_GROUPS, MIN_VERDURA_G } from '../data/exchangeGroups';
+import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
 import type { Alimento } from '../types/food';
 import { exchangesToMacros, type ExchangeCounts } from './exchanges';
@@ -279,8 +279,13 @@ export function scaleRecipe(
         ...ing,
         factor: 1,
         cantidad_final: ing.cantidad_base,
+        /**
+         * La verdura va «al gusto» y punto. El mínimo de medio plato es una
+         * regla del esquema, no de cada receta: repetido en cada línea de cada
+         * plato acababa siendo ruido y nadie lo leía.
+         */
         display: esVerdura
-          ? `al gusto (mín. ${MIN_VERDURA_G} g)`
+          ? 'al gusto'
           : ing.cantidad_base == null
             ? ing.unidad || 'al gusto'
             : `${ing.cantidad_base} ${ing.unidad}`,

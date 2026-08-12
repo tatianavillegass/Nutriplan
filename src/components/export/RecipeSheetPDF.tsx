@@ -82,8 +82,8 @@ export function RecipeSheetPDF({
             </div>
 
             <p className="mt-6 text-[10px] leading-snug text-slate-400">
-              Los gramajes ya están escalados a tus intercambios. La verdura es libre: mínimo 200 g
-              (medio plato) en comida y cena.
+              Los gramajes ya están escalados a tus intercambios. La verdura va al gusto: no cuenta
+              intercambios.
             </p>
           </section>
         );

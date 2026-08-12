@@ -59,6 +59,44 @@ export function totalExtras(extras: Extra[]): { macros: MacroGrams; kcal: number
   return { macros, kcal: extras.reduce((s, e) => s + e.kcal, 0) };
 }
 
+/**
+ * MARGEN ACEPTABLE DE EXTRAS
+ *
+ * Un extra no rompe el día, lo desplaza. Hasta un 10 % sobre lo pautado el
+ * día sigue en línea; hasta un 25 % es un desvío que sólo importa si se
+ * repite. Por encima, se dice y se pasa página.
+ *
+ * Los dos sitios donde se habla de extras (cada comida y el resumen del día)
+ * usan estos mismos números: si no, la app se contradice sola.
+ */
+export const MARGEN_EXTRAS_VERDE = 10;
+export const MARGEN_EXTRAS_AMBAR = 25;
+
+export type TonoExtras = 'ok' | 'aviso' | 'alto';
+
+export function veredictoExtras(pesoExtras: number): { tono: TonoExtras; texto: string } {
+  if (pesoExtras < MARGEN_EXTRAS_VERDE) {
+    return { tono: 'ok', texto: 'Un desvío pequeño: el día sigue en línea.' };
+  }
+  if (pesoExtras < MARGEN_EXTRAS_AMBAR) {
+    return {
+      tono: 'aviso',
+      texto: 'Desvío moderado. Si se repite varios días, coméntalo en consulta.',
+    };
+  }
+  return { tono: 'alto', texto: 'Desvío grande sobre lo pautado de hoy. Mañana se retoma sin más.' };
+}
+
+/** Los extras que se tomaron en una comida concreta. */
+export function extrasDeComida(extras: Extra[], mealId: string): Extra[] {
+  return extras.filter((e) => e.momento === mealId);
+}
+
+/** Los que no se apuntaron en ninguna comida: picoteo suelto del día. */
+export function extrasSinComida(extras: Extra[], mealIds: string[]): Extra[] {
+  return extras.filter((e) => !e.momento || !mealIds.includes(e.momento));
+}
+
 /** Macros que aportan las porciones que el cliente ha marcado (Fase 3). */
 export function macrosDePorciones(registro: RegistroDia, foods: Alimento[]): MacroGrams {
   let acc: MacroGrams = { ...CERO };
@@ -93,10 +131,23 @@ export function balanceDelDia(
   const delPlan =
     hayMarcado || !opciones.asumirPlanCumplido ? (hayMarcado ? marcado : { ...CERO }) : pautado;
 
-  const { macros: deExtras, kcal: kcalExtras } = totalExtras(registro?.extras ?? []);
+  const extras = registro?.extras ?? [];
+  const { macros: deExtras, kcal: kcalExtras } = totalExtras(extras);
+
+  /**
+   * Un extra apuntado a ojo («una cerveza, 150 kcal») no tiene macros, así que
+   * no aparecía en el total del día por mucho que el panel de extras sí lo
+   * contara: el cliente apuntaba algo y el contador de arriba no se movía.
+   * Esas calorías sin macros se suman aparte.
+   */
+  const kcalSinMacros = extras.reduce(
+    (s, e) => s + Math.max(0, e.kcal - kcalFromMacros(e.macros)),
+    0,
+  );
 
   const total = suma(delPlan, deExtras);
   const kcalPautado = kcalFromMacros(pautado);
+  const kcalTotal = kcalFromMacros(total) + kcalSinMacros;
 
   return {
     pautado,
@@ -104,13 +155,13 @@ export function balanceDelDia(
     delPlan,
     deExtras,
     total,
-    kcalTotal: kcalFromMacros(total),
+    kcalTotal,
     diferencia: {
       proteina: total.proteina - pautado.proteina,
       hc: total.hc - pautado.hc,
       grasa: total.grasa - pautado.grasa,
     },
-    kcalDiferencia: kcalFromMacros(total) - kcalPautado,
+    kcalDiferencia: kcalTotal - kcalPautado,
     pesoExtras: kcalPautado > 0 ? (kcalExtras / kcalPautado) * 100 : 0,
   };
 }

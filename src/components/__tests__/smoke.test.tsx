@@ -92,7 +92,7 @@ describe('Listas "escoge X" (Fase 2)', () => {
   });
 });
 
-describe('Receta escalada y personalización (Fase 1)', () => {
+describe('Receta escalada (Fase 1)', () => {
   const wok = SEED_RECIPES.find((r) => r.id === 'rc_wok_pollo')!;
 
   it('muestra los gramajes ya escalados', () => {
@@ -108,32 +108,34 @@ describe('Receta escalada y personalización (Fase 1)', () => {
     expect(screen.getByText('10 g')).toBeTruthy();
   });
 
-  it('el panel de personalización recalcula el gramaje al sustituir', () => {
+  /**
+   * El panel de «Personalizar» se retiró: mezclaba quitar ingredientes,
+   * sustituirlos y completar huecos en el momento de comer. Lo que se come de
+   * más se apunta ahora como extra en su comida.
+   */
+  it('ya no hay panel de personalizar', () => {
     render(
       <ScaledRecipeView
         receta={wok}
         requeridos={{ proteicos_magros: 5, almidones: 3, grasas: 2 }}
         foods={FOOD_CATALOG}
-      />,
-    );
-    fireEvent.click(screen.getByText('Personalizar'));
-    const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: 'Merluza cruda' } });
-    // Merluza cruda: 18 g de proteína/100 g → 40 g por intercambio × 5
-    expect(screen.getByText('200 g')).toBeTruthy();
-    expect(screen.getByText(/no alteran el plan/)).toBeTruthy();
-  });
-
-  it('en modo sólo lectura no aparecen los controles', () => {
-    render(
-      <ScaledRecipeView
-        receta={wok}
-        requeridos={{ proteicos_magros: 5, almidones: 3, grasas: 2 }}
-        foods={FOOD_CATALOG}
-        soloLectura
       />,
     );
     expect(screen.queryByText('Personalizar')).toBeNull();
+    expect(screen.queryByText(/Completar la comida/)).toBeNull();
+  });
+
+  it('la verdura va al gusto, sin repetir el mínimo en cada línea', () => {
+    render(
+      <ScaledRecipeView
+        receta={wok}
+        requeridos={{ proteicos_magros: 5, almidones: 3, grasas: 2 }}
+        foods={FOOD_CATALOG}
+      />,
+    );
+    expect(screen.getAllByText('al gusto').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/mín\. 200 g/)).toBeNull();
+    expect(screen.queryByText(/mínimo 200 g/)).toBeNull();
   });
 });
 

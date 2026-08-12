@@ -28,9 +28,9 @@ describe('Escalado proporcional por grupo (§5)', () => {
     expect(esc.factores.grasas).toBe(2);
   });
 
-  it('las verduras no escalan y se muestran como ilimitadas', () => {
-    expect(byName('Brocoli').display).toMatch(/al gusto/);
-    expect(byName('Brocoli').display).toMatch(/200 g/);
+  it('las verduras no escalan: van al gusto y sin repetir el mínimo', () => {
+    expect(byName('Brocoli').display).toBe('al gusto');
+    expect(byName('Brocoli').cantidad_final).toBeNull();
   });
 
   it('avisa de los grupos que la receta no cubre', () => {

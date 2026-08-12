@@ -11,12 +11,13 @@ import { WeekStrip } from '../components/client/WeekStrip';
 import { DayProgressBar } from '../components/client/DayProgressBar';
 import { RecipeShortcuts } from '../components/client/RecipeShortcuts';
 import { ExtrasPanel } from '../components/client/ExtrasPanel';
+import { MealExtras } from '../components/client/MealExtras';
 import { PlanDocument } from '../components/export/PlanDocument';
 import { usePrintDocument } from '../components/export/printing';
 import { Button, EmptyState, fmt } from '../components/common/ui';
 import { recetasDeComida, FASE_POR_NUMERO } from '../types/plan';
 import { claveFecha, fechaLegible } from '../types/diary';
-import { balanceDelDia } from '../utils/diary';
+import { balanceDelDia, extrasDeComida } from '../utils/diary';
 import { elegirOpcion, fijarAlimento, marcarAlimento } from '../utils/marcado';
 
 /** Lo que ve el cliente: su día, lo pautado y lo que va cumpliendo. */
@@ -88,6 +89,31 @@ export function ClientView() {
   };
 
   const cumplida = (mealId: string) => (registro?.cumplidas ?? []).includes(mealId);
+
+  /**
+   * Los extras se apuntan en la comida en la que se tomaron. Todos viven en la
+   * misma lista del día: el `momento` es lo único que dice cuándo fue, y por
+   * eso el resumen del pie sigue sumándolos todos sin enterarse del cambio.
+   */
+  const extras = registro?.extras ?? [];
+  const anadirExtra = (extra: (typeof extras)[number]) => guardar({ extras: [...extras, extra] });
+  const quitarExtra = (extraId: string) =>
+    guardar({ extras: extras.filter((e) => e.id !== extraId) });
+
+  /** El «+ Añadir extra» de una comida: el mismo en las tres fases. */
+  const extrasDe = (mealId: string, nombre: string) => (
+    <MealExtras
+      mealId={mealId}
+      mealNombre={nombre}
+      extras={extrasDeComida(extras, mealId)}
+      foods={foods}
+      onAnadir={anadirExtra}
+      onQuitar={quitarExtra}
+    />
+  );
+
+  const nombreMomento = (momento: string) =>
+    dayType.meals.find((m) => m.id === momento)?.nombre;
 
   return (
     <>
@@ -247,6 +273,7 @@ export function ClientView() {
                       }}
                     />
                   </MealCard>
+                  {extrasDe(m.id, m.nombre)}
                 </div>
               );
             })}
@@ -291,6 +318,7 @@ export function ClientView() {
                     {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
                   </button>
                 </div>
+                {extrasDe(m.id, m.nombre)}
               </div>
             ))}
           </div>
@@ -330,6 +358,7 @@ export function ClientView() {
                       {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
                     </button>
                   </div>
+                  {extrasDe(m.id, m.nombre)}
                 </div>
               ))}
             </div>
@@ -348,10 +377,11 @@ export function ClientView() {
           ))}
 
         <ExtrasPanel
-          extras={registro?.extras ?? []}
+          extras={extras}
           foods={foods}
           balance={balance}
-          onChange={(extras) => guardar({ extras })}
+          nombreMomento={nombreMomento}
+          onChange={(nuevos) => guardar({ extras: nuevos })}
         />
       </div>
 

@@ -4,15 +4,10 @@ import type { Alimento } from '../../types/food';
 import type { ExchangeCounts } from '../../utils/exchanges';
 import { exchangesToMacros } from '../../utils/exchanges';
 import { scaleRecipe } from '../../utils/recipeScaling';
-import {
-  applyCustomization,
-  EMPTY_CUSTOMIZATION,
-  type CustomizationState,
-} from '../../utils/substitutions';
-import { EXCHANGE_GROUPS, MIN_VERDURA_G } from '../../data/exchangeGroups';
+import { applyCustomization, EMPTY_CUSTOMIZATION } from '../../utils/substitutions';
+import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { estadoComida } from '../../utils/completitud';
 import { sumarIntercambios } from '../../utils/anadidos';
-import { RecipeCustomizer } from './RecipeCustomizer';
 import { CompletenessBadge } from './MealCompleteness';
 import { IngredientSwap } from './IngredientSwap';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
@@ -73,9 +68,6 @@ export function ScaledRecipeView({
   paraNutricionista = false,
   sinCabecera = false,
 }: Props) {
-  const [custom, setCustom] = useState<CustomizationState>(EMPTY_CUSTOMIZATION);
-  const [aviso, setAviso] = useState<string | null>(null);
-  const [personalizando, setPersonalizando] = useState(false);
   /**
    * Gramos o medidas caseras. Se mezclaban las dos y confundía: ahora se
    * elige, y la elección vale para toda la lista.
@@ -84,8 +76,8 @@ export function ScaledRecipeView({
 
   const escalada = useMemo(() => scaleRecipe(receta, requeridos, foods), [receta, requeridos, foods]);
   const resultado = useMemo(
-    () => applyCustomization(escalada, requeridos, custom, foods),
-    [escalada, requeridos, custom, foods],
+    () => applyCustomization(escalada, requeridos, EMPTY_CUSTOMIZATION, foods),
+    [escalada, requeridos, foods],
   );
 
   /**
@@ -103,13 +95,8 @@ export function ScaledRecipeView({
     [requeridos, resultado.enPlato],
   );
 
-  const mostrarAviso = (motivo: string) => {
-    setAviso(motivo);
-    setTimeout(() => setAviso(null), 3200);
-  };
-
   return (
-    <div className={personalizando ? 'grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]' : ''}>
+    <div>
       <article className={sinCabecera ? 'print-sheet' : 'print-sheet overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm'}>
         <div className={receta.foto_url && !sinCabecera ? 'gap-5 p-5 sm:grid sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)]' : 'p-5'}>
           {receta.foto_url && !sinCabecera && (
@@ -120,6 +107,9 @@ export function ScaledRecipeView({
             />
           )}
           <div className="min-w-0">
+          {/* Dentro de una tarjeta de comida y sin botones que enseñar, la
+              cabecera sólo dejaba un hueco en blanco. */}
+          {(!sinCabecera || (!soloLectura && (acciones || onCambiarReceta))) && (
           <header className={sinCabecera ? 'mb-3 flex justify-end gap-1.5 no-print' : 'mb-3 flex items-start justify-between gap-3'}>
             {sinCabecera ? null : (
             <div className="min-w-0">
@@ -135,29 +125,20 @@ export function ScaledRecipeView({
                     Cambiar receta
                   </Button>
                 )}
-                <Button
-                  variant={personalizando ? 'primary' : 'outline'}
-                  onClick={() => setPersonalizando((v) => !v)}
-                >
-                  Personalizar
-                </Button>
               </div>
             )}
           </header>
+          )}
 
           <div className="mb-4 border-y border-slate-100 py-3">
             <MacroBar macros={macros} />
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <CompletenessBadge resumen={resumen} />
-              {resumen.estado === 'incompleta' && !soloLectura && !personalizando && (
-                <button
-                  onClick={() => setPersonalizando(true)}
-                  className="text-[11px] font-medium text-brand-600 underline decoration-dotted underline-offset-2 hover:text-brand-800 no-print"
-                >
-                  Completar la comida →
-                </button>
-              )}
-            </div>
+            {/* Si la receta cuadra o no con lo pautado es cosa de quien pauta:
+                a quien come sólo le confundía. */}
+            {paraNutricionista && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <CompletenessBadge resumen={resumen} />
+              </div>
+            )}
           </div>
 
           {paraNutricionista && escalada.notas.length > 0 && (
@@ -279,22 +260,6 @@ export function ScaledRecipeView({
             ))}
           </ul>
 
-          <p className="mt-2 text-[11px] text-emerald-700">
-            Verdura al gusto — mínimo {MIN_VERDURA_G} g (medio plato).
-          </p>
-
-          {resultado.cambios.length > 0 && (
-            <p className="mt-2 text-[11px] text-brand-600 no-print">
-              Tus cambios: {resultado.cambios.join(' · ')}
-            </p>
-          )}
-
-          {aviso && (
-            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 no-print">
-              {aviso}
-            </p>
-          )}
-
           {receta.preparacion && (
             <div className="mt-4 border-t border-slate-100 pt-3">
               <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
@@ -317,22 +282,6 @@ export function ScaledRecipeView({
           </div>
         </div>
       </article>
-
-      {personalizando && !soloLectura && (
-        <RecipeCustomizer
-          ingredientes={escalada.ingredientes}
-          resultado={resultado.ingredientes}
-          foods={foods}
-          state={custom}
-          onChange={setCustom}
-          antes={requeridos}
-          despues={resultado.exchangesDespues}
-          resumen={resumen}
-          extras={resultado.extras}
-          avisos={resultado.avisos}
-          onBloqueado={mostrarAviso}
-        />
-      )}
     </div>
   );
 }
