@@ -391,32 +391,42 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
           </p>
 
           <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5">
-            {(Object.entries(equivale) as [ExchangeGroupId, number][])
-              .filter(([, v]) => v > 0)
-              .map(([g, v]) => (
-                <div key={g} className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={v}
-                    onChange={(e) =>
-                      setEquivale((prev) => ({ ...prev, [g]: Number(e.target.value) || 0 }))
-                    }
-                    className="w-20 text-sm"
-                  />
-                  <span className="flex-1 text-xs text-slate-600">
-                    {EXCHANGE_GROUPS[g].nombre}
-                  </span>
-                  <button
-                    onClick={() => setEquivale((prev) => ({ ...prev, [g]: 0 }))}
-                    className="text-slate-300 transition hover:text-red-600"
-                    aria-label={`Quitar ${EXCHANGE_GROUPS[g].nombre}`}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+            {/*
+              La fila se queda hasta que se pulse la ×. Antes se pintaban sólo
+              las mayores que cero, así que al borrar el 1 para escribir 0,5 la
+              fila desaparecía a mitad de escribir y no había manera de poner
+              medio intercambio.
+            */}
+            {(Object.entries(equivale) as [ExchangeGroupId, number][]).map(([g, v]) => (
+              <div key={g} className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={v}
+                  onChange={(e) =>
+                    setEquivale((prev) => ({
+                      ...prev,
+                      [g]: e.target.value === '' ? 0 : Number(e.target.value),
+                    }))
+                  }
+                  className="w-20 text-sm"
+                />
+                <span className="flex-1 text-xs text-slate-600">{EXCHANGE_GROUPS[g].nombre}</span>
+                <button
+                  onClick={() =>
+                    setEquivale((prev) => {
+                      const { [g]: _quitado, ...resto } = prev;
+                      return resto;
+                    })
+                  }
+                  className="text-slate-300 transition hover:text-red-600"
+                  aria-label={`Quitar ${EXCHANGE_GROUPS[g].nombre}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
 
             <select
               value=""
@@ -427,7 +437,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
               className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 outline-none focus:border-brand-400"
             >
               <option value="">+ Añadir un grupo…</option>
-              {EXCHANGE_GROUP_LIST.filter((g) => !g.ilimitado && !(equivale[g.id]! > 0)).map((g) => (
+              {EXCHANGE_GROUP_LIST.filter((g) => !g.ilimitado && equivale[g.id] == null).map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.nombre}
                 </option>

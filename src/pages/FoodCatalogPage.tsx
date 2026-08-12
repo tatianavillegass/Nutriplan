@@ -8,6 +8,7 @@ import {
 } from '../data/exchangeGroups';
 import { ALERGENO_LABELS, type Alimento } from '../types/food';
 import { calcularPorcion } from '../utils/portions';
+import { esCompuesto, describeEquivalencia } from '../utils/exchanges';
 import { Badge, Button, Card, EmptyState, Input, Select, fmt } from '../components/common/ui';
 
 /**
@@ -169,7 +170,12 @@ export function FoodCatalogPage() {
                             className="h-2 w-2 shrink-0 rounded-sm"
                             style={{ backgroundColor: g?.color ?? "#cbd5e1" }}
                           />
-                          {g?.nombre ?? 'Libre (sin intercambio)'}
+                          {/*
+                            Un compuesto gasta varios grupos, así que enseñar
+                            sólo el suyo engañaba: no había forma de ver desde
+                            la lista si la equivalencia estaba puesta o faltaba.
+                          */}
+                          {esCompuesto(f) ? describeEquivalencia(f) : g?.nombre ?? 'Libre (sin intercambio)'}
                         </span>
                       </td>
                       <td className="tnum py-1.5 text-right font-medium text-brand-800">
