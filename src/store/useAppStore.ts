@@ -69,6 +69,12 @@ interface AppState {
   /** Crea el registro si no existe y devuelve el resultante. */
   upsertRegistro: (clientId: string, fecha: string, patch: Partial<RegistroDia>) => RegistroDia;
   registrosDe: (clientId: string) => RegistroDia[];
+  /**
+   * Un registro que llega del servidor mientras la app está abierta: lo que
+   * la clienta acaba de marcar en su móvil. Sustituye al que hubiera de ese
+   * mismo día sin tocar nada más.
+   */
+  aplicarRegistroRemoto: (registro: RegistroDia) => void;
 
   // Antropometría
   medicionesDe: (clientId: string) => Medicion[];
@@ -512,6 +518,19 @@ export const useAppStore = create<AppState>((set, get) => {
       });
       return actualizado;
     },
+
+    aplicarRegistroRemoto: (registro) =>
+      set((s) => {
+        const i = s.registros.findIndex(
+          (r) => r.clientId === registro.clientId && r.fecha === registro.fecha,
+        );
+        const registros =
+          i >= 0
+            ? s.registros.map((r, j) => (j === i ? registro : r))
+            : [...s.registros, registro];
+        persistRegistros(registros);
+        return { registros };
+      }),
 
     medicionesDe: (clientId) =>
       get()

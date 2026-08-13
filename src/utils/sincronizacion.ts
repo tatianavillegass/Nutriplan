@@ -1,7 +1,8 @@
 import { useAppStore } from '../store/useAppStore';
 import { storage } from './storage';
-import { hayNube } from './supabase';
+import { hayNube, nube } from './supabase';
 import { bajar, subirTodo, subirRegistros, type Foto, type Perfil } from './nube';
+import type { RegistroDia } from '../types/diary';
 import {
   guardarPlantillas,
   guardarPlantillasDia,
@@ -116,13 +117,56 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
   }
 }
 
+/**
+ * SEGUIMIENTO EN VIVO
+ *
+ * La nutricionista se queda escuchando la tabla de registros: en cuanto una
+ * clienta marca una comida en su móvil, el cambio entra en la app sin recargar.
+ * Antes los datos se bajaban una sola vez al entrar, así que aunque la clienta
+ * marcara todo el día, en la pantalla de la nutricionista no aparecía nada.
+ */
+let canal: { unsubscribe: () => void } | null = null;
+let alLlegarRegistro: ((r: RegistroDia) => void) | null = null;
+/** Lo que llega del servidor no debe disparar una subida de vuelta. */
+let aplicandoRemoto = false;
+
+export function observarRegistrosEnVivo(fn: ((r: RegistroDia) => void) | null): void {
+  alLlegarRegistro = fn;
+}
+
+function escucharRegistros(perfil: Perfil): void {
+  if (!hayNube || perfil.rol !== 'nutricionista') return;
+  canal = nube()
+    .channel('registros-en-vivo')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'registros' },
+      (payload: { new?: { datos?: RegistroDia }; old?: { datos?: RegistroDia } }) => {
+        const registro = payload.new?.datos ?? payload.old?.datos;
+        if (!registro?.clientId) return;
+        aplicandoRemoto = true;
+        try {
+          useAppStore.getState().aplicarRegistroRemoto(registro);
+        } finally {
+          aplicandoRemoto = false;
+        }
+        alLlegarRegistro?.(registro);
+      },
+    )
+    .subscribe();
+}
+
 /** A partir de aquí, cada cambio se sube solo. */
 export function arrancarSincronizacion(perfil: Perfil): void {
   if (!hayNube) return;
   pararSincronizacion();
   perfilActivo = perfil;
+  escucharRegistros(perfil);
 
   desuscribir = useAppStore.subscribe(() => {
+    // Lo que acaba de llegar del servidor ya está arriba: subirlo otra vez
+    // sólo daría vueltas.
+    if (aplicandoRemoto) return;
     pendiente = true;
     avisar('guardando');
     if (temporizador) clearTimeout(temporizador);
@@ -140,6 +184,8 @@ export function pararSincronizacion(): void {
   temporizador = null;
   desuscribir?.();
   desuscribir = null;
+  canal?.unsubscribe();
+  canal = null;
   perfilActivo = null;
   pendiente = false;
   if (typeof window !== 'undefined') {

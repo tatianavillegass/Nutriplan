@@ -230,7 +230,16 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
   const sobran = sb.from('clientes').delete().eq('nutri_id', perfil.nutriId);
   await (vivos.length ? sobran.not('id', 'in', `(${vivos.map(comillas).join(',')})`) : sobran);
 
-  await subirRegistros(foto.registros);
+  /**
+   * LOS REGISTROS NO SE SUBEN DESDE AQUÍ
+   *
+   * Antes se subían con todo lo demás, y eso borraba datos: la nutricionista
+   * baja los registros una vez al entrar, la clienta marca sus comidas
+   * después, y en cuanto la nutricionista guardaba cualquier cosa su copia
+   * vieja pisaba lo que la clienta acababa de marcar.
+   *
+   * El registro es del cliente y sólo lo escribe él. Aquí no se toca.
+   */
 }
 
 /** Lo que el cliente marca. Es lo único que escribe él. */

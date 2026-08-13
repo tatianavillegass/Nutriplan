@@ -158,7 +158,21 @@ create policy registros_los_borra_la_nutri on public.registros
 
 
 -- ------------------------------------------------------------
---  4. LISTO
+--  4. SEGUIMIENTO EN VIVO
+-- ------------------------------------------------------------
+--  Para que la nutricionista vea aparecer lo que la clienta va
+--  marcando sin recargar la página, Postgres tiene que publicar
+--  los cambios de la tabla. Sin esta línea la app funciona
+--  igual, pero hay que recargar para ver lo nuevo.
+--
+--  Las reglas de arriba se siguen aplicando: cada quien recibe
+--  avisos sólo de las filas que ya podía leer.
+
+alter publication supabase_realtime add table public.registros;
+
+
+-- ------------------------------------------------------------
+--  5. LISTO
 -- ------------------------------------------------------------
 --  Comprobación rápida: estas tres consultas tienen que devolver
 --  cero filas y ningún error.

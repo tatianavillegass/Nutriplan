@@ -15,6 +15,7 @@ import { AnthroTab } from '../components/anthro/AnthroTab';
 import { AdherenceTab } from '../components/client/AdherenceTab';
 import { PlanHistory } from '../components/client/PlanHistory';
 import { FollowUpPanel } from '../components/client/FollowUpPanel';
+import { DiaEnVivo } from '../components/client/DiaEnVivo';
 import { NewPlanWizard, type MedidasNuevoPlan } from '../components/client/NewPlanWizard';
 import { SendPlanPanel } from '../components/client/SendPlanPanel';
 import { ClientAccountPanel } from '../components/client/ClientAccountPanel';
@@ -219,6 +220,15 @@ export function ClientDetail() {
               if (verPlanId === planId) setVerPlanId(null);
             }}
           />
+          {planActivo?.envio && (
+            <DiaEnVivo
+              client={client}
+              plan={planActivo}
+              registros={registrosCliente}
+              recipes={recipes}
+              foods={foods}
+            />
+          )}
           <FollowUpPanel
             client={client}
             plan={planActivo}
