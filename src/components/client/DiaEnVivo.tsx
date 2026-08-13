@@ -7,7 +7,12 @@ import type { Alimento } from '../../types/food';
 import type { RegistroDia } from '../../types/diary';
 import { claveFecha, fechaLegible } from '../../types/diary';
 import { balanceDelDia, extrasDeComida } from '../../utils/diary';
-import { observarRegistrosEnVivo } from '../../utils/sincronizacion';
+import {
+  observarRegistrosEnVivo,
+  observarEstadoVivo,
+  refrescarRegistros,
+  type EstadoVivo,
+} from '../../utils/sincronizacion';
 import { Card, fmt } from '../common/ui';
 
 interface Props {
@@ -39,7 +44,13 @@ function haceCuanto(desde: number): string {
 export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
   const hoy = claveFecha(new Date());
   const [ultimaSenal, setUltimaSenal] = useState<number | null>(null);
+  const [estado, setEstado] = useState<EstadoVivo>('conectando');
   const [, setTic] = useState(0);
+
+  useEffect(() => {
+    observarEstadoVivo(setEstado);
+    return () => observarEstadoVivo(null);
+  }, []);
 
   // Se repinta el «hace X» aunque no llegue nada nuevo.
   useEffect(() => {
@@ -76,15 +87,41 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
     <Card
       title="Hoy, en directo"
       actions={
-        <span className="text-[11px] text-slate-400">
-          {ultimaSenal ? (
-            <span className="inline-flex items-center gap-1.5 text-emerald-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              {haceCuanto(ultimaSenal)}
-            </span>
-          ) : (
-            'esperando señal'
-          )}
+        <span className="flex items-center gap-2 text-[11px]">
+          {/*
+            El estado de la conexión se enseña siempre. Antes ponía «esperando
+            señal» tanto si la clienta no había marcado nada como si la escucha
+            estaba caída, y no había forma de distinguirlo.
+          */}
+          <span
+            className={`inline-flex items-center gap-1.5 ${
+              estado === 'en-directo' ? 'text-emerald-700' : 'text-amber-700'
+            }`}
+            title={
+              estado === 'en-directo'
+                ? 'Conectada: lo que marque aparece al momento'
+                : 'Sin conexión en directo; se pregunta cada 20 segundos'
+            }
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                estado === 'en-directo' ? 'bg-emerald-500' : 'bg-amber-500'
+              }`}
+            />
+            {estado === 'en-directo'
+              ? ultimaSenal
+                ? haceCuanto(ultimaSenal)
+                : 'en directo'
+              : estado === 'conectando'
+                ? 'conectando…'
+                : 'cada 20 s'}
+          </span>
+          <button
+            onClick={() => void refrescarRegistros()}
+            className="text-slate-400 underline hover:text-slate-600"
+          >
+            Actualizar
+          </button>
         </span>
       }
     >

@@ -1,7 +1,7 @@
 import { useAppStore } from '../store/useAppStore';
 import { storage } from './storage';
 import { hayNube, nube } from './supabase';
-import { bajar, subirTodo, subirRegistros, type Foto, type Perfil } from './nube';
+import { bajar, bajarRegistros, subirTodo, subirRegistros, type Foto, type Perfil } from './nube';
 import type { RegistroDia } from '../types/diary';
 import {
   guardarPlantillas,
@@ -126,34 +126,93 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
  * marcara todo el día, en la pantalla de la nutricionista no aparecía nada.
  */
 let canal: { unsubscribe: () => void } | null = null;
+let repaso: ReturnType<typeof setInterval> | null = null;
 let alLlegarRegistro: ((r: RegistroDia) => void) | null = null;
 /** Lo que llega del servidor no debe disparar una subida de vuelta. */
 let aplicandoRemoto = false;
+
+/** Cada cuánto se pregunta por si el aviso en directo no llega. */
+const REPASO_MS = 20_000;
+
+export type EstadoVivo = 'conectando' | 'en-directo' | 'preguntando';
+let estadoVivo: EstadoVivo = 'conectando';
+let alCambiarVivo: ((e: EstadoVivo) => void) | null = null;
 
 export function observarRegistrosEnVivo(fn: ((r: RegistroDia) => void) | null): void {
   alLlegarRegistro = fn;
 }
 
+export function observarEstadoVivo(fn: ((e: EstadoVivo) => void) | null): void {
+  alCambiarVivo = fn;
+  fn?.(estadoVivo);
+}
+
+function ponerEstadoVivo(e: EstadoVivo) {
+  estadoVivo = e;
+  alCambiarVivo?.(e);
+}
+
+/** Mete el registro en el estado sin que eso dispare una subida. */
+function aplicar(registro: RegistroDia): void {
+  if (!registro?.clientId) return;
+  aplicandoRemoto = true;
+  try {
+    useAppStore.getState().aplicarRegistroRemoto(registro);
+  } finally {
+    aplicandoRemoto = false;
+  }
+  alLlegarRegistro?.(registro);
+}
+
 function escucharRegistros(perfil: Perfil): void {
   if (!hayNube || perfil.rol !== 'nutricionista') return;
-  canal = nube()
-    .channel('registros-en-vivo')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'registros' },
-      (payload: { new?: { datos?: RegistroDia }; old?: { datos?: RegistroDia } }) => {
-        const registro = payload.new?.datos ?? payload.old?.datos;
-        if (!registro?.clientId) return;
-        aplicandoRemoto = true;
-        try {
-          useAppStore.getState().aplicarRegistroRemoto(registro);
-        } finally {
-          aplicandoRemoto = false;
-        }
-        alLlegarRegistro?.(registro);
-      },
-    )
-    .subscribe();
+  const sb = nube();
+  ponerEstadoVivo('conectando');
+
+  /**
+   * La conexión en directo tiene que ir firmada con la sesión de quien mira.
+   * Sin esto conectaba igual y decía «SUBSCRIBED», pero el servidor no sabía
+   * quién era y las reglas de la tabla no le dejaban ver ninguna fila: no
+   * llegaba ni un aviso, y sin ningún error de por medio.
+   */
+  void sb.auth.getSession().then(({ data }) => {
+    const token = data.session?.access_token;
+    if (token) sb.realtime.setAuth(token);
+
+    canal = sb
+      .channel('registros-en-vivo')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'registros' },
+        (payload: { new?: { datos?: RegistroDia }; old?: { datos?: RegistroDia } }) => {
+          const registro = payload.new?.datos ?? payload.old?.datos;
+          if (registro) aplicar(registro);
+        },
+      )
+      .subscribe((estado: string) => {
+        ponerEstadoVivo(estado === 'SUBSCRIBED' ? 'en-directo' : 'preguntando');
+      });
+  });
+
+  /**
+   * Y por si el directo se cae sin avisar —se duerme el portátil, cambia el
+   * wifi, Supabase corta el socket—, cada poco se pregunta igualmente. Es una
+   * consulta pequeña y evita que el seguimiento se quede mudo sin que nadie
+   * se entere, que es lo que pasaba.
+   */
+  repaso = setInterval(() => {
+    void bajarRegistros(perfil)
+      .then((rs) => rs.forEach(aplicar))
+      .catch(() => ponerEstadoVivo('preguntando'));
+  }, REPASO_MS);
+}
+
+/** Trae los registros ahora mismo, sin esperar al siguiente repaso. */
+export async function refrescarRegistros(): Promise<void> {
+  const perfil = perfilActivo;
+  if (!perfil || !hayNube) return;
+  const rs = await bajarRegistros(perfil);
+  rs.forEach(aplicar);
 }
 
 /** A partir de aquí, cada cambio se sube solo. */
@@ -186,6 +245,8 @@ export function pararSincronizacion(): void {
   desuscribir = null;
   canal?.unsubscribe();
   canal = null;
+  if (repaso) clearInterval(repaso);
+  repaso = null;
   perfilActivo = null;
   pendiente = false;
   if (typeof window !== 'undefined') {

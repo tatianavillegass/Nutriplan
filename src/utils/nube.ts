@@ -242,6 +242,25 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
    */
 }
 
+/**
+ * Sólo los registros, sin traerse el resto. Es la consulta del seguimiento en
+ * vivo: se repite cada poco, así que tiene que ser barata.
+ */
+export async function bajarRegistros(perfil: Perfil): Promise<RegistroDia[]> {
+  const sb = nube();
+
+  const { data: fichas } =
+    perfil.rol === 'cliente'
+      ? await sb.from('clientes').select('id').eq('id', perfil.clientId!)
+      : await sb.from('clientes').select('id').eq('nutri_id', perfil.nutriId);
+
+  const ids = (fichas ?? []).map((f) => (f as { id: string }).id);
+  if (!ids.length) return [];
+
+  const { data } = await sb.from('registros').select('datos').in('cliente_id', ids);
+  return (data ?? []).map((r) => (r as { datos: RegistroDia }).datos);
+}
+
 /** Lo que el cliente marca. Es lo único que escribe él. */
 export async function subirRegistros(registros: RegistroDia[]): Promise<void> {
   if (!registros.length) return;
