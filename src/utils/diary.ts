@@ -96,6 +96,31 @@ export function extrasDeComida(extras: Extra[], mealId: string): Extra[] {
   return extras.filter((e) => e.momento === mealId);
 }
 
+/**
+ * ¿HAY ALGO APUNTADO YA EN ESTE DÍA?
+ *
+ * Hace falta al cambiar de tipo de día. Lo marcado no se borra al cambiar, así
+ * que quien marca su desayuno en «día descanso» y luego se pasa a «día base»
+ * se encuentra el desayuno ya hecho, y si vuelve a marcar porciones se le
+ * suman a las de antes: acaba con el doble de lo que ha comido.
+ */
+export function hayAlgoMarcado(registro: RegistroDia | undefined): boolean {
+  if (!registro) return false;
+  if ((registro.cumplidas ?? []).length > 0) return true;
+  if ((registro.extras ?? []).length > 0) return true;
+  return Object.values(registro.porciones ?? {}).some((porComida) =>
+    Object.values(porComida ?? {}).some((n) => (n ?? 0) > 0),
+  );
+}
+
+/** Deja el día en blanco conservando la fecha y el cliente. */
+export function vaciarLoMarcado(): Pick<
+  RegistroDia,
+  'cumplidas' | 'porciones' | 'recetaElegida' | 'sustituciones' | 'extras'
+> {
+  return { cumplidas: [], porciones: {}, recetaElegida: {}, sustituciones: {}, extras: [] };
+}
+
 /** Los que no se apuntaron en ninguna comida: picoteo suelto del día. */
 export function extrasSinComida(extras: Extra[], mealIds: string[]): Extra[] {
   return extras.filter((e) => !e.momento || !mealIds.includes(e.momento));

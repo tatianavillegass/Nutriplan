@@ -6,7 +6,7 @@ import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import type { RegistroDia } from '../../types/diary';
 import { claveFecha, fechaLegible } from '../../types/diary';
-import { balanceDelDia, extrasDeComida } from '../../utils/diary';
+import { balanceDelDia, extrasDeComida, gramosMarcados } from '../../utils/diary';
 import {
   observarRegistrosEnVivo,
   observarEstadoVivo,
@@ -126,7 +126,8 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
       }
     >
       <p className="mb-3 text-[11px] text-slate-500">
-        {fechaLegible(hoy)} · {dayType.nombre} ·{' '}
+        {fechaLegible(hoy)} · <strong className="font-medium text-slate-700">{dayType.nombre}</strong>{' '}
+        · Fase {plan.fase} ·{' '}
         <strong className="font-medium text-slate-700">
           {hechas} de {comidas.length} comidas hechas
         </strong>
@@ -140,10 +141,33 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
         <ul className="space-y-1.5">
           {comidas.map((m) => {
             const hecha = (registro.cumplidas ?? []).includes(m.id);
-            const opciones = recetasDeComida(dayType.recetasAsignadas, m.id);
-            const elegidaId = registro.recetaElegida?.[m.id] ?? opciones[0];
-            const elegida = recipes.find((r) => r.id === elegidaId);
             const susExtras = extrasDeComida(extras, m.id);
+
+            /**
+             * QUÉ SE ENSEÑA DEPENDE DE LA FASE
+             *
+             * En fase 1 la clienta elige una receta de las tres. En fase 2 y 3
+             * no hay recetas: va marcando alimentos y porciones. La tarjeta
+             * sólo sabía leer lo primero, así que al pasar a fase 2 el
+             * seguimiento se quedaba en blanco aunque estuviera marcando.
+             */
+            let queHaComido: string | null = null;
+            if (plan.fase === 1) {
+              const opciones = recetasDeComida(dayType.recetasAsignadas, m.id);
+              const elegidaId = registro.recetaElegida?.[m.id] ?? opciones[0];
+              queHaComido = recipes.find((r) => r.id === elegidaId)?.nombre ?? null;
+            } else {
+              const marcado = Object.entries(registro.porciones?.[m.id] ?? {})
+                .filter(([, n]) => (n ?? 0) > 0)
+                .map(([foodId, n]) => {
+                  const f = foods.find((x) => x.id === foodId);
+                  if (!f) return null;
+                  const g = gramosMarcados(f, n);
+                  return g ? `${f.nombre} ${g} ${f.unidad ?? 'g'}` : f.nombre;
+                })
+                .filter(Boolean) as string[];
+              queHaComido = marcado.length ? marcado.join(' · ') : null;
+            }
 
             return (
               <li
@@ -156,7 +180,11 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
                   {m.nombre}
                 </span>
                 <span className="flex-1 text-slate-700">
-                  {elegida?.nombre ?? <span className="text-slate-400">sin elegir</span>}
+                  {queHaComido ?? (
+                    <span className="text-slate-400">
+                      {plan.fase === 1 ? 'sin elegir' : 'sin marcar'}
+                    </span>
+                  )}
                 </span>
                 {susExtras.length > 0 && (
                   <span className="tnum text-[11px] text-amber-700">

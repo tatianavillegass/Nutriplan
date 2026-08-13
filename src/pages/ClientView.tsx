@@ -17,7 +17,7 @@ import { usePrintDocument } from '../components/export/printing';
 import { Button, EmptyState, fmt } from '../components/common/ui';
 import { recetasDeComida, comidasConPauta, FASE_POR_NUMERO } from '../types/plan';
 import { claveFecha, fechaLegible } from '../types/diary';
-import { balanceDelDia, extrasDeComida } from '../utils/diary';
+import { balanceDelDia, extrasDeComida, hayAlgoMarcado, vaciarLoMarcado } from '../utils/diary';
 import { elegirOpcion, fijarAlimento, marcarAlimento } from '../utils/marcado';
 
 /** Lo que ve el cliente: su día, lo pautado y lo que va cumpliendo. */
@@ -33,6 +33,8 @@ export function ClientView() {
 
   const [fecha, setFecha] = useState(claveFecha(new Date()));
   const [interactivo, setInteractivo] = useState(true);
+  /** Tipo de día al que se quiere cambiar cuando ya hay cosas marcadas. */
+  const [cambioPendiente, setCambioPendiente] = useState<string | null>(null);
 
   const imprimir = usePrintDocument(
     `Plan ${client?.nombre ?? ''} — Fase ${plan?.fase ?? ''}`.trim(),
@@ -89,6 +91,13 @@ export function ClientView() {
   };
 
   const cumplida = (mealId: string) => (registro?.cumplidas ?? []).includes(mealId);
+
+  /** Cambiar de día en blanco es directo; con cosas marcadas hay que preguntar. */
+  const pedirCambioDeDia = (dayTypeId: string) => {
+    if (dayTypeId === dayType.id) return;
+    if (hayAlgoMarcado(registro)) setCambioPendiente(dayTypeId);
+    else guardar({ dayTypeId });
+  };
 
   /**
    * Los extras se apuntan en la comida en la que se tomaron. Todos viven en la
@@ -177,7 +186,7 @@ export function ClientView() {
               {plan.dayTypes.map((d) => (
                 <button
                   key={d.id}
-                  onClick={() => guardar({ dayTypeId: d.id })}
+                  onClick={() => pedirCambioDeDia(d.id)}
                   className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                     d.id === dayType.id
                       ? 'border-brand-500 bg-brand-600 text-white'
@@ -188,6 +197,47 @@ export function ClientView() {
                 </button>
               ))}
             </div>
+
+            {/*
+              Cambiar de día con cosas ya marcadas se llevaba lo marcado al día
+              nuevo, y al volver a marcar las porciones se sumaban a las de
+              antes. Ahora se pregunta, porque las dos respuestas son legítimas:
+              me equivoqué de día al empezar, o he cambiado de plan a media
+              mañana y lo de esta mañana cuenta igual.
+            */}
+            {cambioPendiente && (
+              <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-3">
+                <p className="text-sm font-medium text-amber-900">
+                  Ya tienes cosas marcadas hoy en {dayType.nombre}
+                </p>
+                <p className="mt-0.5 text-xs leading-snug text-amber-800">
+                  Si lo de esta mañana ya te lo has comido, consérvalo. Si te habías equivocado de
+                  día, empieza de cero para que las cuentas salgan bien.
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => {
+                      guardar({ dayTypeId: cambioPendiente, ...vaciarLoMarcado() });
+                      setCambioPendiente(null);
+                    }}
+                  >
+                    Empezar de cero
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      guardar({ dayTypeId: cambioPendiente });
+                      setCambioPendiente(null);
+                    }}
+                  >
+                    Conservar lo marcado
+                  </Button>
+                  <Button variant="outline" onClick={() => setCambioPendiente(null)}>
+                    Dejarlo como está
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
