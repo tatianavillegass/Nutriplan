@@ -5,6 +5,7 @@ import { PlanSchemaTable } from '../components/phase2/PlanSchemaTable';
 import { MealOptionsBoard } from '../components/phase2/MealOptionsBoard';
 import { ScaledOptionsBoard } from '../components/phase2/ScaledOptionsBoard';
 import { FoodPortionPicker } from '../components/phase3/FoodPortionPicker';
+import { PresupuestoDia } from '../components/phase3/PresupuestoDia';
 import { ScaledRecipeView } from '../components/phase1/ScaledRecipeView';
 import { MealCard } from '../components/client/MealCard';
 import { WeekStrip } from '../components/client/WeekStrip';
@@ -18,7 +19,7 @@ import { Button, EmptyState, fmt } from '../components/common/ui';
 import { recetasDeComida, comidasConPauta, FASE_POR_NUMERO } from '../types/plan';
 import { claveFecha, fechaLegible } from '../types/diary';
 import { balanceDelDia, extrasDeComida, hayAlgoMarcado, vaciarLoMarcado } from '../utils/diary';
-import { elegirOpcion, fijarAlimento, marcarAlimento } from '../utils/marcado';
+import { elegirOpcion, fijarAlimento, marcarAlimento, seleccionPorGrupo } from '../utils/marcado';
 
 /** Lo que ve el cliente: su día, lo pautado y lo que va cumpliendo. */
 export function ClientView() {
@@ -68,6 +69,8 @@ export function ClientView() {
     upsertRegistro(client.id, fecha, { dayTypeId: dayType.id, ...patch });
 
   const porciones = registro?.porciones ?? {};
+  /** Lo escogido por subgrupo: es la base del presupuesto del día. */
+  const porGrupo = seleccionPorGrupo(porciones, foods);
 
   const marcarPorcion = (mealId: string, foodId: string, delta: number) =>
     guardar({ porciones: marcarAlimento(porciones, mealId, foodId, delta) });
@@ -241,15 +244,24 @@ export function ClientView() {
           </div>
         )}
 
+        {/*
+          En fase 3 lo que manda es el total del día, así que va lo primero.
+          El desglose por comidas baja al final: sigue estando —el reparto está
+          pensado— pero deja de parecer la regla.
+        */}
+        {plan.fase === 3 && <PresupuestoDia dayType={dayType} seleccion={porGrupo} />}
+
         {/* Las comidas del día, que se van llenando */}
-        <DayProgressBar
-          dayType={dayType}
-          porciones={porciones}
-          cumplidas={registro?.cumplidas ?? []}
-          onIr={(mealId) =>
-            document.getElementById(`comida-${mealId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        />
+        {plan.fase !== 3 && (
+          <DayProgressBar
+            dayType={dayType}
+            porciones={porciones}
+            cumplidas={registro?.cumplidas ?? []}
+            onIr={(mealId) =>
+              document.getElementById(`comida-${mealId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          />
+        )}
 
         {/* Cómo va el día */}
         <div className="tnum flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl bg-slate-50 px-4 py-2.5 text-xs no-print">
@@ -417,6 +429,23 @@ export function ClientView() {
                   {extrasDe(m.id, m.nombre)}
                 </div>
               ))}
+
+              {/* Cómo va cada comida, ya al final: informa, no manda. */}
+              <div>
+                <h2 className="mb-2 text-sm font-bold tracking-widest text-brand-800 uppercase">
+                  Completado
+                </h2>
+                <DayProgressBar
+                  dayType={dayType}
+                  porciones={porciones}
+                  cumplidas={registro?.cumplidas ?? []}
+                  onIr={(mealId) =>
+                    document
+                      .getElementById(`comida-${mealId}`)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                />
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

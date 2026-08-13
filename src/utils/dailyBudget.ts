@@ -379,6 +379,77 @@ export interface ResumenDia {
   restante: number;
 }
 
+export interface LineaPresupuesto {
+  grupo: ExchangeGroupId;
+  nombre: string;
+  pautado: number;
+  elegido: number;
+  restante: number;
+}
+
+export interface PresupuestoMacro {
+  bucket: MacroBucket;
+  pautado: number;
+  elegido: number;
+  restante: number;
+  grupos: LineaPresupuesto[];
+}
+
+/**
+ * EL PRESUPUESTO DEL DÍA, POR SUBGRUPO
+ *
+ * En fase 3 lo que manda es el total del día: el reparto por comidas es una
+ * intención, no una jaula. Para poder repartirlo hay que verlo entero, y hay
+ * que verlo en lo que la clienta escoge de verdad —almidones, proteicos
+ * magros— y no en «carbohidrato», que no le dice de cuál le queda.
+ */
+export function presupuestoDelDia(
+  dayType: DayType,
+  seleccion: SeleccionGrupos,
+): PresupuestoMacro[] {
+  const pautadoPorGrupo = gridTotals(dayType.grid, dayType.meals);
+
+  const elegidoPorGrupo: Partial<Record<ExchangeGroupId, number>> = {};
+  for (const m of dayType.meals) {
+    for (const [g, n] of Object.entries(seleccion[m.id] ?? {}) as [ExchangeGroupId, number][]) {
+      if (n) elegidoPorGrupo[g] = (elegidoPorGrupo[g] ?? 0) + n;
+    }
+  }
+
+  // Los grupos que salen: los pautados más los que haya escogido de su cuenta.
+  const ids = new Set<ExchangeGroupId>();
+  for (const [g, n] of Object.entries(pautadoPorGrupo) as [ExchangeGroupId, number][]) {
+    if (n > 0 && !EXCHANGE_GROUPS[g]?.ilimitado) ids.add(g);
+  }
+  for (const [g, n] of Object.entries(elegidoPorGrupo) as [ExchangeGroupId, number][]) {
+    if (n > 0 && !EXCHANGE_GROUPS[g]?.ilimitado) ids.add(g);
+  }
+
+  const lineas = [...ids]
+    .sort((a, b) => EXCHANGE_GROUPS[a].orden - EXCHANGE_GROUPS[b].orden)
+    .map((g) => {
+      const pautado = pautadoPorGrupo[g] ?? 0;
+      const elegido = elegidoPorGrupo[g] ?? 0;
+      return {
+        grupo: g,
+        nombre: EXCHANGE_GROUPS[g].nombre,
+        pautado,
+        elegido,
+        restante: pautado - elegido,
+      };
+    });
+
+  return (['proteina', 'carbohidrato', 'grasa'] as MacroBucket[])
+    .map((bucket) => {
+      const grupos = lineas.filter((l) => EXCHANGE_GROUPS[l.grupo].bucket === bucket);
+      const suma = (k: 'pautado' | 'elegido') => grupos.reduce((s, l) => s + l[k], 0);
+      const pautado = suma('pautado');
+      const elegido = suma('elegido');
+      return { bucket, pautado, elegido, restante: pautado - elegido, grupos };
+    })
+    .filter((m) => m.grupos.length > 0);
+}
+
 /** Cómo va el día completo, para la barra de resumen. */
 export function resumenDia(dayType: DayType, seleccion: Seleccion): ResumenDia[] {
   const pautado = pautadoDelDia(dayType);
