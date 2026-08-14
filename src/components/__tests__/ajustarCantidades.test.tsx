@@ -88,7 +88,7 @@ describe('Cambiar una cantidad', () => {
     fireEvent.change(screen.getByDisplayValue('120'), { target: { value: '150' } });
     fireEvent.click(screen.getByText('Guardar cantidades'));
 
-    expect(onGuardar).toHaveBeenCalledWith({ 'i-pollo': 150 });
+    expect(onGuardar).toHaveBeenCalledWith({ 'i-pollo': 150 }, []);
   });
 
   it('los macros se recalculan con lo escrito, no con lo pautado', () => {
@@ -102,7 +102,7 @@ describe('Cambiar una cantidad', () => {
     const onGuardar = pintar({ 'i-pollo': 999 });
     fireEvent.click(screen.getByText('Volver a lo calculado'));
     fireEvent.click(screen.getByText('Guardar cantidades'));
-    expect(onGuardar).toHaveBeenCalledWith({});
+    expect(onGuardar).toHaveBeenCalledWith({}, []);
   });
 });
 
@@ -158,5 +158,94 @@ describe('Dónde se guardan: en el plan, no en la receta', () => {
   it('un día sin ajustes devuelve vacío, no revienta', () => {
     const limpio = { ...dia, ajustesReceta: undefined } as unknown as DayType;
     expect(ajustesDeReceta(limpio, 'comida', 'r1')).toEqual({});
+  });
+});
+
+
+/**
+ * ACOMPAÑAMIENTOS
+ *
+ * Cuando a una comida le falta una porción y no tiene sentido subir lo que ya
+ * hay —a una arepa con huevo no se le echa más huevo— se le pone otra cosa al
+ * lado. Cuenta en los macros como un ingrediente más.
+ */
+describe('Poner algo al lado de la receta', () => {
+  const yogur = FOOD_CATALOG.find((f) => f.grupo === 'lacteos_proteicos')!;
+
+  const conYogur = [
+    {
+      id: 'ac1',
+      foodId: yogur.id,
+      nombre: yogur.nombre,
+      gramos: 70,
+      unidad: 'g',
+      tipo: 'acompanamiento' as const,
+    },
+  ];
+
+  it('suma a lo que cubre la receta', () => {
+    const sin = scaleRecipe(RECETA, PAUTA, FOOD_CATALOG);
+    const con = scaleRecipe(RECETA, PAUTA, FOOD_CATALOG, {}, conYogur);
+    const proteinaDe = (e: ReturnType<typeof scaleRecipe>) =>
+      Object.entries(e.cubiertos)
+        .filter(([g]) => g.startsWith('proteicos') || g.startsWith('lacteos'))
+        .reduce((s, [, n]) => s + (n ?? 0), 0);
+    expect(proteinaDe(con)).toBeGreaterThan(proteinaDe(sin));
+  });
+
+  it('entra en la lista marcado como acompañamiento, sin escalar', () => {
+    const e = scaleRecipe(RECETA, PAUTA, FOOD_CATALOG, {}, conYogur);
+    const a = e.ingredientes.find((i) => i.id === 'ac1')!;
+    expect(a.cantidad_final).toBe(70);
+    expect(a.acompanamiento).toBe('acompanamiento');
+    expect(a.escalable).toBe(false);
+  });
+
+  it('tapa un macro que la receta no traía', () => {
+    // Una receta sin grasa a la que se le pone aceite al lado.
+    const sinGrasa = { ...RECETA, base: { proteicos_magros: 1 }, ingredientes: [RECETA.ingredientes[0]] };
+    const aceite = FOOD_CATALOG.find((f) => f.grupo === 'grasas')!;
+    const sin = scaleRecipe(sinGrasa, { proteicos_magros: 2, grasas: 2 }, FOOD_CATALOG);
+    expect(sin.gruposSinCubrir).toContain('grasas');
+
+    const con = scaleRecipe(sinGrasa, { proteicos_magros: 2, grasas: 2 }, FOOD_CATALOG, {}, [
+      { id: 'ac2', foodId: aceite.id, nombre: aceite.nombre, gramos: 10, tipo: 'acompanamiento' },
+    ]);
+    expect(con.gruposSinCubrir).toEqual([]);
+  });
+
+  it('se guardan junto con las cantidades', () => {
+    const onGuardar = vi.fn();
+    render(
+      <AjustarCantidades
+        receta={RECETA}
+        requeridos={PAUTA}
+        foods={FOOD_CATALOG}
+        ajustes={{}}
+        acompanamientos={conYogur}
+        onGuardar={onGuardar}
+        onCerrar={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByText('Guardar cantidades'));
+    expect(onGuardar).toHaveBeenCalledWith({}, conYogur);
+  });
+
+  it('se pueden quitar', () => {
+    const onGuardar = vi.fn();
+    render(
+      <AjustarCantidades
+        receta={RECETA}
+        requeridos={PAUTA}
+        foods={FOOD_CATALOG}
+        ajustes={{}}
+        acompanamientos={conYogur}
+        onGuardar={onGuardar}
+        onCerrar={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText(new RegExp(`Quitar ${yogur.nombre}`)));
+    fireEvent.click(screen.getByText('Guardar cantidades'));
+    expect(onGuardar).toHaveBeenCalledWith({}, []);
   });
 });

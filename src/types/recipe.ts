@@ -67,6 +67,8 @@ export interface IngredienteEscalado extends Ingrediente {
   factor: number;
   /** Gramos fijados a mano por la nutricionista, no calculados. */
   ajustado?: boolean;
+  /** Si no es un ingrediente de la receta sino algo puesto al lado. */
+  acompanamiento?: string;
 }
 
 export interface RecetaEscalada {

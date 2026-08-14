@@ -15,6 +15,7 @@ import { roundPortion } from '../../utils/macros';
 import { escalarMedida } from '../../utils/measures';
 import { Button } from '../common/ui';
 import { RecipeMeta, MacroBar } from '../common/RecipeMeta';
+import { LABEL_ACOMPANAMIENTO, type Acompanamiento } from '../../types/plan';
 
 /**
  * Parte la preparación en pasos numerados. Acepta tanto una línea por paso
@@ -59,6 +60,8 @@ interface Props {
    * sobre el cálculo. Ver `DayType.ajustesReceta`.
    */
   ajustes?: Record<string, number>;
+  /** Lo que la nutricionista le ha puesto al lado a esta receta. */
+  acompanamientos?: Acompanamiento[];
 }
 
 export function ScaledRecipeView({
@@ -73,6 +76,7 @@ export function ScaledRecipeView({
   paraNutricionista = false,
   sinCabecera = false,
   ajustes,
+  acompanamientos,
 }: Props) {
   /**
    * Gramos o medidas caseras. Se mezclaban las dos y confundía: ahora se
@@ -81,8 +85,8 @@ export function ScaledRecipeView({
   const [caseras, setCaseras] = useState(false);
 
   const escalada = useMemo(
-    () => scaleRecipe(receta, requeridos, foods, ajustes),
-    [receta, requeridos, foods, ajustes],
+    () => scaleRecipe(receta, requeridos, foods, ajustes, acompanamientos),
+    [receta, requeridos, foods, ajustes, acompanamientos],
   );
   const resultado = useMemo(
     () => applyCustomization(escalada, requeridos, EMPTY_CUSTOMIZATION, foods),
@@ -113,7 +117,7 @@ export function ScaledRecipeView({
   return (
     <div>
       <article className={sinCabecera ? 'print-sheet' : 'print-sheet overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm'}>
-        <div className={receta.foto_url && !sinCabecera ? 'gap-5 p-5 sm:grid sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)]' : 'p-5'}>
+        <div className={receta.foto_url && !sinCabecera ? 'gap-5 p-5 sm:grid sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]' : 'p-5'}>
           {receta.foto_url && !sinCabecera && (
             <img
               src={receta.foto_url}
@@ -122,18 +126,29 @@ export function ScaledRecipeView({
             />
           )}
           <div className="min-w-0">
-          {/* Dentro de una tarjeta de comida y sin botones que enseñar, la
-              cabecera sólo dejaba un hueco en blanco. */}
+          {/*
+            Dentro de una tarjeta de comida y sin botones que enseñar, la
+            cabecera sólo dejaba un hueco en blanco.
+
+            El título va en su propia línea y los botones debajo: con los dos
+            en la misma fila, en la columna estrecha del recomendador el nombre
+            se quedaba con dos centímetros y salía una palabra por renglón, con
+            los botones encima.
+          */}
           {(!sinCabecera || (!soloLectura && (acciones || onCambiarReceta))) && (
-          <header className={sinCabecera ? 'mb-3 flex justify-end gap-1.5 no-print' : 'mb-3 flex items-start justify-between gap-3'}>
+          <header className={sinCabecera ? 'mb-3 flex justify-end gap-1.5 no-print' : 'mb-3'}>
             {sinCabecera ? null : (
-            <div className="min-w-0">
-              <h3 className="text-xl leading-tight font-semibold text-brand-900">{receta.nombre}</h3>
-              <RecipeMeta receta={receta} className="mt-2" />
-            </div>
+              <div className="min-w-0">
+                <h3 className="text-lg leading-tight font-semibold text-balance text-brand-900">
+                  {receta.nombre}
+                </h3>
+                <RecipeMeta receta={receta} className="mt-1.5" />
+              </div>
             )}
             {!soloLectura && (
-              <div className="flex shrink-0 gap-1.5 no-print">
+              <div
+                className={`flex flex-wrap gap-1.5 no-print ${sinCabecera ? '' : 'mt-2.5'}`}
+              >
                 {acciones}
                 {onCambiarReceta && (
                   <Button variant="outline" onClick={onCambiarReceta}>
@@ -213,7 +228,9 @@ export function ScaledRecipeView({
           </div>
 
           <ul className="space-y-1.5">
-            {resultado.ingredientes.map((ing) => {
+            {resultado.ingredientes
+              .filter((ing) => !ing.acompanamiento)
+              .map((ing) => {
               // Equivalente elegido por el cliente: mismo grupo, gramaje recalculado.
               const equivalenteId = equivalentes?.[ing.id];
               const equivalente = equivalenteId
@@ -291,6 +308,36 @@ export function ScaledRecipeView({
               </li>
             ))}
           </ul>
+
+          {/*
+            Lo que la nutricionista ha puesto al lado va aparte de la receta:
+            no es un ingrediente del plato, es algo que se toma con él.
+          */}
+          {resultado.ingredientes.some((i) => i.acompanamiento) && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+                Además
+              </p>
+              <ul className="space-y-1.5">
+                {resultado.ingredientes
+                  .filter((i) => i.acompanamiento)
+                  .map((a) => (
+                    <li key={a.id} className="flex items-baseline gap-2 text-sm">
+                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400" />
+                      <span className="flex-1 text-slate-700">
+                        {a.nombre}
+                        <span className="tnum ml-1.5 font-medium text-brand-800">{a.display}</span>
+                        <span className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-800">
+                          {LABEL_ACOMPANAMIENTO[
+                            a.acompanamiento as keyof typeof LABEL_ACOMPANAMIENTO
+                          ] ?? 'Acompañamiento'}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
 
           {receta.preparacion && (
             <div className="mt-4 border-t border-slate-100 pt-3">

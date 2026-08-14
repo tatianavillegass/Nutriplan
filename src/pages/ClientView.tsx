@@ -15,7 +15,13 @@ import { MealExtras } from '../components/client/MealExtras';
 import { PlanDocument } from '../components/export/PlanDocument';
 import { usePrintDocument } from '../components/export/printing';
 import { Button, EmptyState, fmt } from '../components/common/ui';
-import { recetasDeComida, comidasConPauta, ajustesDeReceta, FASE_POR_NUMERO } from '../types/plan';
+import {
+  recetasDeComida,
+  comidasConPauta,
+  ajustesDeReceta,
+  acompanamientosDeReceta,
+  FASE_POR_NUMERO,
+} from '../types/plan';
 import { claveFecha, fechaLegible } from '../types/diary';
 import { balanceDelDia, extrasDeComida, hayAlgoMarcado, vaciarLoMarcado } from '../utils/diary';
 import { elegirOpcion, fijarAlimento, marcarAlimento, seleccionPorGrupo } from '../utils/marcado';
@@ -326,6 +332,7 @@ export function ClientView() {
                       requeridos={dayType.grid[m.id] ?? {}}
                       foods={foods}
                       ajustes={ajustesDeReceta(dayType, m.id, receta.id)}
+                      acompanamientos={acompanamientosDeReceta(dayType, m.id, receta.id)}
                       sinCabecera
                       equivalentes={registro?.sustituciones?.[m.id] ?? {}}
                       onEquivalente={(ingId, foodId) => {

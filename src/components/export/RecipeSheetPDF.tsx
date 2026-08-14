@@ -1,6 +1,6 @@
 import type { Client } from '../../types/client';
 import type { Plan } from '../../types/plan';
-import { recetasDeComida, ajustesDeReceta } from '../../types/plan';
+import { recetasDeComida, ajustesDeReceta, acompanamientosDeReceta } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
@@ -74,6 +74,7 @@ export function RecipeSheetPDF({
                           requeridos={d.grid[m.id] ?? {}}
                           foods={foods}
                           ajustes={ajustesDeReceta(d, m.id, receta.id)}
+                          acompanamientos={acompanamientosDeReceta(d, m.id, receta.id)}
                           soloLectura
                         />
                       ))}

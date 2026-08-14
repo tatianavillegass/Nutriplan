@@ -142,6 +142,11 @@ export interface DayType {
    * mealId → recetaId → ingredienteId → gramos.
    */
   ajustesReceta?: Record<string, Record<string, Record<string, number>>>;
+  /**
+   * Lo que se le pone al lado a una receta para tapar un hueco de macro.
+   * mealId → recetaId → lista.
+   */
+  acompanamientos?: Record<string, Record<string, Acompanamiento[]>>;
 }
 
 /** Los gramos que Tats haya fijado a mano para esa receta en esa comida. */
@@ -151,6 +156,48 @@ export function ajustesDeReceta(
   recetaId: string,
 ): Record<string, number> {
   return dayType.ajustesReceta?.[mealId]?.[recetaId] ?? {};
+}
+
+export const TIPOS_ACOMPANAMIENTO = [
+  'acompanamiento',
+  'postre',
+  'cafe',
+  'suplemento',
+] as const;
+export type TipoAcompanamiento = (typeof TIPOS_ACOMPANAMIENTO)[number];
+
+export const LABEL_ACOMPANAMIENTO: Record<TipoAcompanamiento, string> = {
+  acompanamiento: 'Acompañamiento',
+  postre: 'Postre',
+  cafe: 'Café',
+  suplemento: 'Suplemento',
+};
+
+/**
+ * ALGO QUE SE AÑADE A LA RECETA
+ *
+ * Cuando a una comida le falta media porción y no tiene sentido subir lo que
+ * ya hay —a una arepa con huevo no se le echa más huevo— se le pone al lado
+ * otra cosa: un yogur, una fruta, un café con leche. La receta del banco no se
+ * toca; esto vive en el plan de esa clienta, como los gramos ajustados.
+ */
+export interface Acompanamiento {
+  id: string;
+  foodId: string;
+  /** Copia del nombre, por si el alimento se renombra o se borra. */
+  nombre: string;
+  gramos: number;
+  unidad?: string;
+  tipo: TipoAcompanamiento;
+}
+
+/** Lo que Tats le haya puesto al lado a esa receta en esa comida. */
+export function acompanamientosDeReceta(
+  dayType: DayType,
+  mealId: string,
+  recetaId: string,
+): Acompanamiento[] {
+  return dayType.acompanamientos?.[mealId]?.[recetaId] ?? [];
 }
 
 export interface Plan {

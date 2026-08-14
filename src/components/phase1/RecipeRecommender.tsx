@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react';
 import type { Receta } from '../../types/recipe';
 import type { Meal, DayType } from '../../types/plan';
-import { RECETAS_POR_COMIDA, ajustesDeReceta } from '../../types/plan';
+import {
+  RECETAS_POR_COMIDA,
+  ajustesDeReceta,
+  acompanamientosDeReceta,
+  type Acompanamiento,
+} from '../../types/plan';
 import type { Client } from '../../types/client';
 import type { Alimento, MealSlot } from '../../types/food';
 import { matchRecipes } from '../../utils/recipeMatcher';
@@ -27,7 +32,11 @@ interface Props {
   /** Guardar cambios en la receta del banco. */
   onEditarReceta?: (recetaId: string, patch: Partial<Receta>) => void;
   /** Guardar los gramos ajustados a mano, sólo para esta clienta. */
-  onAjustarCantidades?: (recetaId: string, ajustes: Record<string, number>) => void;
+  onAjustarCantidades?: (
+    recetaId: string,
+    ajustes: Record<string, number>,
+    acompanamientos: Acompanamiento[],
+  ) => void;
 }
 
 const SLOTS: { id: MealSlot; nombre: string }[] = [
@@ -483,8 +492,9 @@ export function RecipeRecommender({
                       requeridos={reparto}
                       foods={foods}
                       ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
-                      onGuardar={(a) => {
-                        onAjustarCantidades(r.id, a);
+                      acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}
+                      onGuardar={(a, ac) => {
+                        onAjustarCantidades(r.id, a, ac);
                         setAjustando(null);
                       }}
                       onCerrar={() => setAjustando(null)}
@@ -495,6 +505,7 @@ export function RecipeRecommender({
                       requeridos={reparto}
                       foods={foods}
                       ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
+                      acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}
                       paraNutricionista
                       acciones={
                         <>

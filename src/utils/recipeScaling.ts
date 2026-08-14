@@ -2,9 +2,11 @@ import type { ExchangeGroupId, MacroBucket } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
 import type { Alimento } from '../types/food';
-import { exchangesToMacros, type ExchangeCounts } from './exchanges';
+import type { Acompanamiento } from '../types/plan';
+import { exchangesToMacros, aporteDeAlimento, type ExchangeCounts } from './exchanges';
 import { kcalFromMacros, roundPortion } from './macros';
 import { gramosPorPieza, redondearAPiezas } from './measures';
+import { gramosPorIntercambio } from './recipeComposition';
 
 /**
  * ESCALADO POR MACRO (§5)
@@ -158,6 +160,13 @@ export function scaleRecipe(
    * dispone. Ver `DayType.ajustesReceta`.
    */
   ajustes: Record<string, number> = {},
+  /**
+   * Lo que la nutricionista le ha puesto al lado para tapar un hueco de macro:
+   * un yogur, una fruta, un café. Entran como un ingrediente más —con sus
+   * gramos fijos, sin escalar— para que cuenten en todo lo que viene después
+   * sin tener que enterarse cada pantalla por separado.
+   */
+  acompanamientos: Acompanamiento[] = [],
 ): RecetaEscalada {
   const factores: Partial<Record<ExchangeGroupId, number>> = {};
   const gruposSinCubrir: ExchangeGroupId[] = [];
@@ -400,7 +409,52 @@ export function scaleRecipe(
     if (v > 0.001) cubiertos[gid] = v;
   }
 
-  return { receta, ingredientes, factores, cubiertos, gruposSinCubrir, notas };
+  /**
+   * Los acompañamientos suman a lo cubierto: para eso se ponen. Sus gramos no
+   * escalan —son los que se han escrito— y se traducen a intercambios con los
+   * gramos por intercambio de su alimento.
+   */
+  for (const a of acompanamientos) {
+    const food = porId.get(a.foodId);
+    if (!food?.grupo || !a.gramos) continue;
+    const gpi = gramosPorIntercambio(food);
+    if (!gpi) continue;
+
+    const aporte = aporteDeAlimento(food, a.gramos / gpi);
+    for (const [gid, n] of Object.entries(aporte) as [ExchangeGroupId, number][]) {
+      if (!n || EXCHANGE_GROUPS[gid]?.ilimitado) continue;
+      cubiertos[gid] = (cubiertos[gid] ?? 0) + n;
+    }
+
+    ingredientes.push({
+      id: a.id,
+      nombre: a.nombre,
+      foodId: a.foodId,
+      cantidad_base: a.gramos,
+      cantidad_final: a.gramos,
+      unidad: a.unidad ?? food.unidad ?? 'g',
+      grupo: food.grupo,
+      escalable: false,
+      opcional: false,
+      factor: 1,
+      display: `${a.gramos} ${a.unidad ?? food.unidad ?? 'g'}`,
+      acompanamiento: a.tipo,
+    });
+  }
+
+  /**
+   * Con un acompañamiento puesto, un macro puede dejar de faltar: si se añade
+   * un yogur para cubrir la proteína que no traía la receta, ya no hay nada
+   * que completar aparte.
+   */
+  const cubiertoAhora = new Set(
+    (Object.keys(cubiertos) as ExchangeGroupId[]).map((g) => EXCHANGE_GROUPS[g]?.bucket),
+  );
+  const faltanDeVerdad = gruposSinCubrir.filter(
+    (g) => !cubiertoAhora.has(EXCHANGE_GROUPS[g]?.bucket),
+  );
+
+  return { receta, ingredientes, factores, cubiertos, gruposSinCubrir: faltanDeVerdad, notas };
 }
 
 /**

@@ -8,6 +8,15 @@ import { scaleRecipe } from '../../utils/recipeScaling';
 import { composicionDesdeIngredientes } from '../../utils/recipeComposition';
 import { estadoComida, avisoDeGrasa } from '../../utils/completitud';
 import { BUCKET_LABEL } from '../../utils/mealOptions';
+import {
+  TIPOS_ACOMPANAMIENTO,
+  LABEL_ACOMPANAMIENTO,
+  type Acompanamiento,
+  type TipoAcompanamiento,
+} from '../../types/plan';
+import { gramosPorIntercambio } from '../../utils/recipeComposition';
+import { FoodPicker } from '../food/FoodPicker';
+import { uid } from '../../utils/storage';
 import { Button, Input, fmt } from '../common/ui';
 
 interface Props {
@@ -17,7 +26,9 @@ interface Props {
   foods: Alimento[];
   /** Gramos ya ajustados a mano: ingredienteId → gramos. */
   ajustes: Record<string, number>;
-  onGuardar: (ajustes: Record<string, number>) => void;
+  /** Lo que ya se le ha puesto al lado. */
+  acompanamientos?: Acompanamiento[];
+  onGuardar: (ajustes: Record<string, number>, acompanamientos: Acompanamiento[]) => void;
   onCerrar: () => void;
 }
 
@@ -55,10 +66,13 @@ export function AjustarCantidades({
   requeridos,
   foods,
   ajustes,
+  acompanamientos: inicial = [],
   onGuardar,
   onCerrar,
 }: Props) {
   const [valores, setValores] = useState<Record<string, number>>(ajustes);
+  const [acompanamientos, setAcompanamientos] = useState<Acompanamiento[]>(inicial);
+  const [tipo, setTipo] = useState<TipoAcompanamiento>('acompanamiento');
 
   /** Lo que propone la app, sin ajustes: es el punto de partida. */
   const propuesta = useMemo(
@@ -66,10 +80,10 @@ export function AjustarCantidades({
     [receta, requeridos, foods],
   );
 
-  /** Lo que hay ahora mismo, con lo escrito a mano encima. */
+  /** Lo que hay ahora mismo, con lo escrito a mano y los acompañamientos. */
   const actual = useMemo(
-    () => scaleRecipe(receta, requeridos, foods, valores),
-    [receta, requeridos, foods, valores],
+    () => scaleRecipe(receta, requeridos, foods, valores, acompanamientos),
+    [receta, requeridos, foods, valores, acompanamientos],
   );
 
   /**
@@ -133,7 +147,9 @@ export function AjustarCantidades({
 
       {/* ── Los ingredientes, con sus gramos ──────────────── */}
       <ul className="space-y-1.5">
-        {actual.ingredientes.map((ing) => {
+        {actual.ingredientes
+          .filter((ing) => !ing.acompanamiento)
+          .map((ing) => {
           const sugerido = propuesta.ingredientes.find((p) => p.id === ing.id);
           const libre = ing.cantidad_base == null || !ing.escalable;
 
@@ -178,6 +194,92 @@ export function AjustarCantidades({
           );
         })}
       </ul>
+
+      {/* ── Lo que se le pone al lado ─────────────────────── */}
+      <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50/40 p-2.5">
+        <p className="text-[10px] font-medium tracking-wide text-brand-800 uppercase">
+          Acompañamientos
+        </p>
+        <p className="mt-0.5 mb-2 text-[11px] leading-snug text-slate-600">
+          Para tapar un hueco sin tocar la receta: a una arepa con huevo no se le echa más
+          huevo, se le pone un yogur al lado.
+        </p>
+
+        {acompanamientos.length > 0 && (
+          <ul className="mb-2 space-y-1">
+            {acompanamientos.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 rounded bg-white px-2 py-1">
+                <span className="w-24 shrink-0 text-[10px] text-brand-700">
+                  {LABEL_ACOMPANAMIENTO[a.tipo]}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-xs text-slate-700">{a.nombre}</span>
+                <Input
+                  type="number"
+                  min="0"
+                  value={a.gramos}
+                  onChange={(e) =>
+                    setAcompanamientos((prev) =>
+                      prev.map((x) =>
+                        x.id === a.id ? { ...x, gramos: Number(e.target.value) || 0 } : x,
+                      ),
+                    )
+                  }
+                  className="w-20 text-sm"
+                />
+                <span className="w-6 text-[11px] text-slate-400">{a.unidad ?? 'g'}</span>
+                <button
+                  onClick={() =>
+                    setAcompanamientos((prev) => prev.filter((x) => x.id !== a.id))
+                  }
+                  className="text-slate-300 transition hover:text-red-600"
+                  aria-label={`Quitar ${a.nombre}`}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-[11px] text-slate-500">
+            <span className="mb-0.5 block">Tipo</span>
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as TipoAcompanamiento)}
+              className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-700 outline-none focus:border-brand-400"
+            >
+              {TIPOS_ACOMPANAMIENTO.map((t) => (
+                <option key={t} value={t}>
+                  {LABEL_ACOMPANAMIENTO[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="min-w-[12rem] flex-1">
+            <FoodPicker
+              foods={foods}
+              placeholder="Buscar un alimento…"
+              limpiarTrasElegir
+              onSelect={(f) => {
+                const gpi = gramosPorIntercambio(f);
+                setAcompanamientos((prev) => [
+                  ...prev,
+                  {
+                    id: uid('ac_'),
+                    foodId: f.id,
+                    nombre: f.nombre,
+                    // Una porción de entrada: es lo que suele faltar.
+                    gramos: gpi ? Math.round(gpi) : f.gramos || 100,
+                    unidad: f.unidad ?? 'g',
+                    tipo,
+                  },
+                ]);
+              }}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* ── Cómo quedan los macros con lo escrito ─────────── */}
       <div className="mt-3 rounded-lg border border-slate-200 p-2.5">
@@ -226,7 +328,7 @@ export function AjustarCantidades({
         <Button variant="outline" onClick={onCerrar}>
           Cancelar
         </Button>
-        <Button onClick={() => onGuardar(valores)}>Guardar cantidades</Button>
+        <Button onClick={() => onGuardar(valores, acompanamientos)}>Guardar cantidades</Button>
       </div>
     </div>
   );
