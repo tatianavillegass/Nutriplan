@@ -1,5 +1,5 @@
 import type { ExchangeGroupId, Familia } from '../data/exchangeGroups';
-import { EXCHANGE_GROUPS, EXCHANGE_GROUP_LIST } from '../data/exchangeGroups';
+import { EXCHANGE_GROUPS, EXCHANGE_GROUP_LIST, type MacroBucket } from '../data/exchangeGroups';
 import type { ExchangeCounts } from './exchanges';
 import { exchangesToMacros } from './exchanges';
 import { snapHalf } from './macros';
@@ -7,28 +7,45 @@ import { snapHalf } from './macros';
 /**
  * ¿ESTÁ LA COMIDA COMPLETA? (§5)
  *
- * Lo pautado se compara con lo que hay en el plato POR FAMILIA, no subgrupo
- * contra subgrupo — la misma regla que usa el escalado. Si el plan pide un
- * proteico magro y el plato trae uno semigraso, la proteína está cubierta;
- * lo que cambia es la grasa, y de eso ya avisa el panel de macros.
+ * SE COMPARA POR MACRO, no por familia ni por subgrupo. Lo que tiene que
+ * cuadrar son las porciones de proteína, carbohidrato y grasa; de dónde salgan
+ * es cosa de la receta.
  *
- * La cuenta se lleva en el macro que define la familia (su "ancla"): proteína
- * en los proteicos, grasa en las grasas, hidratos en el resto. Así un yogur
- * proteico (10 g de proteína) y una lata de atún (7 g) suman lo que suman de
- * verdad, sin fingir que un intercambio es un intercambio.
+ * Antes se comparaba familia a familia y eso llenaba la pantalla de avisos
+ * falsos: un desayuno con 1 almidón pautado y una receta que lo cubre con
+ * fruta salía como «no cubre fruta» y «te pasas en almidones», cuando son los
+ * mismos 15 g de hidrato. Lo mismo con un lácteo proteico y un proteico magro,
+ * que desde que valen 7 g los dos son intercambiables de verdad.
+ *
+ * La cuenta se lleva en el macro que define cada grupo (su "ancla"): proteína
+ * en los proteicos, grasa en las grasas, hidratos en el resto. Así un yogur y
+ * una lata de atún suman lo que suman, sin fingir que un intercambio es
+ * siempre lo mismo.
+ *
+ * Lo que se pierde por el camino —que una receta ponga la proteína con claras
+ * donde había huevos enteros— no desaparece: sale como aviso de grasa aparte,
+ * y sólo para la nutricionista. Ver `avisoDeGrasa`.
  *
  * Las verduras no entran: son ilimitadas (§10.1).
  */
 
-/** Por qué macro se mide cada familia. */
-const ANCLA_DE_FAMILIA: Record<Familia, 'hc' | 'proteina' | 'grasa' | null> = {
-  verduras: null,
-  fruta: 'hc',
-  almidones: 'hc',
-  legumbres: 'hc',
-  azucares: 'hc',
-  proteicos: 'proteina',
-  grasas: 'grasa',
+/** Cuántos gramos del macro son una porción, para hablar en porciones. */
+const POR_PORCION: Record<MacroBucket, number> = {
+  carbohidrato: 14,
+  proteina: 7,
+  grasa: 5,
+};
+
+const ANCLA_DE_BUCKET: Record<MacroBucket, 'hc' | 'proteina' | 'grasa'> = {
+  carbohidrato: 'hc',
+  proteina: 'proteina',
+  grasa: 'grasa',
+};
+
+const LABEL_BUCKET: Record<MacroBucket, string> = {
+  proteina: 'Proteína',
+  carbohidrato: 'Carbohidrato',
+  grasa: 'Grasa',
 };
 
 /**
@@ -42,14 +59,17 @@ export type EstadoFila = 'ok' | 'falta' | 'exceso';
 export type EstadoComida = 'completa' | 'incompleta' | 'excedida' | 'sin_pauta';
 
 export interface FilaCompletitud {
+  /** El macro que se está midiendo: es la unidad de comparación. */
+  bucket: MacroBucket;
+  /** Se conserva la familia dominante para poder sugerir con qué completar. */
   familia: Familia;
-  /** Cómo se llama en el checklist: "Proteína", "Fruta", "Grasas"… */
+  /** Cómo se llama en el checklist: "Proteína", "Carbohidrato", "Grasa". */
   label: string;
   /** Subgrupo pautado que manda: es el que se sugiere para completar. */
   grupoObjetivo: ExchangeGroupId;
-  /** Intercambios pautados, en unidades del grupo objetivo. */
+  /** Porciones pautadas de ese macro. */
   pautado: number;
-  /** Intercambios que hay en el plato, en unidades del grupo objetivo. */
+  /** Porciones que hay en el plato. */
   cubierto: number;
   /** Positivo = falta; negativo = sobra. Ya redondeado a medios. */
   falta: number;
@@ -68,17 +88,59 @@ export interface ResumenComida {
   mensaje: string;
 }
 
-/** Reparte unos intercambios por familia, ignorando las verduras. */
-function porFamilia(counts: ExchangeCounts): Map<Familia, ExchangeCounts> {
-  const mapa = new Map<Familia, ExchangeCounts>();
+/** Reparte unos intercambios por macro, ignorando las verduras. */
+function porBucket(counts: ExchangeCounts): Map<MacroBucket, ExchangeCounts> {
+  const mapa = new Map<MacroBucket, ExchangeCounts>();
   for (const [gid, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
     const info = EXCHANGE_GROUPS[gid];
     if (!info || !n || info.ilimitado) continue;
-    const actual = mapa.get(info.familia) ?? {};
+    const actual = mapa.get(info.bucket) ?? {};
     actual[gid] = (actual[gid] ?? 0) + n;
-    mapa.set(info.familia, actual);
+    mapa.set(info.bucket, actual);
   }
   return mapa;
+}
+
+/**
+ * LA GRASA QUE SE ESCONDE EN LA PROTEÍNA
+ *
+ * Contando por macro, dos claras y dos huevos enteros son lo mismo: dos
+ * porciones de proteína. Pero los huevos traen 9 g más de grasa, y ésa es
+ * justamente la diferencia que la nutricionista pautó a propósito cuando puso
+ * «2 grasos y 2 magros».
+ *
+ * No es una alerta: la comida está bien de macros. Es un dato para quien
+ * pauta, y por eso sólo se enseña con `paraNutricionista`.
+ *
+ * Devuelve los gramos de grasa que la receta se deja (negativo) o se pasa
+ * (positivo) respecto de lo pautado, mirando sólo la familia de los proteicos.
+ * Por debajo de una porción de grasa (5 g) no se dice nada: son cambios que
+ * no mueven el plan.
+ */
+export const UMBRAL_AVISO_GRASA = 5;
+
+export function avisoDeGrasa(
+  pautado: ExchangeCounts,
+  enPlato: ExchangeCounts,
+): { gramos: number; texto: string } | undefined {
+  const deProteicos = (c: ExchangeCounts) =>
+    (Object.entries(c) as [ExchangeGroupId, number][]).reduce(
+      (s, [g, n]) =>
+        EXCHANGE_GROUPS[g]?.familia === 'proteicos' ? s + (EXCHANGE_GROUPS[g].grasa ?? 0) * n : s,
+      0,
+    );
+
+  const diferencia = deProteicos(enPlato) - deProteicos(pautado);
+  if (Math.abs(diferencia) < UMBRAL_AVISO_GRASA) return undefined;
+
+  const g = Math.round(Math.abs(diferencia));
+  return {
+    gramos: diferencia,
+    texto:
+      diferencia < 0
+        ? `La proteína de esta receta es más magra que la pautada: ${g} g de grasa menos.`
+        : `La proteína de esta receta es más grasa que la pautada: ${g} g de grasa de más.`,
+  };
 }
 
 /** El subgrupo con más intercambios: el que representa a la familia. */
@@ -87,16 +149,6 @@ function dominante(counts: ExchangeCounts): ExchangeGroupId {
   return entradas.sort((a, b) => b[1] - a[1] || EXCHANGE_GROUPS[a[0]].orden - EXCHANGE_GROUPS[b[0]].orden)[0][0];
 }
 
-const LABEL_FAMILIA: Record<Familia, string> = {
-  verduras: 'Verduras',
-  fruta: 'Fruta',
-  almidones: 'Almidones',
-  legumbres: 'Legumbres',
-  azucares: 'Azúcares',
-  proteicos: 'Proteína',
-  grasas: 'Grasas',
-};
-
 /**
  * Compara lo pautado con lo que hay en el plato.
  *
@@ -104,69 +156,49 @@ const LABEL_FAMILIA: Record<Familia, string> = {
  * @param enPlato  Lo que cubre la receta ya escalada + lo añadido que cuenta.
  */
 export function estadoComida(pautado: ExchangeCounts, enPlato: ExchangeCounts): ResumenComida {
-  const delPlan = porFamilia(pautado);
-  const delPlato = porFamilia(enPlato);
+  const delPlan = porBucket(pautado);
+  const delPlato = porBucket(enPlato);
 
   const filas: FilaCompletitud[] = [];
+  const buckets: MacroBucket[] = ['proteina', 'carbohidrato', 'grasa'];
 
-  for (const [familia, pautadoFam] of delPlan) {
-    const ancla = ANCLA_DE_FAMILIA[familia];
-    if (!ancla) continue;
+  for (const bucket of buckets) {
+    const pautadoB = delPlan.get(bucket) ?? {};
+    const enPlatoB = delPlato.get(bucket) ?? {};
+    const hayPauta = Object.keys(pautadoB).length > 0;
+    const hayPlato = Object.keys(enPlatoB).length > 0;
+    if (!hayPauta && !hayPlato) continue;
 
-    const objetivo = dominante(pautadoFam);
-    /** Cuánto ancla vale 1 intercambio del subgrupo que manda. */
-    const porInt = EXCHANGE_GROUPS[objetivo][ancla] || 1;
+    const ancla = ANCLA_DE_BUCKET[bucket];
+    const porPorcion = POR_PORCION[bucket];
 
-    const enPlatoFam = delPlato.get(familia) ?? {};
-    const gPautado = exchangesToMacros(pautadoFam)[ancla];
-    const gPlato = exchangesToMacros(enPlatoFam)[ancla];
-
-    const pautadoInt = gPautado / porInt;
-    const cubiertoInt = gPlato / porInt;
+    /**
+     * Las porciones salen de los gramos del macro, no de contar intercambios.
+     * Así una fruta (15 g de hidrato) y un almidón (14 g) valen casi lo mismo,
+     * que es la realidad, en vez de fingir que son cosas distintas.
+     */
+    const pautadoInt = exchangesToMacros(pautadoB)[ancla] / porPorcion;
+    const cubiertoInt = exchangesToMacros(enPlatoB)[ancla] / porPorcion;
     const diff = pautadoInt - cubiertoInt;
 
+    // Lo que no se pautó y aparece en el plato sólo cuenta si es apreciable.
+    if (!hayPauta && cubiertoInt <= TOLERANCIA_INT) continue;
+
+    const objetivo = dominante(hayPauta ? pautadoB : enPlatoB);
+    const familia = EXCHANGE_GROUPS[objetivo].familia;
+
     filas.push({
+      bucket,
       familia,
-      label: LABEL_FAMILIA[familia],
+      label: LABEL_BUCKET[bucket],
       grupoObjetivo: objetivo,
       pautado: snapHalf(pautadoInt),
       cubierto: snapHalf(cubiertoInt),
       falta: snapHalf(diff),
       estado: Math.abs(diff) <= TOLERANCIA_INT ? 'ok' : diff > 0 ? 'falta' : 'exceso',
-      cubiertoCon: (Object.keys(enPlatoFam) as ExchangeGroupId[]).filter((g) => g !== objetivo),
+      cubiertoCon: (Object.keys(enPlatoB) as ExchangeGroupId[]).filter((g) => g !== objetivo),
     });
   }
-
-  /**
-   * Lo que hay en el plato y NADIE pautó. No es un error —un café con leche
-   * marcado como "cuenta" cae aquí— pero sí hay que enseñarlo: son calorías
-   * que el plan no tenía previstas.
-   */
-  for (const [familia, enPlatoFam] of delPlato) {
-    if (delPlan.has(familia)) continue;
-    const ancla = ANCLA_DE_FAMILIA[familia];
-    if (!ancla) continue;
-
-    const objetivo = dominante(enPlatoFam);
-    const porInt = EXCHANGE_GROUPS[objetivo][ancla] || 1;
-    const cubiertoInt = exchangesToMacros(enPlatoFam)[ancla] / porInt;
-    if (cubiertoInt <= TOLERANCIA_INT) continue;
-
-    filas.push({
-      familia,
-      label: LABEL_FAMILIA[familia],
-      grupoObjetivo: objetivo,
-      pautado: 0,
-      cubierto: snapHalf(cubiertoInt),
-      falta: snapHalf(-cubiertoInt),
-      estado: 'exceso',
-      cubiertoCon: [],
-    });
-  }
-
-  filas.sort(
-    (a, b) => EXCHANGE_GROUPS[a.grupoObjetivo].orden - EXCHANGE_GROUPS[b.grupoObjetivo].orden,
-  );
 
   const total = filas.length;
   const cuadradas = filas.filter((f) => f.estado === 'ok').length;

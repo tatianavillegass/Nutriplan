@@ -80,29 +80,29 @@ export function matchRecipes(
       const motivos: string[] = [];
 
       /**
-       * SE COMPARA POR FAMILIA, COMO EN TODO LO DEMÁS
+       * SE COMPARA POR MACRO, COMO EN TODO LO DEMÁS
        *
-       * Antes esto miraba subgrupos: con 3 lácteos proteicos pautados, una
-       * avena que pone la proteína con whey salía como «no cubre lácteos
-       * proteicos» y encima perdía puntos por traer un proteico magro «de
-       * más». Eran dos castigos por hacer lo correcto, y la escondían de las
-       * ocho sugerencias.
+       * Lo que tiene que cuadrar son las porciones de proteína, carbohidrato y
+       * grasa. Si el desayuno pide un almidón y la receta lo cubre con fruta,
+       * está cubierto: son los mismos 15 g de hidrato. Antes esto miraba
+       * subgrupos y luego familias, y en los dos casos salían avisos de «no
+       * cubre fruta» que no querían decir nada y hundían recetas buenas fuera
+       * de las ocho sugerencias.
        *
-       * Falta de verdad lo que la receta no trae de ninguna manera: ni con ese
-       * subgrupo ni con ningún otro de su familia.
+       * Falta de verdad el macro que la receta no trae de ninguna manera.
        */
-      const familiaDe = (g: ExchangeGroupId) => EXCHANGE_GROUPS[g]?.familia;
-      const familiasReq = new Set(req.map(familiaDe));
-      const familiasReceta = new Set(rg.map(familiaDe));
+      const bucketDe = (g: ExchangeGroupId) => EXCHANGE_GROUPS[g]?.bucket;
+      const bucketsReq = new Set(req.map(bucketDe));
+      const bucketsReceta = new Set(rg.map(bucketDe));
 
-      const faltantes = req.filter((g) => !familiasReceta.has(familiaDe(g)));
-      const sobrantes = rg.filter((g) => !familiasReq.has(familiaDe(g)));
+      const faltantes = req.filter((g) => !bucketsReceta.has(bucketDe(g)));
+      const sobrantes = rg.filter((g) => !bucketsReq.has(bucketDe(g)));
 
-      /** Cubre la familia, pero con otro subgrupo: la whey por el lácteo. */
-      const porFamilia = req.filter((g) => !rg.includes(g) && familiasReceta.has(familiaDe(g)));
+      /** Cubre el macro con otro grupo: la whey por el lácteo, fruta por almidón. */
+      const porFamilia = req.filter((g) => !rg.includes(g) && bucketsReceta.has(bucketDe(g)));
       if (porFamilia.length) {
         motivos.push(
-          `Cubre ${porFamilia.map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase()).join(' y ')} con otro de su familia`,
+          `Cubre ${porFamilia.map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase()).join(' y ')} con otro alimento`,
         );
       }
 

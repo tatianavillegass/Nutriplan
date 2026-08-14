@@ -48,18 +48,45 @@ describe('¿Está la comida completa?', () => {
   });
 });
 
-describe('Se compara por familia, no subgrupo contra subgrupo', () => {
+/**
+ * SE COMPARA POR MACRO
+ *
+ * Lo que tiene que cuadrar son las porciones de proteína, carbohidrato y
+ * grasa. De dónde salgan es cosa de la receta: si el desayuno pide un almidón
+ * y la receta lo cubre con fruta, está cubierto. Antes esto daba dos avisos
+ * falsos a la vez —«falta almidón» y «sobra fruta»— por los mismos 15 g de
+ * hidrato.
+ */
+describe('Se compara por macro, no por familia ni subgrupo', () => {
   it('un proteico semigraso cubre el magro pautado', () => {
     const r = estadoComida({ proteicos_magros: 4 }, { proteicos_semigrasos: 4 });
     expect(r.estado).toBe('completa');
     expect(r.filas[0].cubiertoCon).toEqual(['proteicos_semigrasos']);
   });
 
-  it('la fruta no cubre un almidón por mucho que cuadren las calorías', () => {
+  it('la fruta cubre un almidón: los dos son carbohidrato', () => {
     const r = estadoComida({ almidones: 2 }, { fruta: 2 });
-    expect(r.estado).not.toBe('completa');
-    expect(huecos(r).map((h) => h.familia)).toContain('almidones');
-    expect(r.filas.some((f) => f.familia === 'fruta' && f.pautado === 0)).toBe(true);
+    expect(r.estado).toBe('completa');
+    expect(huecos(r)).toEqual([]);
+  });
+
+  it('y al revés: un almidón cubre la fruta pautada', () => {
+    const r = estadoComida({ fruta: 1, almidones: 1 }, { almidones: 2 });
+    expect(r.estado).toBe('completa');
+  });
+
+  it('el carbohidrato se cuenta junto, venga de donde venga', () => {
+    // 1 almidón + 1 fruta pautados = 29 g de hidrato ≈ 2 porciones.
+    const r = estadoComida({ almidones: 1, fruta: 1 }, { almidones: 1, fruta: 1 });
+    const carbo = r.filas.find((f) => f.bucket === 'carbohidrato')!;
+    expect(carbo.pautado).toBe(2);
+    expect(carbo.cubierto).toBe(2);
+  });
+
+  it('lo que sí falta de verdad es un macro que no está', () => {
+    const r = estadoComida({ almidones: 2, proteicos_magros: 2 }, { almidones: 2 });
+    expect(r.estado).toBe('incompleta');
+    expect(huecos(r).map((h) => h.bucket)).toEqual(['proteina']);
   });
 
   it('la cuenta se lleva en el macro ancla, no en el número de porciones', () => {
@@ -106,15 +133,21 @@ describe('Comida sin nada pautado', () => {
 describe('Enganche con el escalado real', () => {
   const pautado = { proteicos_magros: 5, almidones: 3, grasas: 2, fruta: 1 } as const;
 
-  it('lo que cubre la receta escalada cuadra con lo pautado salvo la fruta', () => {
+  /**
+   * El wok no trae fruta, pero sí almidón, y el escalado le da el hidrato de
+   * los dos. Contando por macro el carbohidrato queda cubierto: a la clienta
+   * no se le dice que le falta nada, porque no le falta.
+   */
+  it('la receta cubre el carbohidrato aunque no traiga fruta', () => {
     const esc = scaleRecipe(wok, pautado, FOOD_CATALOG);
     const r = estadoComida(pautado, esc.cubiertos);
 
-    expect(esc.gruposSinCubrir).toContain('fruta');
-    expect(r.estado).toBe('incompleta');
-    expect(huecos(r).map((h) => h.familia)).toEqual(['fruta']);
-    // Lo demás sí está cuadrado: el escalado hace su trabajo.
-    expect(r.filas.filter((f) => f.familia !== 'fruta').every((f) => f.estado === 'ok')).toBe(true);
+    // De macros la comida cuadra: el almidón lleva el hidrato de la fruta.
+    expect(r.estado).toBe('completa');
+    expect(huecos(r)).toEqual([]);
+    expect(esc.gruposSinCubrir).toEqual([]);
+    // Pero a quien pauta se le dice con qué lo ha cubierto.
+    expect(esc.notas.join(' ')).toMatch(/fruta/i);
   });
 
   it('`cubiertos` es la base por el factor, no lo pautado copiado', () => {

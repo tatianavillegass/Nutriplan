@@ -111,13 +111,18 @@ describe('Los añadidos llegan al plato (applyCustomization)', () => {
   const requeridos = { proteicos_magros: 5, almidones: 3, grasas: 2, fruta: 1 } as const;
   const esc = scaleRecipe(wok, requeridos, foods);
 
-  it('la receta no cubre la fruta y el plato lo refleja', () => {
+  /**
+   * La receta no trae fruta, pero el escalado le da al almidón el hidrato de
+   * la fruta también: de macros la comida cuadra. Antes esto salía como
+   * «incompleta» y mandaba a la clienta a buscar una fruta que no le faltaba.
+   */
+  it('sin fruta en la receta, el almidón cubre el carbohidrato igual', () => {
     const r = applyCustomization(esc, requeridos, { quitados: [], sustituciones: {} }, foods);
     expect(r.enPlato.fruta ?? 0).toBe(0);
-    expect(estadoComida(requeridos, r.enPlato).estado).toBe('incompleta');
+    expect(estadoComida(requeridos, r.enPlato).estado).toBe('completa');
   });
 
-  it('al añadir la fruta que faltaba, la comida queda completa', () => {
+  it('añadir fruta encima sí sobra: el carbohidrato ya estaba puesto', () => {
     const r = applyCustomization(
       esc,
       requeridos,
@@ -125,10 +130,10 @@ describe('Los añadidos llegan al plato (applyCustomization)', () => {
       foods,
     );
     expect(r.enPlato.fruta).toBe(1);
-    expect(estadoComida(requeridos, r.enPlato).estado).toBe('completa');
+    expect(estadoComida(requeridos, r.enPlato).estado).toBe('excedida');
   });
 
-  it('un extra NO completa la comida: sigue faltando la fruta', () => {
+  it('un extra no entra en el plato: va por encima del plan', () => {
     const r = applyCustomization(
       esc,
       requeridos,
@@ -141,7 +146,6 @@ describe('Los añadidos llegan al plato (applyCustomization)', () => {
     );
     expect(r.enPlato.lacteos_semi).toBeUndefined();
     expect(r.extras).toEqual({ lacteos_semi: 1 });
-    expect(estadoComida(requeridos, r.enPlato).estado).toBe('incompleta');
     expect(kcalFromMacros(exchangesToMacros(r.extras))).toBeGreaterThan(0);
   });
 
@@ -174,19 +178,24 @@ describe('sumarIntercambios', () => {
 });
 
 describe('El hueco se cierra al taparlo', () => {
-  const requeridos = { proteicos_magros: 5, almidones: 3, grasas: 2, fruta: 1 } as const;
-  const esc = scaleRecipe(wok, requeridos, foods);
+  /** Una pauta con proteína que la receta no puede cubrir del todo. */
+  const requeridos = { proteicos_magros: 8, almidones: 3, grasas: 2 } as const;
+  const esc = scaleRecipe(wok, { ...requeridos, proteicos_magros: 5 }, foods);
 
-  it('primero hay un hueco de fruta y después ninguno', () => {
+  it('primero falta proteína y al añadirla se cierra', () => {
     const sin = applyCustomization(esc, requeridos, { quitados: [], sustituciones: {} }, foods);
     const antes = huecos(estadoComida(requeridos, sin.enPlato));
-    expect(antes.map((h) => h.familia)).toEqual(['fruta']);
-    expect(antes[0].falta).toBe(1);
+    expect(antes.map((h) => h.bucket)).toEqual(['proteina']);
+    expect(antes[0].falta).toBe(3);
 
     const con = applyCustomization(
       esc,
       requeridos,
-      { quitados: [], sustituciones: {}, anadidos: [crearAnadido(porNombre('Melón'), 1, true)] },
+      {
+        quitados: [],
+        sustituciones: {},
+        anadidos: [crearAnadido(porNombre('Pechuga de pollo cruda'), 3, true)],
+      },
       foods,
     );
     expect(huecos(estadoComida(requeridos, con.enPlato))).toEqual([]);

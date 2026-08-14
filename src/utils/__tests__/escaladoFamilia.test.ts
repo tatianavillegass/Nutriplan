@@ -176,9 +176,26 @@ describe('Lo de siempre no cambia', () => {
     expect(e.notas).toEqual([]);
   });
 
-  it('una familia que la receta no trae sigue avisando', () => {
-    const e = scaleRecipe(clasica, { proteicos_magros: 2, fruta: 1 });
-    expect(e.gruposSinCubrir).toContain('fruta');
+  /**
+   * La receta trae almidón y se pauta fruta: no falta nada, el almidón crece
+   * hasta cubrir el hidrato de los dos. Lo que sí falta es un macro que la
+   * receta no tenga de ninguna forma.
+   */
+  it('otro subgrupo del mismo macro ya no cuenta como sin cubrir', () => {
+    const e = scaleRecipe(clasica, { proteicos_magros: 2, almidones: 1, fruta: 1 });
+    expect(e.gruposSinCubrir).toEqual([]);
+    // Pero a quien pauta se le dice con qué lo ha cubierto.
+    expect(e.notas.join(' ')).toMatch(/fruta/i);
+  });
+
+  it('un macro que la receta no trae de ninguna manera sí avisa', () => {
+    // Sin ninguna fuente de grasa: eso sí falta de verdad.
+    const sinGrasa = receta({ proteicos_magros: 1, almidones: 1 }, [
+      ing('Pollo', 'proteicos_magros', 30),
+      ing('Arroz', 'almidones', 20),
+    ]);
+    const e = scaleRecipe(sinGrasa, { proteicos_magros: 2, almidones: 1, grasas: 2 });
+    expect(e.gruposSinCubrir).toContain('grasas');
   });
 
   it('pero un subgrupo distinto de la misma familia ya no cuenta como sin cubrir', () => {

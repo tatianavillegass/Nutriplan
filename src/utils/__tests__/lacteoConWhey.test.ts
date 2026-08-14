@@ -75,16 +75,16 @@ describe('El escalado no puede borrar la proteína del plato', () => {
   });
 });
 
-describe('El recomendador compara por familia', () => {
+describe('El recomendador compara por macro', () => {
   it('no dice que falte el lácteo si la receta trae otro proteico', () => {
     const [m] = matchRecipes([AVENA], PAUTADO, { slot: 'desayuno' });
     expect(m.faltantes).toEqual([]);
     expect(m.sobrantes).toEqual([]);
   });
 
-  it('avisa de que lo cubre con otro de su familia', () => {
+  it('avisa de que lo cubre con otro alimento', () => {
     const [m] = matchRecipes([AVENA], PAUTADO, { slot: 'desayuno' });
-    expect(m.motivos.join(' ')).toMatch(/otro de su familia/i);
+    expect(m.motivos.join(' ')).toMatch(/otro alimento/i);
   });
 
   it('una receta con el lácteo de verdad puntúa por encima', () => {
@@ -98,7 +98,7 @@ describe('El recomendador compara por familia', () => {
     expect(primera.receta.id).toBe('r_yogur');
   });
 
-  it('lo que no trae de ninguna manera sí sigue faltando', () => {
+  it('lo que falta de verdad es un macro que no está', () => {
     const sinProteina: Receta = {
       ...AVENA,
       id: 'r_sola',

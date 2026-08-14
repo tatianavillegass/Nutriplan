@@ -33,9 +33,19 @@ describe('Escalado proporcional por grupo (§5)', () => {
     expect(byName('Brocoli').cantidad_final).toBeNull();
   });
 
-  it('avisa de los grupos que la receta no cubre', () => {
-    const e = scaleRecipe(wok, { proteicos_magros: 2, fruta: 1 });
-    expect(e.gruposSinCubrir).toContain('fruta');
+  /**
+   * Se compara por macro: el almidón del wok cubre también el hidrato de la
+   * fruta pautada. Lo que se avisa es un macro ausente del todo.
+   */
+  it('la fruta pautada la cubre el almidón de la receta', () => {
+    const e = scaleRecipe(wok, { proteicos_magros: 2, almidones: 1, fruta: 1 });
+    expect(e.gruposSinCubrir).toEqual([]);
+  });
+
+  it('avisa de un macro que la receta no cubre de ninguna forma', () => {
+    const soloProte = { ...wok, base: { proteicos_magros: 2 } };
+    const e = scaleRecipe(soloProte, { proteicos_magros: 2, almidones: 2 });
+    expect(e.gruposSinCubrir).toContain('almidones');
   });
 
   it('con medios intercambios el gramaje sigue la regla de redondeo', () => {

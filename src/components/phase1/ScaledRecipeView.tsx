@@ -6,7 +6,7 @@ import { exchangesToMacros } from '../../utils/exchanges';
 import { scaleRecipe } from '../../utils/recipeScaling';
 import { applyCustomization, EMPTY_CUSTOMIZATION } from '../../utils/substitutions';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
-import { estadoComida } from '../../utils/completitud';
+import { estadoComida, avisoDeGrasa } from '../../utils/completitud';
 import { sumarIntercambios } from '../../utils/anadidos';
 import { CompletenessBadge } from './MealCompleteness';
 import { IngredientSwap } from './IngredientSwap';
@@ -95,6 +95,12 @@ export function ScaledRecipeView({
     [requeridos, resultado.enPlato],
   );
 
+  /** La grasa que se mueve dentro de la proteína, para quien pauta. */
+  const grasa = useMemo(
+    () => avisoDeGrasa(requeridos, resultado.enPlato),
+    [requeridos, resultado.enPlato],
+  );
+
   return (
     <div>
       <article className={sinCabecera ? 'print-sheet' : 'print-sheet overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm'}>
@@ -141,6 +147,17 @@ export function ScaledRecipeView({
             )}
           </div>
 
+          {/*
+            La comparación es por macro, así que dos claras y dos huevos son lo
+            mismo. Lo que se pierde ahí —la grasa que Tats pautó a propósito—
+            se dice aparte, y sólo a quien pauta.
+          */}
+          {paraNutricionista && grasa && (
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
+              {grasa.texto}
+            </p>
+          )}
+
           {paraNutricionista && escalada.notas.length > 0 && (
             <ul className="mb-3 space-y-1 rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2 text-[11px] leading-snug text-brand-900">
               {escalada.notas.map((n) => (
@@ -149,6 +166,12 @@ export function ScaledRecipeView({
             </ul>
           )}
 
+          {/*
+            Ya sólo aparece cuando falta un macro entero, que es cuando de
+            verdad hay que completar algo aparte. Antes saltaba también porque
+            la receta cubriera el hidrato con pan en vez de con fruta, y eso no
+            era ningún problema.
+          */}
           {escalada.gruposSinCubrir.length > 0 && (
             <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
               Esta receta no cubre:{' '}

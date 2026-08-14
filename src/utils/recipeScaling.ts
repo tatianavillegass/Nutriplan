@@ -1,4 +1,4 @@
-import type { ExchangeGroupId, Familia } from '../data/exchangeGroups';
+import type { ExchangeGroupId, MacroBucket } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
 import type { Alimento } from '../types/food';
@@ -7,11 +7,12 @@ import { kcalFromMacros, roundPortion } from './macros';
 import { gramosPorPieza, redondearAPiezas } from './measures';
 
 /**
- * ESCALADO POR FAMILIA (§5)
+ * ESCALADO POR MACRO (§5)
  *
- * La receta se ajusta a lo que tenga pautado esa comida. Lo que se compara
- * no es subgrupo contra subgrupo, sino familia contra familia — la misma
- * regla que en la fase 3:
+ * La receta se ajusta a lo que tenga pautado esa comida. Lo que se compara no
+ * son subgrupos ni familias, sino macros: lo que tiene que cuadrar son las
+ * porciones de proteína, carbohidrato y grasa. De dónde salgan es cosa de la
+ * receta, que es como se pautaba a mano:
  *
  *   · Si el plan pauta 1 grasa y la receta lleva nueces, las nueces SON esa
  *     grasa: 1 porción son 5 g de grasa igual que el aceite. Antes el factor
@@ -22,40 +23,43 @@ import { gramosPorPieza, redondearAPiezas } from './measures';
  *     por eso, además de cuadrar la proteína, se comprueba que no se pase de
  *     la grasa ni de las calorías pautadas.
  *
- * Dentro de cada familia:
+ *   · Si el plan pauta 1 almidón y 1 fruta y la receta sólo trae pan, el pan
+ *     crece hasta cubrir el hidrato de los dos. No falta nada: son los mismos
+ *     gramos de carbohidrato.
+ *
+ * Dentro de cada macro:
  *   factor = ancla_pautada / ancla_base,  recortado si excede algún tope
  *
- * El ancla es lo que define la familia (proteína en los proteicos, grasa en
- * las grasas, hidratos en el resto). Las verduras nunca escalan: son
- * ilimitadas (§10.1).
+ * Las verduras nunca escalan: son ilimitadas (§10.1).
  */
 
-/** Por qué macro se mide cada familia. */
-const ANCLA_DE_FAMILIA: Record<Familia, keyof ReturnType<typeof exchangesToMacros> | null> = {
-  verduras: null,
-  fruta: 'hc',
-  almidones: 'hc',
-  legumbres: 'hc',
-  azucares: 'hc',
-  proteicos: 'proteina',
-  grasas: 'grasa',
+/**
+ * Por qué macro se mide cada bloque. Se escala POR MACRO, no por familia: si
+ * el desayuno pauta 1 almidón y 1 fruta y la receta sólo trae almidón, el
+ * almidón crece hasta cubrir el hidrato de los dos. Es lo que se hacía a mano
+ * al pautar: «aquí no hay fruta, no pasa nada, los 2 carbos salen del pan».
+ */
+const ANCLA_DE_BUCKET: Record<MacroBucket, keyof ReturnType<typeof exchangesToMacros>> = {
+  carbohidrato: 'hc',
+  proteina: 'proteina',
+  grasa: 'grasa',
 };
 
-/** Reparte unos intercambios por familia. */
+/** Reparte unos intercambios por macro. */
 /** Lo que cuesta una porción de un subgrupo, para comparar escalones. */
 function kcalPorPorcion(g: ExchangeGroupId): number {
   const i = EXCHANGE_GROUPS[g];
   return i ? kcalFromMacros({ hc: i.hc, proteina: i.proteina, grasa: i.grasa }) : NaN;
 }
 
-function porFamilia(counts: ExchangeCounts): Map<Familia, ExchangeCounts> {
-  const mapa = new Map<Familia, ExchangeCounts>();
+function porBucket(counts: ExchangeCounts): Map<MacroBucket, ExchangeCounts> {
+  const mapa = new Map<MacroBucket, ExchangeCounts>();
   for (const [gid, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
     const info = EXCHANGE_GROUPS[gid];
     if (!info || !n || info.ilimitado) continue;
-    const actual = mapa.get(info.familia) ?? {};
+    const actual = mapa.get(info.bucket) ?? {};
     actual[gid] = (actual[gid] ?? 0) + n;
-    mapa.set(info.familia, actual);
+    mapa.set(info.bucket, actual);
   }
   return mapa;
 }
@@ -86,15 +90,15 @@ function filtrar(
  * calorías las dejaría siempre cortas.
  */
 function tope(
-  familia: Familia,
+  bucket: MacroBucket,
   tiene: ReturnType<typeof exchangesToMacros>,
   pautado: ReturnType<typeof exchangesToMacros>,
 ): { valor: number; que: string } | undefined {
   const candidatos: { valor: number; que: string }[] = [];
-  if (familia === 'grasas' || familia === 'proteicos') {
+  if (bucket === 'grasa' || bucket === 'proteina') {
     if (tiene.grasa > 0) candidatos.push({ valor: pautado.grasa / tiene.grasa, que: 'grasa' });
   }
-  if (familia !== 'grasas') {
+  if (bucket !== 'grasa') {
     const k = kcalFromMacros(tiene);
     if (k > 0) candidatos.push({ valor: kcalFromMacros(pautado) / k, que: 'calorías' });
   }
@@ -114,7 +118,7 @@ function porFactor(
  * parte fija. Negativo significa que ni con la flexible a cero cabe.
  */
 function factorQueCabe(
-  familia: Familia,
+  bucket: MacroBucket,
   fijo: ReturnType<typeof exchangesToMacros>,
   porUnidad: ReturnType<typeof exchangesToMacros>,
   pautado: ReturnType<typeof exchangesToMacros>,
@@ -124,10 +128,10 @@ function factorQueCabe(
     if (cuesta > 0) limites.push(queda / cuesta);
   };
 
-  if (familia === 'grasas' || familia === 'proteicos') {
+  if (bucket === 'grasa' || bucket === 'proteina') {
     anotar(pautado.grasa - fijo.grasa, porUnidad.grasa);
   }
-  if (familia !== 'grasas') {
+  if (bucket !== 'grasa') {
     anotar(kcalFromMacros(pautado) - kcalFromMacros(fijo), kcalFromMacros(porUnidad));
   }
 
@@ -155,12 +159,12 @@ export function scaleRecipe(
   const porId = new Map(foods.map((f) => [f.id, f]));
 
   const base = baseNumerica(receta);
-  const deLaReceta = porFamilia(base);
-  const delPlan = porFamilia(requeridos);
+  const deLaReceta = porBucket(base);
+  const delPlan = porBucket(requeridos);
 
-  for (const [familia, enReceta] of deLaReceta) {
-    const ancla = ANCLA_DE_FAMILIA[familia];
-    const pautado = delPlan.get(familia) ?? {};
+  for (const [bucket, enReceta] of deLaReceta) {
+    const ancla = ANCLA_DE_BUCKET[bucket];
+    const pautado = delPlan.get(bucket) ?? {};
 
     const mBase = exchangesToMacros(enReceta);
     const mReq = exchangesToMacros(pautado);
@@ -181,7 +185,7 @@ export function scaleRecipe(
      * cuadra la proteína del día y el yogur se queda con el sitio que sobre.
      * Si no sobra sitio, lo que se recorta es el yogur, no el pollo.
      */
-    if (familia === 'proteicos') {
+    if (bucket === 'proteina') {
       const esLacteo = (g: ExchangeGroupId) => g.startsWith('lacteos_');
       const lacteos = filtrar(enReceta, esLacteo);
       const proteicos = filtrar(enReceta, (g) => !esLacteo(g));
@@ -201,7 +205,7 @@ export function scaleRecipe(
         let fProteico = mProteicos.proteina > 0 ? paraElProteico / mProteicos.proteina : 0;
         const ocupado = porFactor(mProteicos, fProteico);
 
-        const sitio = factorQueCabe(familia, ocupado, mLacteos, mReq);
+        const sitio = factorQueCabe(bucket, ocupado, mLacteos, mReq);
         const suyo = lacteoPautado > 0 ? lacteoPautado / mLacteos.proteina : 1;
         let fLacteo = Math.min(suyo, Math.max(0, sitio));
 
@@ -217,7 +221,7 @@ export function scaleRecipe(
         }
 
         // Sólo si ni el proteico solo cabe se le toca a él.
-        const soloProteico = tope(familia, ocupado, mReq);
+        const soloProteico = tope(bucket, ocupado, mReq);
         if (fLacteo === 0 && soloProteico) {
           fProteico *= soloProteico.valor;
           notas.push(`Se ha recortado ${nombres(proteicos)} para no pasarse de lo pautado.`);
@@ -236,10 +240,10 @@ export function scaleRecipe(
      * porque un lácteo arrastra hidratos que un filete no tiene.
      */
     const topes: { valor: number; que: string }[] = [];
-    if (familia === 'grasas' || familia === 'proteicos') {
+    if (bucket === 'grasa' || bucket === 'proteina') {
       if (mBase.grasa > 0) topes.push({ valor: mReq.grasa / mBase.grasa, que: 'grasa' });
     }
-    if (familia !== 'grasas') {
+    if (bucket !== 'grasa') {
       const kBase = kcalFromMacros(mBase);
       if (kBase > 0) topes.push({ valor: kcalFromMacros(mReq) / kBase, que: 'calorías' });
     }
@@ -296,8 +300,8 @@ export function scaleRecipe(
   }
 
   // Familias que el reparto pide y la receta no trae de ninguna manera.
-  for (const [familia, pautado] of delPlan) {
-    if (deLaReceta.has(familia)) continue;
+  for (const [bucket, pautado] of delPlan) {
+    if (deLaReceta.has(bucket)) continue;
     for (const gid of Object.keys(pautado) as ExchangeGroupId[]) gruposSinCubrir.push(gid);
   }
 
