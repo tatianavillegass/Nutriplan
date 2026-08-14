@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { presupuestoDelDia } from '../dailyBudget';
+import { presupuestoDelDia, reservaAceiteDelDia } from '../dailyBudget';
 import type { DayType } from '../../types/plan';
 
 /**
@@ -88,8 +88,8 @@ describe('Descuenta lo que va marcando, sin importar en qué comida', () => {
   it('pasarse sale en negativo, para poder decirlo', () => {
     const p = presupuestoDelDia(DIA, { cena: { grasas: 5 } });
     const grasa = p.find((m) => m.bucket === 'grasa')!;
-    // 3 pautadas en el día, 5 elegidas
-    expect(grasa.restante).toBe(-2);
+    // 3 pautadas menos 2 del aceite = 1 a elegir; se eligen 5.
+    expect(grasa.restante).toBe(-4);
   });
 
   it('un subgrupo que no estaba pautado aparece igual', () => {
@@ -100,6 +100,48 @@ describe('Descuenta lo que va marcando, sin importar en qué comida', () => {
     expect(fs).toBeDefined();
     expect(fs!.pautado).toBe(0);
     expect(fs!.elegido).toBe(1);
+  });
+});
+
+/**
+ * EL ACEITE DE COCINAR NO SE ESCOGE
+ *
+ * Cada comida principal reserva una porción de grasa para el aceite, que no
+ * aparece en la despensa porque se da por puesto. Contándola como pendiente,
+ * la clienta llenaba todas sus comidas y el presupuesto seguía diciéndole que
+ * le faltaban grasas, sin nada que pudiera marcar para completarlas.
+ */
+describe('Las grasas del aceite no se piden dos veces', () => {
+  it('lo que hay que elegir es lo pautado menos el aceite', () => {
+    const p = presupuestoDelDia(DIA, {});
+    const grasa = p.find((m) => m.bucket === 'grasa')!;
+    // 2 en la comida + 1 en la cena = 3, menos 1 de aceite en cada una.
+    expect(reservaAceiteDelDia(DIA)).toBe(2);
+    expect(grasa.pautado).toBe(1);
+  });
+
+  it('llenando lo que se puede elegir, el día queda completo', () => {
+    const p = presupuestoDelDia(DIA, { comida: { grasas: 1 } });
+    const grasa = p.find((m) => m.bucket === 'grasa')!;
+    expect(grasa.restante).toBe(0);
+  });
+
+  it('un día sin aceite reservado no cambia', () => {
+    // Sólo desayuno: no es una comida de las que llevan aceite de cocción.
+    const soloDesayuno: DayType = {
+      ...DIA,
+      meals: [DIA.meals[0]],
+      grid: { desayuno: { grasas: 2, almidones: 2 } },
+    };
+    expect(reservaAceiteDelDia(soloDesayuno)).toBe(0);
+    const grasa = presupuestoDelDia(soloDesayuno, {}).find((m) => m.bucket === 'grasa')!;
+    expect(grasa.pautado).toBe(2);
+  });
+
+  it('los demás macros no se tocan', () => {
+    const p = presupuestoDelDia(DIA, {});
+    expect(p.find((m) => m.bucket === 'proteina')!.pautado).toBe(9);
+    expect(p.find((m) => m.bucket === 'carbohidrato')!.pautado).toBe(7);
   });
 });
 

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { PlanSchemaTable } from '../components/phase2/PlanSchemaTable';
 import { MealOptionsBoard } from '../components/phase2/MealOptionsBoard';
 import { ScaledOptionsBoard } from '../components/phase2/ScaledOptionsBoard';
 import { FoodPortionPicker } from '../components/phase3/FoodPortionPicker';
@@ -288,15 +287,12 @@ export function ClientView() {
           )}
         </div>
 
-        {/* Esquema: sólo en fase 3, que es donde el cliente cuenta porciones */}
-        {plan.fase === 3 && (
-          <div>
-            <h2 className="mb-3 text-sm font-bold tracking-widest text-brand-800 uppercase">
-              Tu esquema
-            </h2>
-            <PlanSchemaTable dayType={dayType} />
-          </div>
-        )}
+        {/*
+          El esquema decía lo mismo tres veces: el total del día ya está arriba
+          y el reparto de cada comida está en su propia tarjeta. Se queda en el
+          PDF y en la pantalla de la nutricionista, que es donde sirve para
+          repasar el plan entero de un vistazo.
+        */}
 
         {/* ── FASE 1 ─────────────────────────────── */}
         {plan.fase === 1 && (

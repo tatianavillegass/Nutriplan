@@ -39,19 +39,30 @@ describe('Lo que lee la clienta en el presupuesto', () => {
     expect(screen.getByText('Proteicos magros')).toBeTruthy();
   });
 
+  /**
+   * En la comida se reserva 1 grasa para el aceite, así que de las 2 pautadas
+   * sólo hay 1 que escoger. Contar las dos era lo que dejaba el día sin poder
+   * completarse nunca.
+   */
   it('avisa cuando ya está completo', () => {
-    render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 2 } }} />);
+    render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 1 } }} />);
     expect(screen.getByText('completo')).toBeTruthy();
   });
 
   it('y cuando se ha pasado', () => {
-    render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 3 } }} />);
+    render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 2 } }} />);
     expect(screen.getByText('te has pasado 1')).toBeTruthy();
   });
 
   it('las medias porciones se leen como medias', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 0.5 } }} />);
-    expect(screen.getByText('½ de 2')).toBeTruthy();
+    expect(screen.getByText('½ de 1')).toBeTruthy();
+  });
+
+  it('explica que el aceite de cocinar ya está contado', () => {
+    render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
+    expect(screen.getByText(/aceite de cocinar/i)).toBeTruthy();
+    expect(screen.getByText(/no tienes que elegir/i)).toBeTruthy();
   });
 
   it('explica que el total manda y el reparto es una intención', () => {

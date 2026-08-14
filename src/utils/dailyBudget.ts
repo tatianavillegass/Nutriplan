@@ -1,6 +1,7 @@
 import { EXCHANGE_GROUPS, type ExchangeGroupId, type MacroBucket } from '../data/exchangeGroups';
 import type { DayType, Meal } from '../types/plan';
 import { bucketExchanges, gridTotals } from './exchanges';
+import { reservaAceite } from './pantry';
 
 /**
  * PRESUPUESTO DIARIO (Fase 3)
@@ -379,6 +380,11 @@ export interface ResumenDia {
   restante: number;
 }
 
+/** Porciones de grasa que se van en aceite de cocinar en todo el día. */
+export function reservaAceiteDelDia(dayType: DayType): number {
+  return dayType.meals.reduce((s, m) => s + reservaAceite(dayType, m), 0);
+}
+
 export interface LineaPresupuesto {
   grupo: ExchangeGroupId;
   nombre: string;
@@ -407,7 +413,24 @@ export function presupuestoDelDia(
   dayType: DayType,
   seleccion: SeleccionGrupos,
 ): PresupuestoMacro[] {
-  const pautadoPorGrupo = gridTotals(dayType.grid, dayType.meals);
+  const pautadoPorGrupo = { ...gridTotals(dayType.grid, dayType.meals) };
+
+  /**
+   * EL ACEITE DE COCINAR NO SE ESCOGE
+   *
+   * Cada comida reserva una porción de grasa para el aceite: no aparece en la
+   * despensa porque se da por puesto. Si el presupuesto contara esas porciones
+   * como pendientes, la clienta llenaba todas sus comidas y el día seguía
+   * diciéndole que le faltaban grasas, sin ninguna forma de completarlas.
+   *
+   * Así que se descuentan de lo que hay que escoger. Lo pautado sigue siendo
+   * lo mismo; lo que cambia es lo que le toca decidir a ella.
+   */
+  const reserva = reservaAceiteDelDia(dayType);
+  if (reserva > 0 && pautadoPorGrupo.grasas) {
+    pautadoPorGrupo.grasas = Math.max(0, pautadoPorGrupo.grasas - reserva);
+    if (!pautadoPorGrupo.grasas) delete pautadoPorGrupo.grasas;
+  }
 
   const elegidoPorGrupo: Partial<Record<ExchangeGroupId, number>> = {};
   for (const m of dayType.meals) {

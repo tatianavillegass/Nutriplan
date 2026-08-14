@@ -1,6 +1,10 @@
 import type { DayType } from '../../types/plan';
 import type { MacroBucket } from '../../data/exchangeGroups';
-import { presupuestoDelDia, type SeleccionGrupos } from '../../utils/dailyBudget';
+import {
+  presupuestoDelDia,
+  reservaAceiteDelDia,
+  type SeleccionGrupos,
+} from '../../utils/dailyBudget';
 import { BUCKET_LABEL } from '../../utils/mealOptions';
 
 interface Props {
@@ -35,6 +39,7 @@ const porciones = (n: number): string => {
  */
 export function PresupuestoDia({ dayType, seleccion }: Props) {
   const macros = presupuestoDelDia(dayType, seleccion);
+  const reserva = reservaAceiteDelDia(dayType);
   if (!macros.length) return null;
 
   return (
@@ -113,6 +118,19 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
       <p className="mt-3 text-[11px] text-emerald-700">
         La verdura va aparte: al gusto y sin contar.
       </p>
+
+      {/*
+        Sin esto, la clienta llenaba todas sus comidas y el día seguía
+        diciéndole que le faltaban grasas, sin nada que pudiera escoger para
+        completarlas: eran las del aceite, que no se elige.
+      */}
+      {reserva > 0 && (
+        <p className="tnum mt-1 text-[11px] text-slate-500">
+          Aparte va el aceite de cocinar: {porciones(reserva)}{' '}
+          {reserva === 1 ? 'porción de grasa ya contada' : 'porciones de grasa ya contadas'} en tu
+          plan, que no tienes que elegir.
+        </p>
+      )}
     </section>
   );
 }
