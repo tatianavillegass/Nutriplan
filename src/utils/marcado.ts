@@ -1,7 +1,12 @@
 import type { Alimento } from '../types/food';
 import type { PorcionesMarcadas } from '../types/diary';
 import type { OpcionEscalada } from './mealOptions';
-import { EXCHANGE_GROUPS, type ExchangeGroupId, type MacroBucket } from '../data/exchangeGroups';
+import {
+  EXCHANGE_GROUPS,
+  bucketsDeGrupo,
+  type ExchangeGroupId,
+  type MacroBucket,
+} from '../data/exchangeGroups';
 import { aporteDeAlimento, gruposDeAlimento } from './exchanges';
 import type { Seleccion, SeleccionGrupos } from './dailyBudget';
 
@@ -33,7 +38,7 @@ export function seleccionPorBucket(
       ][]) {
         const g = EXCHANGE_GROUPS[gid];
         if (!g || g.ilimitado || !cuantos) continue;
-        acc[g.bucket] = (acc[g.bucket] ?? 0) + cuantos;
+        for (const b of bucketsDeGrupo(gid)) acc[b] = (acc[b] ?? 0) + cuantos;
       }
     }
     out[mealId] = acc;
@@ -158,7 +163,7 @@ export function marcadoDeBucket(
       number,
     ][]) {
       const g = EXCHANGE_GROUPS[gid];
-      if (g && !g.ilimitado && g.bucket === bucket) suma += cuantos ?? 0;
+      if (g && !g.ilimitado && bucketsDeGrupo(gid).includes(bucket)) suma += cuantos ?? 0;
     }
     return s + suma;
   }, 0);

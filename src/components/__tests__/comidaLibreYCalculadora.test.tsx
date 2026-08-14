@@ -49,6 +49,36 @@ describe('Marcar una comida como libre', () => {
     expect(onMarcar).toHaveBeenCalledWith('Cumpleaños de mi hermana, muy a gusto');
   });
 
+  /**
+   * En el día de la clienta el botón vive en la cabecera de la comida, junto a
+   * su nombre. Aquí abajo sólo aparece el formulario cuando lo abren: un botón
+   * suelto al final del bloque hacía dudar de a qué comida pertenecía.
+   */
+  it('sin botón propio no ocupa sitio hasta que lo abren desde la cabecera', () => {
+    const { rerender } = render(
+      <ComidaLibre mealNombre="Cena" sinBoton onMarcar={() => {}} onQuitar={() => {}} />,
+    );
+    expect(screen.queryByText('Comida libre')).toBeNull();
+
+    rerender(
+      <ComidaLibre mealNombre="Cena" sinBoton abierto onMarcar={() => {}} onQuitar={() => {}} />,
+    );
+    expect(screen.getByText(/No hace falta contar nada/i)).toBeTruthy();
+  });
+
+  it('pero si ya está marcada se ve siempre, con el nombre de su comida', () => {
+    render(
+      <ComidaLibre
+        mealNombre="Merienda"
+        sinBoton
+        libre={{}}
+        onMarcar={() => {}}
+        onQuitar={() => {}}
+      />,
+    );
+    expect(screen.getByText(/Merienda libre · sin contar/)).toBeTruthy();
+  });
+
   it('ya marcada, enseña la nota y se puede deshacer', () => {
     const onQuitar = vi.fn();
     render(

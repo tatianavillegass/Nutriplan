@@ -1,4 +1,9 @@
-import { EXCHANGE_GROUPS, type ExchangeGroupId, type MacroBucket } from '../data/exchangeGroups';
+import {
+  EXCHANGE_GROUPS,
+  bucketsDeGrupo,
+  type ExchangeGroupId,
+  type MacroBucket,
+} from '../data/exchangeGroups';
 import type { DayType, Meal } from '../types/plan';
 import { bucketExchanges, gridTotals } from './exchanges';
 import { reservaAceite } from './pantry';
@@ -315,6 +320,20 @@ export function balanceSubgrupo(
   else {
     estado = restanteDia >= 0 ? 'excedido' : 'sin_margen';
     if (pautadoComida === 0) {
+      /**
+       * UN SUBGRUPO QUE NO PAUTASTE NO ES UN AVISO
+       *
+       * Lo que tiene que cuadrar es el macro. Si el día pauta grasas y la
+       * clienta las pone con nueces en vez de con aceite, o pone la proteína
+       * con un yogur donde había pollo, no ha roto nada: lo vigilan el total
+       * del macro y, en proteína, los gramos de grasa del día (`balanceGrasa`).
+       *
+       * Decirle «grasas proteicas no entra en tu plan de hoy» cada vez que
+       * escoge un fruto seco llenaba la pantalla de avisos por elegir bien, y
+       * obligaba a la nutricionista a pautar subgrupo por subgrupo para
+       * callarlos. Sólo se avisa cuando el macro entero no estaba en el plan.
+       */
+      const macroDelDia = info ? (pautadoDelDia(dayType)[info.bucket] ?? 0) : 0;
       mensaje =
         pautadoDia > 0
           ? `En esta comida no había ${nombre} pautados, pero tienes ${pautadoDia} en el día. ` +
@@ -322,7 +341,9 @@ export function balanceSubgrupo(
               0,
               restanteDia,
             )} para el resto.`
-          : `${info?.nombre ?? grupo} no entra en tu plan de hoy. Si lo tomas, cuenta como extra.`;
+          : macroDelDia > 0
+            ? undefined
+            : `${info?.nombre ?? grupo} no entra en tu plan de hoy. Si lo tomas, cuenta como extra.`;
     } else if (restanteDia >= 0) {
       mensaje =
         `Tienes ${pautadoComida} de ${nombre} en esta comida y ${pautadoDia} al día. ` +
@@ -359,12 +380,12 @@ export function balanceSubgruposDeBucket(
 ): BalanceSubgrupo[] {
   const grupos = new Set<ExchangeGroupId>();
   for (const [g, n] of Object.entries(dayType.grid[meal.id] ?? {}) as [ExchangeGroupId, number][]) {
-    if (n > 0 && EXCHANGE_GROUPS[g]?.bucket === bucket && !EXCHANGE_GROUPS[g].ilimitado) {
+    if (n > 0 && bucketsDeGrupo(g).includes(bucket) && !EXCHANGE_GROUPS[g]?.ilimitado) {
       grupos.add(g);
     }
   }
   for (const [g, n] of Object.entries(seleccion[meal.id] ?? {}) as [ExchangeGroupId, number][]) {
-    if ((n ?? 0) > 0 && EXCHANGE_GROUPS[g]?.bucket === bucket && !EXCHANGE_GROUPS[g].ilimitado) {
+    if ((n ?? 0) > 0 && bucketsDeGrupo(g).includes(bucket) && !EXCHANGE_GROUPS[g]?.ilimitado) {
       grupos.add(g);
     }
   }
@@ -464,7 +485,8 @@ export function presupuestoDelDia(
 
   return (['proteina', 'carbohidrato', 'grasa'] as MacroBucket[])
     .map((bucket) => {
-      const grupos = lineas.filter((l) => EXCHANGE_GROUPS[l.grupo].bucket === bucket);
+      // Las legumbres salen en carbohidrato y en proteína: gastan de las dos.
+      const grupos = lineas.filter((l) => bucketsDeGrupo(l.grupo).includes(bucket));
       const suma = (k: 'pautado' | 'elegido') => grupos.reduce((s, l) => s + l[k], 0);
       const pautado = suma('pautado');
       const elegido = suma('elegido');

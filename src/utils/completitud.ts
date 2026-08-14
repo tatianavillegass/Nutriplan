@@ -1,5 +1,10 @@
 import type { ExchangeGroupId, Familia } from '../data/exchangeGroups';
-import { EXCHANGE_GROUPS, EXCHANGE_GROUP_LIST, type MacroBucket } from '../data/exchangeGroups';
+import {
+  EXCHANGE_GROUPS,
+  EXCHANGE_GROUP_LIST,
+  bucketsDeGrupo,
+  type MacroBucket,
+} from '../data/exchangeGroups';
 import type { ExchangeCounts } from './exchanges';
 import { exchangesToMacros } from './exchanges';
 import { snapHalf } from './macros';
@@ -94,9 +99,12 @@ function porBucket(counts: ExchangeCounts): Map<MacroBucket, ExchangeCounts> {
   for (const [gid, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
     const info = EXCHANGE_GROUPS[gid];
     if (!info || !n || info.ilimitado) continue;
-    const actual = mapa.get(info.bucket) ?? {};
-    actual[gid] = (actual[gid] ?? 0) + n;
-    mapa.set(info.bucket, actual);
+    // Las legumbres van a dos macros: son hidrato y proteína a la vez.
+    for (const bucket of bucketsDeGrupo(gid)) {
+      const actual = mapa.get(bucket) ?? {};
+      actual[gid] = (actual[gid] ?? 0) + n;
+      mapa.set(bucket, actual);
+    }
   }
   return mapa;
 }

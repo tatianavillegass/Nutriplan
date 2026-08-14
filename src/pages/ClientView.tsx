@@ -43,6 +43,8 @@ export function ClientView() {
   const [interactivo, setInteractivo] = useState(true);
   /** Tipo de día al que se quiere cambiar cuando ya hay cosas marcadas. */
   const [cambioPendiente, setCambioPendiente] = useState<string | null>(null);
+  /** Comida cuyo formulario de «comida libre» está abierto, si hay alguno. */
+  const [pidiendoLibre, setPidiendoLibre] = useState<string | null>(null);
 
   const imprimir = usePrintDocument(
     `Plan ${client?.nombre ?? ''} — Fase ${plan?.fase ?? ''}`.trim(),
@@ -140,13 +142,23 @@ export function ClientView() {
     guardar({ libres: resto });
   };
 
-  /** La comida libre va en todas las fases: comer fuera pasa siempre. */
+  /**
+   * La comida libre va en todas las fases: comer fuera pasa siempre.
+   *
+   * El botón está en la cabecera de la comida y lo que sale aquí es sólo el
+   * formulario cuando se pulsa, o el aviso de que ya está marcada. Antes había
+   * un botón suelto al final de cada bloque y no se sabía si era de la comida
+   * de arriba o de la que empezaba justo debajo.
+   */
   const libreDe = (mealId: string, nombre: string) => (
     <ComidaLibre
       mealNombre={nombre}
       libre={libres[mealId]}
       onMarcar={(nota) => marcarLibre(mealId, nota)}
       onQuitar={() => quitarLibre(mealId)}
+      sinBoton
+      abierto={pidiendoLibre === mealId}
+      onCerrar={() => setPidiendoLibre(null)}
     />
   );
 
@@ -170,7 +182,7 @@ export function ClientView() {
       </button>
       {!libres[mealId] && (
         <button
-          onClick={() => marcarLibre(mealId)}
+          onClick={() => setPidiendoLibre(mealId)}
           className="rounded-lg border border-violet-200 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:bg-violet-50"
           title={`Marcar ${nombre.toLowerCase()} como comida libre`}
         >

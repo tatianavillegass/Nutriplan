@@ -1,6 +1,7 @@
 import {
   EXCHANGE_GROUPS,
   EXCHANGE_GROUP_LIST,
+  bucketsDeGrupo,
   type ExchangeGroupId,
   type MacroBucket,
 } from '../data/exchangeGroups';
@@ -134,7 +135,10 @@ export function bucketExchanges(counts: ExchangeCounts): Record<MacroBucket, num
   const out: Record<MacroBucket, number> = { proteina: 0, carbohidrato: 0, grasa: 0 };
   for (const g of EXCHANGE_GROUP_LIST) {
     if (g.ilimitado) continue;
-    out[g.bucket] += counts[g.id] ?? 0;
+    const n = counts[g.id] ?? 0;
+    if (!n) continue;
+    // Las legumbres cuentan en dos: son hidrato y proteína a la vez.
+    for (const b of bucketsDeGrupo(g.id)) out[b] += n;
   }
   return out;
 }

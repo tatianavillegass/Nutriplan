@@ -8,6 +8,16 @@ interface Props {
   onMarcar: (nota?: string) => void;
   onQuitar: () => void;
   soloLectura?: boolean;
+  /**
+   * Abierto desde fuera. En el día de la clienta el botón «Libre» vive en la
+   * cabecera de la comida, junto a su nombre: tener aquí abajo otro botón
+   * suelto hacía dudar de a qué comida pertenecía —¿a la de arriba o a la que
+   * empieza justo debajo?—. Con esto, el de la cabecera abre este formulario.
+   */
+  abierto?: boolean;
+  onCerrar?: () => void;
+  /** No pintar el botón propio: alguien de fuera se encarga de abrirlo. */
+  sinBoton?: boolean;
 }
 
 /**
@@ -20,9 +30,24 @@ interface Props {
  * La nota es opcional y en blanco: si le apetece contar dónde fue o cómo se
  * sintió, tiene sitio; si no, marca y sigue con su día.
  */
-export function ComidaLibre({ mealNombre, libre, onMarcar, onQuitar, soloLectura }: Props) {
-  const [abierto, setAbierto] = useState(false);
+export function ComidaLibre({
+  mealNombre,
+  libre,
+  onMarcar,
+  onQuitar,
+  soloLectura,
+  abierto: abiertoFuera,
+  onCerrar,
+  sinBoton = false,
+}: Props) {
+  const [abiertoDentro, setAbiertoDentro] = useState(false);
   const [nota, setNota] = useState(libre?.nota ?? '');
+
+  const abierto = abiertoFuera ?? abiertoDentro;
+  const cerrar = () => {
+    setAbiertoDentro(false);
+    onCerrar?.();
+  };
 
   if (libre) {
     return (
@@ -48,13 +73,14 @@ export function ComidaLibre({ mealNombre, libre, onMarcar, onQuitar, soloLectura
   }
 
   if (soloLectura) return null;
+  if (!abierto && sinBoton) return null;
 
   return (
     <div className="mt-1.5 no-print">
       {!abierto ? (
         <div className="flex justify-end">
           <button
-            onClick={() => setAbierto(true)}
+            onClick={() => setAbiertoDentro(true)}
             className="rounded-lg border border-violet-200 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:bg-violet-50"
           >
             Comida libre
@@ -75,13 +101,13 @@ export function ComidaLibre({ mealNombre, libre, onMarcar, onQuitar, soloLectura
             className="mt-2 w-full text-sm"
           />
           <div className="mt-2 flex flex-wrap justify-end gap-2">
-            <Button variant="outline" onClick={() => setAbierto(false)}>
+            <Button variant="outline" onClick={cerrar}>
               Cancelar
             </Button>
             <Button
               onClick={() => {
                 onMarcar(nota.trim() || undefined);
-                setAbierto(false);
+                cerrar();
               }}
             >
               Marcar como libre

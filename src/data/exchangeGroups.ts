@@ -64,6 +64,20 @@ export interface ExchangeGroup {
   /** A qué columna del "Esquema del plan" (Fase 2) se agrega este grupo. */
   bucket: MacroBucket;
   /**
+   * OTROS MACROS QUE GASTA UNA PORCIÓN DE ESTE GRUPO
+   *
+   * Casi todos los grupos gastan un solo macro: un almidón es carbohidrato y
+   * ya. Las legumbres no: una porción trae 14 g de hidrato Y 7 g de proteína,
+   * que son justo una porción de cada. Si sólo contaran como carbohidrato, un
+   * plato de lentejas dejaría la proteína del día pidiendo pollo que no hace
+   * ninguna falta.
+   *
+   * Sólo cambia a qué macro se apunta la porción. Los gramos y las calorías
+   * salen de `hc`, `proteina` y `grasa`, así que no se cuenta nada dos veces:
+   * cada macro lee lo suyo de la misma porción.
+   */
+  bucketExtra?: MacroBucket[];
+  /**
    * Macro de referencia para convertir "nutrientes por 100 g" en gramos por
    * intercambio. Para los almidones es el HC (14 g), para los proteicos la
    * proteína (7 g) y para las grasas la grasa (5 g).
@@ -126,11 +140,21 @@ export const EXCHANGE_GROUPS: Record<ExchangeGroupId, ExchangeGroup> = {
   },
   legumbres: {
     id: 'legumbres',
+    /**
+     * UNA PORCIÓN DE LEGUMBRE ES CARBOHIDRATO Y PROTEÍNA A LA VEZ
+     *
+     * Sus 14 g de hidrato son una porción de carbohidrato y sus 7 g de
+     * proteína son una porción de proteína, ni más ni menos que un proteico
+     * magro. Por eso gasta de los dos: quien come lentejas ya se ha tomado
+     * parte de su proteína del día, aunque en la plantilla sólo estuviera
+     * pautado el hidrato.
+     */
     nombre: 'Legumbres',
     hc: 14,
     proteina: 7,
     grasa: 0.5,
     bucket: 'carbohidrato',
+    bucketExtra: ['proteina'],
     ancla: 'hc',
     familia: 'legumbres',
     nivel: 0,
@@ -307,6 +331,20 @@ export const KCAL_PER_GRAM = {
   proteina: 4,
   grasa: 9,
 } as const;
+
+/**
+ * TODOS LOS MACROS QUE GASTA UNA PORCIÓN DE UN GRUPO
+ *
+ * Para casi todos es uno solo. Las legumbres gastan dos: carbohidrato y
+ * proteína. Se usa allí donde se suman porciones por macro —el presupuesto del
+ * día, la completitud de una comida, el escalado— y NO en los selectores: las
+ * lentejas se eligen en la columna del carbohidrato, que es donde se buscan.
+ */
+export function bucketsDeGrupo(id: ExchangeGroupId): MacroBucket[] {
+  const g = EXCHANGE_GROUPS[id];
+  if (!g) return [];
+  return g.bucketExtra?.length ? [g.bucket, ...g.bucketExtra] : [g.bucket];
+}
 
 /** Subgrupos de una familia, del más magro al más graso. */
 export function subgruposDeFamilia(familia: Familia): ExchangeGroup[] {

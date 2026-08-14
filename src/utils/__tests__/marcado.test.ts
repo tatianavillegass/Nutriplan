@@ -9,7 +9,12 @@ import {
   seleccionPorBucket,
   seleccionPorGrupo,
 } from '../marcado';
-import { balanceSubgrupo, balanceSubgruposDeBucket, esCambioALaBaja } from '../dailyBudget';
+import {
+  balanceGrasa,
+  balanceSubgrupo,
+  balanceSubgruposDeBucket,
+  esCambioALaBaja,
+} from '../dailyBudget';
 import { generarCombinaciones, objetivoDeBucket } from '../combos';
 import { FOOD_CATALOG } from '../../data/foodCatalog';
 import type { DayType, Meal } from '../../types/plan';
@@ -226,12 +231,23 @@ describe('Cambiar de grasa dentro de la familia', () => {
     expect(b.mensaje).toBeUndefined();
   });
 
-  it('el aviso de los frutos secos donde había aceite se mantiene', () => {
-    // Al revés sí importa: las nueces cuestan más que el aceite pautado.
+  /**
+   * FRUTOS SECOS DONDE HABÍA ACEITE: TAMPOCO SE AVISA
+   *
+   * Cuestan 14 kcal más por porción, pero llevan la misma grasa — y en esta
+   * familia la regla es que manda la grasa, no las calorías, porque medirla en
+   * calorías dejaba a las nueces siempre cortas.
+   *
+   * El aviso era además el equivocado: decía «grasas proteicas no entra en tu
+   * plan de hoy» cada vez que la clienta cogía un puñado de almendras, aunque
+   * tuviera grasas pautadas. Eso obligaba a pautar subgrupo por subgrupo sólo
+   * para callarlo.
+   */
+  it('frutos secos donde había aceite: la grasa es la misma, no se avisa', () => {
     const b = balanceSubgrupo(DIA_ACEITE, MEALS[0], 'frutos_secos', {
       desayuno: { frutos_secos: 2 },
     });
-    expect(b.mensaje).toBeTruthy();
+    expect(b.mensaje).toBeUndefined();
   });
 
   it('esCambioALaBaja distingue en qué sentido va el cambio', () => {
@@ -257,5 +273,63 @@ describe('Cambiar de grasa dentro de la familia', () => {
       desayuno: { proteicos_magros: 6 },
     });
     expect(b.mensaje).toBeUndefined();
+  });
+});
+
+/**
+ * UN SUBGRUPO QUE NO SE PAUTÓ NO ES UN AVISO
+ *
+ * La nutricionista pauta proteicos magros y grasos, y grasas a secas. Luego la
+ * clienta desayuna un yogur proteico y unas almendras: las dos cosas cuadran el
+ * macro, las dos estaban en su despensa, y las dos disparaban un «no entra en
+ * tu plan de hoy». Para callarlo había que pautar subgrupo por subgrupo cada
+ * comida, que es justo lo que la regla de los macros venía a evitar.
+ *
+ * Lo que sigue protegiendo el plan es el total del macro y, en la proteína, los
+ * gramos de grasa del día.
+ */
+describe('Elegir un subgrupo que no estaba en la plantilla', () => {
+  /** Pauta normal: proteína sin decir de dónde, grasas sin decir de cuáles. */
+  const DIA_LLANO: DayType = {
+    ...DIA,
+    grid: {
+      desayuno: { proteicos_magros: 2, almidones: 2, grasas: 1 },
+      comida: { proteicos_magros: 4, almidones: 3, grasas: 2, verduras: 2 },
+      cena: { proteicos_magros: 3, almidones: 2, verduras: 2 },
+    },
+  };
+
+  it('el yogur proteico donde había pollo no dice nada', () => {
+    const b = balanceSubgrupo(DIA_LLANO, MEALS[0], 'lacteos_proteicos', {
+      desayuno: { lacteos_proteicos: 2 },
+    });
+    expect(b.mensaje).toBeUndefined();
+  });
+
+  it('las almendras donde había aceite tampoco', () => {
+    const b = balanceSubgrupo(DIA_LLANO, MEALS[0], 'frutos_secos', {
+      desayuno: { frutos_secos: 1 },
+    });
+    expect(b.mensaje).toBeUndefined();
+  });
+
+  it('pero un macro que no pautaste sí se dice', () => {
+    // Ese día no hay ni una grasa en toda la plantilla.
+    const sinGrasa: DayType = {
+      ...DIA,
+      grid: { desayuno: { proteicos_magros: 2, almidones: 2 }, comida: {}, cena: {} },
+    };
+    const b = balanceSubgrupo(sinGrasa, MEALS[0], 'frutos_secos', {
+      desayuno: { frutos_secos: 1 },
+    });
+    expect(b.mensaje).toContain('no entra en tu plan');
+  });
+
+  it('y la grasa del día sigue vigilada: queso curado donde había pollo', () => {
+    // 5 porciones de proteico graso son 40 g de grasa; lo pautado, 4,5.
+    const g = balanceGrasa(DIA_LLANO, 'proteicos', {
+      desayuno: { proteicos_grasos: 5 },
+    });
+    expect(g.mensaje).toBeTruthy();
   });
 });

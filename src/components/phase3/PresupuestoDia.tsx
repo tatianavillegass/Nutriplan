@@ -60,11 +60,14 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
       </div>
 
       {/*
-        Tres anillos en fila. En el centro va lo que le QUEDA, que es el número
-        con el que se decide qué comer: «6 de 9» hay que interpretarlo, «te
-        quedan 3» no. El desglose por subgrupo se despliega, porque hace falta
-        al ir a elegir y no todo el rato — y en un móvil eso son tres pantallas
-        de scroll menos.
+        Tres anillos en fila. Dentro va «2/6», igual que en los anillos de cada
+        comida: puesto sólo lo que queda, no se sabía si el número era lo que
+        llevas o lo que te falta. Lo que queda se dice debajo con palabras, que
+        para eso no hace falta interpretar nada.
+
+        El desglose por subgrupo se despliega, porque hace falta al ir a elegir
+        y no todo el rato — y en un móvil eso son tres pantallas de scroll
+        menos.
       */}
       <div className="flex items-start justify-around gap-2">
         {macros.map((m) => {
@@ -78,7 +81,7 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
           return (
             <div key={m.bucket} className="min-w-0 text-center">
               <div className="relative inline-flex items-center justify-center">
-                <svg viewBox="0 0 44 44" className="h-16 w-16" aria-hidden>
+                <svg viewBox="0 0 44 44" className="h-20 w-20" aria-hidden>
                   <circle cx="22" cy="22" r={r} fill="none" className={t.pista} strokeWidth="5" />
                   <circle
                     cx="22"
@@ -93,19 +96,29 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
                   />
                 </svg>
                 <span
-                  className={`tnum absolute text-sm font-semibold ${
+                  className={`tnum absolute text-base font-bold ${
                     pasado ? 'text-rose-700' : completo ? 'text-emerald-700' : t.texto
                   }`}
                 >
-                  {pasado ? `+${porciones(Math.abs(m.restante))}` : completo ? '✓' : porciones(m.restante)}
+                  {porciones(m.elegido)}
+                  <span className="font-normal text-slate-300">/</span>
+                  {porciones(m.pautado)}
                 </span>
               </div>
 
               <p className={`mt-0.5 truncate text-[11px] font-medium ${t.texto}`}>
                 {BUCKET_LABEL[m.bucket]}
               </p>
-              <p className="tnum text-[10px] text-slate-500">
-                {porciones(m.elegido)} de {porciones(m.pautado)}
+              <p
+                className={`text-[10px] ${
+                  pasado ? 'text-rose-700' : completo ? 'text-emerald-700' : 'text-slate-500'
+                }`}
+              >
+                {pasado
+                  ? `${porciones(Math.abs(m.restante))} de más`
+                  : completo
+                    ? 'completo ✓'
+                    : `te quedan ${porciones(m.restante)}`}
               </p>
             </div>
           );

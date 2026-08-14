@@ -59,7 +59,12 @@ export function MealExtras({
                 : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
             }`}
           >
-            {abierto ? 'Cancelar' : '+ Añadir extra'}
+            {/*
+              Con el nombre de la comida delante: el botón va al final del
+              bloque, pegado a la comida siguiente, y sin decirlo no se sabe a
+              cuál de las dos apunta.
+            */}
+            {abierto ? 'Cancelar' : `+ Añadir extra en ${mealNombre.toLowerCase()}`}
           </button>
         )}
       </div>

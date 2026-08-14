@@ -1,5 +1,5 @@
 import type { ExchangeGroupId, MacroBucket } from '../data/exchangeGroups';
-import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
+import { EXCHANGE_GROUPS, bucketsDeGrupo } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
 import type { Alimento } from '../types/food';
 import type { Acompanamiento } from '../types/plan';
@@ -59,9 +59,12 @@ function porBucket(counts: ExchangeCounts): Map<MacroBucket, ExchangeCounts> {
   for (const [gid, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
     const info = EXCHANGE_GROUPS[gid];
     if (!info || !n || info.ilimitado) continue;
-    const actual = mapa.get(info.bucket) ?? {};
-    actual[gid] = (actual[gid] ?? 0) + n;
-    mapa.set(info.bucket, actual);
+    // Una legumbre cae en dos macros: cada uno lee de ella lo suyo.
+    for (const bucket of bucketsDeGrupo(gid)) {
+      const actual = mapa.get(bucket) ?? {};
+      actual[gid] = (actual[gid] ?? 0) + n;
+      mapa.set(bucket, actual);
+    }
   }
   return mapa;
 }

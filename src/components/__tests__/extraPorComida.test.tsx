@@ -94,7 +94,9 @@ describe('Añadir extra en una comida', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('+ Añadir extra'));
+    // El botón lleva el nombre de la comida: está al final del bloque, pegado
+    // a la comida siguiente, y sin decirlo no se sabe a cuál apunta.
+    fireEvent.click(screen.getByText('+ Añadir extra en cena'));
     const caja = screen.getByPlaceholderText(/Lo que te hayas tomado de más/);
     fireEvent.change(caja, { target: { value: 'Chocolate negro' } });
     fireEvent.change(screen.getByDisplayValue('100'), { target: { value: '20' } });

@@ -6,6 +6,10 @@ import type { DayType } from '../../types/plan';
 
 afterEach(cleanup);
 
+/** El número del anillo va partido en dos nodos por la barra. */
+const fraccion = (texto: string) =>
+  screen.getAllByText((_, el) => el?.textContent === texto).length > 0;
+
 const DIA: DayType = {
   id: 'dt',
   nombre: 'Día base',
@@ -25,9 +29,12 @@ const DIA: DayType = {
 /**
  * EL PRESUPUESTO EN TRES ANILLOS
  *
- * En el centro de cada anillo va lo que le QUEDA, que es el número con el que
- * se decide qué comer. El desglose por subgrupo empieza plegado: hace falta al
- * ir a elegir, no todo el rato, y en un móvil eso son varias pantallas menos.
+ * Dentro del anillo va «2/6», la misma fracción que en los anillos de cada
+ * comida. Poniendo sólo lo que queda no se sabía si el número era lo comido o
+ * lo pendiente, así que lo que queda se dice debajo con palabras.
+ *
+ * El desglose por subgrupo empieza plegado: hace falta al ir a elegir, no todo
+ * el rato, y en un móvil eso son varias pantallas menos.
  */
 describe('Lo que lee la clienta de un vistazo', () => {
   it('cada macro tiene su anillo con lo que lleva del total', () => {
@@ -36,29 +43,30 @@ describe('Lo que lee la clienta de un vistazo', () => {
     expect(screen.getByText('Carbohidrato')).toBeTruthy();
     expect(screen.getByText('Grasa')).toBeTruthy();
     // 5 almidones + 1 fruta pautados en el día; lleva 2.
-    expect(screen.getByText('2 de 6')).toBeTruthy();
+    expect(fraccion('2/6')).toBeTruthy();
   });
 
-  it('en el centro va lo que queda, no lo consumido', () => {
+  it('debajo, lo que queda en palabras', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ desayuno: { almidones: 2 } }} />);
     // Carbohidrato: 6 pautados, 2 puestos → quedan 4.
-    expect(screen.getAllByText('4').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('te quedan 4').length).toBeGreaterThan(0);
   });
 
-  it('cuando está completo lo dice con una marca, no con un número', () => {
+  it('cuando está completo lo dice, no hace contar', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 1 } }} />);
     // La comida reserva 1 grasa para el aceite: con 1 elegida ya está.
-    expect(screen.getByText('✓')).toBeTruthy();
+    expect(screen.getByText('completo ✓')).toBeTruthy();
   });
 
   it('y si se pasa, cuánto se ha pasado', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 2 } }} />);
-    expect(screen.getByText('+1')).toBeTruthy();
+    expect(screen.getByText('1 de más')).toBeTruthy();
   });
 
   it('las medias porciones se leen como medias', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 0.5 } }} />);
-    expect(screen.getByText('½ de 1')).toBeTruthy();
+    expect(fraccion('½/1')).toBeTruthy();
+    expect(screen.getByText('te quedan ½')).toBeTruthy();
   });
 });
 

@@ -176,7 +176,13 @@ describe('Agregación para el esquema de Fase 2 (§6.1)', () => {
 
   it('proteicos → Proteína · almidones+fruta+legumbres+azúcares → Carbohidrato · grasas → Grasa', () => {
     expect(bucketExchanges(grid.desayuno!)).toEqual({ proteina: 2, carbohidrato: 3, grasa: 1 });
-    expect(bucketExchanges(grid.comida!)).toEqual({ proteina: 3.5, carbohidrato: 3, grasa: 2 });
+    /**
+     * La legumbre de la comida cuenta en los dos macros: sus 14 g de hidrato
+     * son una porción de carbohidrato y sus 7 g de proteína, una de proteína.
+     * Por eso la proteína sale 4,5 y no 3,5 — el plato de lentejas ya lleva
+     * parte de la proteína del día puesta.
+     */
+    expect(bucketExchanges(grid.comida!)).toEqual({ proteina: 4.5, carbohidrato: 3, grasa: 2 });
   });
 
   it('las verduras no entran en el esquema pero sí en los macros pautados', () => {

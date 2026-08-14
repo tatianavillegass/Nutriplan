@@ -3,7 +3,12 @@ import type { DayType } from '../types/plan';
 import { comidasConPauta } from '../types/plan';
 import type { Extra, RegistroDia } from '../types/diary';
 import type { MacroGrams } from '../types/calculations';
-import { EXCHANGE_GROUPS, type MacroBucket, type ExchangeGroupId } from '../data/exchangeGroups';
+import {
+  EXCHANGE_GROUPS,
+  bucketsDeGrupo,
+  type MacroBucket,
+  type ExchangeGroupId,
+} from '../data/exchangeGroups';
 import { exchangesToMacros, gridTotals, bucketExchanges, aporteDeAlimento } from './exchanges';
 import { kcalFromMacros } from './macros';
 import { gramosPorIntercambio } from './recipeComposition';
@@ -213,7 +218,7 @@ export function porcionesDeBucket(
       number,
     ][]) {
       const g = EXCHANGE_GROUPS[gid];
-      if (g && !g.ilimitado && g.bucket === bucket) suma_ += cuantos ?? 0;
+      if (g && !g.ilimitado && bucketsDeGrupo(gid).includes(bucket)) suma_ += cuantos ?? 0;
     }
     return s + suma_;
   }, 0);
