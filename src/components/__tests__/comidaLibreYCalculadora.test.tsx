@@ -155,7 +155,8 @@ describe('¿A cuánto equivale un alimento?', () => {
     render(
       <CalculadoraPorciones comidas={[{ id: 'desayuno', nombre: 'Desayuno' }]} onAnadir={onAnadir} />,
     );
-    fireEvent.click(screen.getByText(/A cuánto equivale un alimento/i));
+    // El botón cerrado lleva título y explicación, así que se busca por su rol.
+    fireEvent.click(screen.getByRole('button', { name: /A cuánto equivale un alimento/i }));
     return onAnadir;
   };
 

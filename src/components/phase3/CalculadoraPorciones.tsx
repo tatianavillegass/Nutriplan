@@ -100,16 +100,38 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
     setGramos(100);
   };
 
+  /*
+    CERRADA, PERO QUE SE VEA
+    ================================================================
+    Era un botón fino y gris al final de la pantalla y no lo encontraba nadie.
+    Sigue en el mismo sitio —es una consulta puntual, no parte del día— pero
+    ahora ocupa el ancho, dice para qué sirve y da un ejemplo. Quien no lo
+    necesite lo salta igual: no pide nada ni ocupa más de tres líneas.
+  */
   if (!abierto) {
     return (
-      <div className="flex justify-end no-print">
-        <button
-          onClick={() => setAbierto(true)}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-brand-300 hover:text-brand-700"
-        >
-          ¿A cuánto equivale un alimento?
-        </button>
-      </div>
+      <button
+        onClick={() => setAbierto(true)}
+        className="w-full rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3 text-left transition hover:border-brand-300 hover:bg-brand-50 no-print"
+      >
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm text-brand-700"
+          >
+            ⚖️
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-brand-800">
+              ¿A cuánto equivale un alimento?
+            </span>
+            <span className="block text-[11px] leading-snug text-slate-600">
+              Copia la etiqueta de lo que sea —granola, unas galletas, un bote del armario— y te
+              digo cuántas porciones de tu plan son.
+            </span>
+          </span>
+        </span>
+      </button>
     );
   }
 
