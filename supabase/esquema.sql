@@ -23,8 +23,15 @@ create table if not exists public.nutricionistas (
   recetas      jsonb       not null default '[]'::jsonb,
   alimentos    jsonb       not null default '[]'::jsonb,
   plantillas   jsonb       not null default '{}'::jsonb,
+  -- Material de consulta que ven todas sus clientas: guía de raciones,
+  -- productos, cómo leer una etiqueta.
+  recursos     jsonb       not null default '[]'::jsonb,
   actualizado  timestamptz not null default now()
 );
+
+-- Para las cuentas que ya existían antes de que hubiera recursos.
+alter table public.nutricionistas
+  add column if not exists recursos jsonb not null default '[]'::jsonb;
 
 -- Un cliente. Conserva el id que ya usa la app (cl_xxxx) para no
 -- tener que reescribir los planes al subirlos.

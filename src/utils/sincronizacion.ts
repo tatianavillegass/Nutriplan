@@ -59,6 +59,7 @@ export function fotoActual(): Foto {
     registros: s.registros,
     plantillas: leerPlantillas(),
     plantillasDia: leerPlantillasDia(),
+    recursos: s.recursos,
   };
 }
 
@@ -78,6 +79,7 @@ export function olvidarLocal(): void {
     foods: [],
     mediciones: [],
     registros: [],
+    recursos: [],
   });
   sinAvisar(() => {
     guardarPlantillas([]);

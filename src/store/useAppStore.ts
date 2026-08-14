@@ -6,6 +6,7 @@ import type { Receta } from '../types/recipe';
 import type { Alimento } from '../types/food';
 import type { Medicion } from '../types/anthropometry';
 import type { RegistroDia } from '../types/diary';
+import type { Recurso } from '../types/recursos';
 import { registroVacio } from '../types/diary';
 import { EXCHANGE_GROUPS, type ExchangeGroupId } from '../data/exchangeGroups';
 import { FOOD_CATALOG } from '../data/foodCatalog';
@@ -21,6 +22,7 @@ interface AppState {
   foods: Alimento[];
   mediciones: Medicion[];
   registros: RegistroDia[];
+  recursos: Recurso[];
 
   // Clientes
   addClient: (c: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Client;
@@ -86,6 +88,11 @@ interface AppState {
    * Sustituye el estado por el que viene del servidor. Se usa al entrar,
    * cuando lo que manda es la nube y no lo que hubiera en este navegador.
    */
+  // Recursos: material de consulta que ven todas las clientas
+  upsertRecurso: (r: Recurso) => void;
+  borrarRecurso: (id: string) => void;
+  moverRecurso: (id: string, delta: number) => void;
+
   hidratar: (datos: {
     clients: Client[];
     plans: Plan[];
@@ -93,6 +100,7 @@ interface AppState {
     foods: Alimento[];
     mediciones: Medicion[];
     registros: RegistroDia[];
+    recursos?: Recurso[];
   }) => void;
 }
 
@@ -227,6 +235,7 @@ export const useAppStore = create<AppState>((set, get) => {
   const persistFoods = (foods: Alimento[]) => storage.set(STORAGE_KEYS.foods, foods);
   const persistMediciones = (ms: Medicion[]) => storage.set(STORAGE_KEYS.mediciones, ms);
   const persistRegistros = (rs: RegistroDia[]) => storage.set(STORAGE_KEYS.registros, rs);
+  const persistRecursos = (rs: Recurso[]) => storage.set(STORAGE_KEYS.recursos, rs);
 
   const mutatePlans = (fn: (plans: Plan[]) => Plan[]) => {
     set((s) => {
@@ -258,6 +267,7 @@ export const useAppStore = create<AppState>((set, get) => {
     ),
     mediciones: hydrate<Medicion[]>(STORAGE_KEYS.mediciones, []),
     registros: hydrate<RegistroDia[]>(STORAGE_KEYS.registros, []),
+    recursos: hydrate<Recurso[]>(STORAGE_KEYS.recursos, []),
 
     addClient: (c) => {
       const client: Client = { ...c, id: uid('cl_'), createdAt: nowIso(), updatedAt: nowIso() };
@@ -561,6 +571,36 @@ export const useAppStore = create<AppState>((set, get) => {
         return { mediciones };
       }),
 
+    /**
+     * Crea o reemplaza un recurso. Se ordenan a mano porque el orden es del
+     * criterio de la nutricionista: primero lo que quiere que se lea antes.
+     */
+    upsertRecurso: (r) => {
+      const recursos = get().recursos.some((x) => x.id === r.id)
+        ? get().recursos.map((x) => (x.id === r.id ? r : x))
+        : [...get().recursos, r];
+      persistRecursos(recursos);
+      set({ recursos });
+    },
+
+    borrarRecurso: (id) => {
+      const recursos = get().recursos.filter((r) => r.id !== id);
+      persistRecursos(recursos);
+      set({ recursos });
+    },
+
+    /** Subir o bajar uno en la lista: intercambia el orden con su vecino. */
+    moverRecurso: (id, delta) => {
+      const lista = [...get().recursos].sort((a, b) => a.orden - b.orden);
+      const i = lista.findIndex((r) => r.id === id);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= lista.length) return;
+      [lista[i], lista[j]] = [lista[j], lista[i]];
+      const recursos = lista.map((r, n) => ({ ...r, orden: n }));
+      persistRecursos(recursos);
+      set({ recursos });
+    },
+
     hidratar: (datos) => {
       // El catálogo del servidor puede venir vacío la primera vez (cuenta
       // recién creada): entonces se arranca con el que trae la app, que es
@@ -574,6 +614,7 @@ export const useAppStore = create<AppState>((set, get) => {
       persistFoods(foods);
       persistMediciones(datos.mediciones);
       persistRegistros(datos.registros);
+      persistRecursos(datos.recursos ?? []);
 
       set({
         clients: datos.clients,
@@ -582,6 +623,7 @@ export const useAppStore = create<AppState>((set, get) => {
         foods,
         mediciones: datos.mediciones,
         registros: datos.registros,
+        recursos: datos.recursos ?? [],
       });
     },
   };

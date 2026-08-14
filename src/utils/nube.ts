@@ -7,6 +7,7 @@ import type { Alimento } from '../types/food';
 import type { Medicion } from '../types/anthropometry';
 import type { RegistroDia } from '../types/diary';
 import type { PlantillaDespensa, PlantillaDia } from './plantillas';
+import type { Recurso } from '../types/recursos';
 
 /**
  * SUBIR Y BAJAR
@@ -48,6 +49,8 @@ export interface Foto {
   registros: RegistroDia[];
   plantillas: PlantillaDespensa[];
   plantillasDia: PlantillaDia[];
+  /** Material de consulta: lo mismo para todas las clientas. */
+  recursos: Recurso[];
 }
 
 export interface FilaCliente {
@@ -160,7 +163,7 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
   const [compartido, fichas] = await Promise.all([
     sb
       .from('nutricionistas')
-      .select('recetas, alimentos, plantillas')
+      .select('recetas, alimentos, plantillas, recursos')
       .eq('id', perfil.nutriId)
       .maybeSingle(),
     perfil.rol === 'cliente'
@@ -189,6 +192,7 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
     foods: (compartido.data?.alimentos ?? []) as Alimento[],
     plantillas: plantillas.comidas ?? [],
     plantillasDia: plantillas.dias ?? [],
+    recursos: (compartido.data?.recursos ?? []) as Recurso[],
   };
 }
 
@@ -212,6 +216,7 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
       recetas: foto.recipes,
       alimentos: foto.foods,
       plantillas: { comidas: foto.plantillas, dias: foto.plantillasDia },
+      recursos: foto.recursos,
       actualizado: new Date().toISOString(),
     },
     { onConflict: 'id' },

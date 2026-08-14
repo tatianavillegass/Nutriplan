@@ -6,6 +6,7 @@ import { RecipeBankPage } from './pages/RecipeBankPage';
 import { FoodCatalogPage } from './pages/FoodCatalogPage';
 import { ClientView } from './pages/ClientView';
 import { TemplatesPage } from './pages/TemplatesPage';
+import { RecursosPage } from './pages/RecursosPage';
 import { AuthPage } from './pages/AuthPage';
 import { ClaveNueva } from './components/common/ClaveNueva';
 import { useAuthStore } from './store/useAuthStore';
@@ -22,6 +23,7 @@ const nav = [
   { to: '/recetas', label: 'Banco de recetas' },
   { to: '/alimentos', label: 'Alimentos' },
   { to: '/plantillas', label: 'Mis plantillas' },
+  { to: '/recursos', label: 'Recursos' },
 ];
 
 export default function App() {
@@ -154,6 +156,7 @@ export default function App() {
               <Route path="/recetas" element={<RecipeBankPage />} />
               <Route path="/alimentos" element={<FoodCatalogPage />} />
               <Route path="/plantillas" element={<TemplatesPage />} />
+              <Route path="/recursos" element={<RecursosPage />} />
             </>
           )}
           {/* Cualquier otra ruta devuelve a lo suyo: el cliente no husmea. */}

@@ -59,6 +59,7 @@ const foto = (): Foto => ({
   foods: [],
   plantillas: [],
   plantillasDia: [],
+  recursos: [],
 });
 
 describe('Repartir el estado en filas', () => {
