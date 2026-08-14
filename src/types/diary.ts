@@ -1,4 +1,5 @@
 import type { MacroGrams } from './calculations';
+import type { Alimento } from './food';
 
 /**
  * REGISTRO DIARIO
@@ -41,6 +42,26 @@ export interface RegistroDia {
   /** Fase 1: ingredientes cambiados por su equivalente. mealId → ingredienteId → foodId */
   sustituciones: Record<string, Record<string, string>>;
   extras: Extra[];
+  /**
+   * COMIDAS LIBRES
+   *
+   * Comer fuera no se mide. Poner un número a una hamburguesa que no has
+   * cocinado tú no informa de nada: sólo da sensación de control, y a quien
+   * tiene mala relación con la comida esa sensación es justo lo que le hace
+   * daño. Lo que sí sirve es la frecuencia, y eso se apunta con un botón.
+   *
+   * mealId → nota opcional de la clienta. Sin macros, sin calorías, sin
+   * puntuarse. Si quiere contar algo, escribe; si no, marca y ya.
+   */
+  libres?: Record<string, { nota?: string }>;
+  /**
+   * Alimentos que la clienta ha definido con la calculadora: la granola del
+   * armario que no está en su despensa. Viven aquí y no en el catálogo de la
+   * nutricionista porque son de ese día y de esa persona. Se pasan junto al
+   * catálogo a todo lo que cuenta porciones, así que funcionan igual que
+   * cualquier otro alimento sin tocar ni una cuenta.
+   */
+  alimentosPropios?: Alimento[];
   notas?: string;
 }
 
@@ -54,7 +75,18 @@ export function registroVacio(clientId: string, fecha: string, id: string): Regi
     porciones: {},
     sustituciones: {},
     extras: [],
+    libres: {},
   };
+}
+
+/** ¿Esta comida se la ha tomado libre? */
+export function esComidaLibre(registro: RegistroDia | undefined, mealId: string): boolean {
+  return !!registro?.libres?.[mealId];
+}
+
+/** Cuántas comidas libres hay en un puñado de días. Es el dato que importa. */
+export function contarLibres(registros: RegistroDia[]): number {
+  return registros.reduce((s, r) => s + Object.keys(r.libres ?? {}).length, 0);
 }
 
 export const DIAS_CORTOS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];

@@ -142,6 +142,7 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
           {comidas.map((m) => {
             const hecha = (registro.cumplidas ?? []).includes(m.id);
             const susExtras = extrasDeComida(extras, m.id);
+            const libre = registro.libres?.[m.id];
 
             /**
              * QUÉ SE ENSEÑA DEPENDE DE LA FASE
@@ -173,17 +174,30 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
               <li
                 key={m.id}
                 className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-lg border px-2.5 py-1.5 text-xs ${
-                  hecha ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'
+                  libre
+                    ? 'border-violet-200 bg-violet-50/50'
+                    : hecha
+                      ? 'border-emerald-200 bg-emerald-50/50'
+                      : 'border-slate-200'
                 }`}
               >
                 <span className="w-20 shrink-0 text-[10px] tracking-wide text-slate-400 uppercase">
                   {m.nombre}
                 </span>
                 <span className="flex-1 text-slate-700">
-                  {queHaComido ?? (
-                    <span className="text-slate-400">
-                      {plan.fase === 1 ? 'sin elegir' : 'sin marcar'}
+                  {libre ? (
+                    <span className="text-violet-800">
+                      Comida libre
+                      {libre.nota && (
+                        <span className="ml-1.5 text-slate-500 italic">«{libre.nota}»</span>
+                      )}
                     </span>
+                  ) : (
+                    (queHaComido ?? (
+                      <span className="text-slate-400">
+                        {plan.fase === 1 ? 'sin elegir' : 'sin marcar'}
+                      </span>
+                    ))
                   )}
                 </span>
                 {susExtras.length > 0 && (
@@ -192,9 +206,11 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
                   </span>
                 )}
                 <span
-                  className={`shrink-0 text-[11px] ${hecha ? 'text-emerald-700' : 'text-slate-300'}`}
+                  className={`shrink-0 text-[11px] ${
+                    libre ? 'text-violet-700' : hecha ? 'text-emerald-700' : 'text-slate-300'
+                  }`}
                 >
-                  {hecha ? '✓ hecha' : '—'}
+                  {libre ? 'libre' : hecha ? '✓ hecha' : '—'}
                 </span>
               </li>
             );

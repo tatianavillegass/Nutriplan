@@ -15,6 +15,18 @@ import { uid } from '../utils/storage';
 
 const SLOTS: MealSlot[] = ['desayuno', 'almuerzo', 'comida', 'merienda', 'cena', 'extra'];
 
+/** Las carpetas del banco. El orden es el del día. */
+const CARPETAS: { id: MealSlot | 'todas' | 'sin_clasificar'; nombre: string }[] = [
+  { id: 'todas', nombre: 'Todas' },
+  { id: 'desayuno', nombre: 'Desayunos' },
+  { id: 'almuerzo', nombre: 'Almuerzos' },
+  { id: 'comida', nombre: 'Comidas' },
+  { id: 'merienda', nombre: 'Meriendas' },
+  { id: 'cena', nombre: 'Cenas' },
+  { id: 'extra', nombre: 'Extras' },
+  { id: 'sin_clasificar', nombre: 'Sin clasificar' },
+];
+
 const RECETA_VACIA: Omit<Receta, 'id' | 'createdAt' | 'updatedAt'> = {
   nombre: '',
   categorias: ['comida'],
@@ -33,6 +45,15 @@ export function RecipeBankPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Omit<Receta, 'id' | 'createdAt' | 'updatedAt'>>(RECETA_VACIA);
   const [filtro, setFiltro] = useState('');
+  /**
+   * CARPETAS POR TIPO DE COMIDA
+   *
+   * Con el banco ya grande, una lista sola no se maneja: se busca «el desayuno
+   * de la avena» y hay que bajar por cincuenta platos de cena. Cada receta
+   * puede estar en varias carpetas, porque una tortilla vale de cena y de
+   * almuerzo, y eso es lo que dicen sus categorías.
+   */
+  const [carpeta, setCarpeta] = useState<MealSlot | 'todas' | 'sin_clasificar'>('todas');
 
   /**
    * El formulario sale arriba del todo, y las recetas se editan desde su
@@ -77,11 +98,19 @@ export function RecipeBankPage() {
       ingredientes: d.ingredientes.map((ing, idx) => (idx === i ? { ...ing, ...patch } : ing)),
     }));
 
+  const enCarpeta = (r: Receta) => {
+    if (carpeta === 'todas') return true;
+    // Las que no tienen categoría se pierden: hay que poder encontrarlas.
+    if (carpeta === 'sin_clasificar') return !r.categorias.length;
+    return r.categorias.includes(carpeta);
+  };
+
   const visibles = recipes.filter(
     (r) =>
-      !filtro ||
+      enCarpeta(r) &&
+      (!filtro ||
       r.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
-      r.tags.some((t) => t.toLowerCase().includes(filtro.toLowerCase())),
+      r.tags.some((t) => t.toLowerCase().includes(filtro.toLowerCase()))),
   );
 
   return (
@@ -439,6 +468,39 @@ export function RecipeBankPage() {
           </Field>
         </Card>
       )}
+
+      {/* ── Carpetas por tipo de comida ───────────────────── */}
+      <div className="flex flex-wrap gap-1.5">
+        {CARPETAS.map((c) => {
+          const n = recipes.filter((r) =>
+            c.id === 'todas'
+              ? true
+              : c.id === 'sin_clasificar'
+                ? !r.categorias.length
+                : r.categorias.includes(c.id as MealSlot),
+          ).length;
+          if (c.id === 'sin_clasificar' && n === 0) return null;
+
+          return (
+            <button
+              key={c.id}
+              onClick={() => setCarpeta(c.id)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                carpeta === c.id
+                  ? 'border-brand-500 bg-brand-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+              }`}
+            >
+              {c.nombre}
+              <span
+                className={`tnum ml-1.5 ${carpeta === c.id ? 'text-brand-100' : 'text-slate-400'}`}
+              >
+                {n}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {visibles.length === 0 ? (
         <EmptyState title="Sin recetas" />

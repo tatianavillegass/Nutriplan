@@ -5,6 +5,7 @@ import { MealOptionsBoard } from '../components/phase2/MealOptionsBoard';
 import { ScaledOptionsBoard } from '../components/phase2/ScaledOptionsBoard';
 import { FoodPortionPicker } from '../components/phase3/FoodPortionPicker';
 import { PresupuestoDia } from '../components/phase3/PresupuestoDia';
+import { CalculadoraPorciones } from '../components/phase3/CalculadoraPorciones';
 import { ScaledRecipeView } from '../components/phase1/ScaledRecipeView';
 import { MealCard } from '../components/client/MealCard';
 import { WeekStrip } from '../components/client/WeekStrip';
@@ -12,6 +13,7 @@ import { DayProgressBar } from '../components/client/DayProgressBar';
 import { RecipeShortcuts } from '../components/client/RecipeShortcuts';
 import { ExtrasPanel } from '../components/client/ExtrasPanel';
 import { MealExtras } from '../components/client/MealExtras';
+import { ComidaLibre } from '../components/client/ComidaLibre';
 import { PlanDocument } from '../components/export/PlanDocument';
 import { usePrintDocument } from '../components/export/printing';
 import { Button, EmptyState, fmt } from '../components/common/ui';
@@ -32,7 +34,7 @@ export function ClientView() {
   const client = useAppStore((s) => s.clients.find((c) => c.id === id));
   // El cliente sólo ve la planificación en uso, nunca las archivadas.
   const plan = useAppStore((s) => s.plans.find((p) => p.clientId === id && !p.archivado));
-  const foods = useAppStore((s) => s.foods);
+  const catalogo = useAppStore((s) => s.foods);
   const recipes = useAppStore((s) => s.recipes);
   const registros = useAppStore((s) => s.registros);
   const upsertRegistro = useAppStore((s) => s.upsertRegistro);
@@ -55,8 +57,10 @@ export function ClientView() {
   }, [plan, registro?.dayTypeId]);
 
   const balance = useMemo(
-    () => balanceDelDia(dayType, registro, foods, { asumirPlanCumplido: true }),
-    [dayType, registro, foods],
+    () => balanceDelDia(dayType, registro, [...catalogo, ...(registro?.alimentosPropios ?? [])], {
+      asumirPlanCumplido: true,
+    }),
+    [dayType, registro, catalogo],
   );
 
   if (!client || !plan || !dayType) return <EmptyState title="Plan no disponible" />;
@@ -72,6 +76,12 @@ export function ClientView() {
 
   const guardar = (patch: Parameters<typeof upsertRegistro>[2]) =>
     upsertRegistro(client.id, fecha, { dayTypeId: dayType.id, ...patch });
+
+  /**
+   * El catálogo de la nutricionista más lo que la clienta se haya calculado
+   * hoy. Al ir juntos, todo lo que cuenta porciones los trata igual.
+   */
+  const foods = [...catalogo, ...(registro?.alimentosPropios ?? [])];
 
   const porciones = registro?.porciones ?? {};
   /** Lo escogido por subgrupo: es la base del presupuesto del día. */
@@ -116,6 +126,29 @@ export function ClientView() {
   const anadirExtra = (extra: (typeof extras)[number]) => guardar({ extras: [...extras, extra] });
   const quitarExtra = (extraId: string) =>
     guardar({ extras: extras.filter((e) => e.id !== extraId) });
+
+  /**
+   * Marcar una comida como libre. No borra lo que hubiera marcado —puede haber
+   * desayunado en casa y salido a comer— simplemente dice que esa comida no se
+   * mide.
+   */
+  const libres = registro?.libres ?? {};
+  const marcarLibre = (mealId: string, nota?: string) =>
+    guardar({ libres: { ...libres, [mealId]: { nota } } });
+  const quitarLibre = (mealId: string) => {
+    const { [mealId]: _fuera, ...resto } = libres;
+    guardar({ libres: resto });
+  };
+
+  /** La comida libre va en todas las fases: comer fuera pasa siempre. */
+  const libreDe = (mealId: string, nombre: string) => (
+    <ComidaLibre
+      mealNombre={nombre}
+      libre={libres[mealId]}
+      onMarcar={(nota) => marcarLibre(mealId, nota)}
+      onQuitar={() => quitarLibre(mealId)}
+    />
+  );
 
   /** El «+ Añadir extra» de una comida: el mismo en las tres fases. */
   const extrasDe = (mealId: string, nombre: string) => (
@@ -262,6 +295,7 @@ export function ClientView() {
             dayType={dayType}
             porciones={porciones}
             cumplidas={registro?.cumplidas ?? []}
+            libres={libres}
             onIr={(mealId) =>
               document.getElementById(`comida-${mealId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }
@@ -346,6 +380,7 @@ export function ClientView() {
                     />
                   </MealCard>
                   {extrasDe(m.id, m.nombre)}
+                  {libreDe(m.id, m.nombre)}
                 </div>
               );
             })}
@@ -391,6 +426,7 @@ export function ClientView() {
                   </button>
                 </div>
                 {extrasDe(m.id, m.nombre)}
+                {libreDe(m.id, m.nombre)}
               </div>
             ))}
           </div>
@@ -431,8 +467,24 @@ export function ClientView() {
                     </button>
                   </div>
                   {extrasDe(m.id, m.nombre)}
+                  {libreDe(m.id, m.nombre)}
                 </div>
               ))}
+
+              {/*
+                Para lo que no está en su despensa: la granola del armario, un
+                bote con etiqueta. Va al final, cerca del resumen, porque es
+                una consulta puntual y no parte del día.
+              */}
+              <CalculadoraPorciones
+                comidas={comidas.map((m) => ({ id: m.id, nombre: m.nombre }))}
+                onAnadir={(alimento, mealId) =>
+                  guardar({
+                    alimentosPropios: [...(registro?.alimentosPropios ?? []), alimento],
+                    porciones: fijarAlimento(porciones, mealId, alimento.id, 1),
+                  })
+                }
+              />
 
               {/* Cómo va cada comida, ya al final: informa, no manda. */}
               <div>
@@ -443,6 +495,7 @@ export function ClientView() {
                   dayType={dayType}
                   porciones={porciones}
                   cumplidas={registro?.cumplidas ?? []}
+                  libres={libres}
                   onIr={(mealId) =>
                     document
                       .getElementById(`comida-${mealId}`)
