@@ -54,6 +54,11 @@ interface Props {
    * que ya los enseña, repetirlos sobra.
    */
   sinCabecera?: boolean;
+  /**
+   * Gramos que la nutricionista ha fijado a mano para esta clienta. Mandan
+   * sobre el cálculo. Ver `DayType.ajustesReceta`.
+   */
+  ajustes?: Record<string, number>;
 }
 
 export function ScaledRecipeView({
@@ -67,6 +72,7 @@ export function ScaledRecipeView({
   acciones,
   paraNutricionista = false,
   sinCabecera = false,
+  ajustes,
 }: Props) {
   /**
    * Gramos o medidas caseras. Se mezclaban las dos y confundía: ahora se
@@ -74,7 +80,10 @@ export function ScaledRecipeView({
    */
   const [caseras, setCaseras] = useState(false);
 
-  const escalada = useMemo(() => scaleRecipe(receta, requeridos, foods), [receta, requeridos, foods]);
+  const escalada = useMemo(
+    () => scaleRecipe(receta, requeridos, foods, ajustes),
+    [receta, requeridos, foods, ajustes],
+  );
   const resultado = useMemo(
     () => applyCustomization(escalada, requeridos, EMPTY_CUSTOMIZATION, foods),
     [escalada, requeridos, foods],

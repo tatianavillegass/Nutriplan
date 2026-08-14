@@ -130,6 +130,27 @@ export interface DayType {
    * (3 por defecto) y el cliente escoge entre ellas cada día.
    */
   recetasAsignadas?: Record<string, string[]>;
+  /**
+   * CANTIDADES AJUSTADAS A MANO, PARA ESTA CLIENTA
+   *
+   * La app calcula los gramos escalando la receta a lo pautado, pero la última
+   * palabra es de quien pauta: a veces conviene subir el pan y bajar el aceite
+   * aunque los macros salgan igual. Esos gramos viven aquí, en el plan, y no
+   * en la receta del banco: la misma receta se cuadra distinto según a quién
+   * se le pauta.
+   *
+   * mealId → recetaId → ingredienteId → gramos.
+   */
+  ajustesReceta?: Record<string, Record<string, Record<string, number>>>;
+}
+
+/** Los gramos que Tats haya fijado a mano para esa receta en esa comida. */
+export function ajustesDeReceta(
+  dayType: DayType,
+  mealId: string,
+  recetaId: string,
+): Record<string, number> {
+  return dayType.ajustesReceta?.[mealId]?.[recetaId] ?? {};
 }
 
 export interface Plan {

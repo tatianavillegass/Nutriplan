@@ -419,6 +419,22 @@ export function ClientDetail() {
                       .filter((otra) => otra.id !== m.id)
                       .flatMap((otra) => recetasDeComida(dayType.recetasAsignadas, otra.id))}
                     onEditarReceta={(rid, patch) => updateRecipe(rid, patch)}
+                    /**
+                     * Los gramos a mano viven en el plan de esta clienta, no
+                     * en la receta del banco: la misma receta se cuadra
+                     * distinto según a quién se le pauta.
+                     */
+                    onAjustarCantidades={(rid, ajustes) =>
+                      updateDayType(plan.id, dayType.id, {
+                        ajustesReceta: {
+                          ...(dayType.ajustesReceta ?? {}),
+                          [m.id]: {
+                            ...(dayType.ajustesReceta?.[m.id] ?? {}),
+                            [rid]: ajustes,
+                          },
+                        },
+                      })
+                    }
                     onToggle={(rid) => {
                       const actuales = recetasDeComida(dayType.recetasAsignadas, m.id);
                       const nuevas = actuales.includes(rid)

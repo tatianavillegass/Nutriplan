@@ -152,6 +152,12 @@ export function scaleRecipe(
   requeridos: ExchangeCounts,
   /** El catálogo, para saber qué se cuenta por piezas y qué se pesa. */
   foods: Alimento[] = [],
+  /**
+   * Gramos fijados a mano por la nutricionista para esta clienta
+   * (ingredienteId → gramos). Mandan sobre el cálculo: la app propone y ella
+   * dispone. Ver `DayType.ajustesReceta`.
+   */
+  ajustes: Record<string, number> = {},
 ): RecetaEscalada {
   const factores: Partial<Record<ExchangeGroupId, number>> = {};
   const gruposSinCubrir: ExchangeGroupId[] = [];
@@ -321,6 +327,23 @@ export function scaleRecipe(
 
   const ingredientes: IngredienteEscalado[] = receta.ingredientes.map((ing) => {
     const esVerdura = ing.grupo === 'verduras';
+
+    /**
+     * Lo que Tats haya escrito a mano gana al cálculo. Se marca como
+     * `ajustado` para poder enseñarlo distinto y para saber que ese gramaje
+     * no se recalcula si cambia la pauta.
+     */
+    const aMano = ajustes[ing.id];
+    if (aMano != null && aMano >= 0) {
+      return {
+        ...ing,
+        factor: ing.cantidad_base ? aMano / ing.cantidad_base : 1,
+        cantidad_final: aMano,
+        display: `${aMano} ${ing.unidad}`,
+        ajustado: true,
+      };
+    }
+
     const factor =
       ing.escalable && ing.grupo !== 'condimento' && !esVerdura
         ? factores[ing.grupo as ExchangeGroupId] ?? 1

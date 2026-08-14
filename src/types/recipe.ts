@@ -62,9 +62,11 @@ export interface Receta {
 /** Resultado del escalado por grupo. */
 export interface IngredienteEscalado extends Ingrediente {
   cantidad_final: number | null;
-  /** Texto listo para imprimir: "150 g", "al gusto (mín. 200 g)". */
+  /** Texto listo para imprimir: "150 g", "al gusto". */
   display: string;
   factor: number;
+  /** Gramos fijados a mano por la nutricionista, no calculados. */
+  ajustado?: boolean;
 }
 
 export interface RecetaEscalada {

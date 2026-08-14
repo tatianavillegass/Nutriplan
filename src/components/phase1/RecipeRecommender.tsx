@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Receta } from '../../types/recipe';
 import type { Meal, DayType } from '../../types/plan';
-import { RECETAS_POR_COMIDA } from '../../types/plan';
+import { RECETAS_POR_COMIDA, ajustesDeReceta } from '../../types/plan';
 import type { Client } from '../../types/client';
 import type { Alimento, MealSlot } from '../../types/food';
 import { matchRecipes } from '../../utils/recipeMatcher';
@@ -9,6 +9,7 @@ import { coincide } from '../../utils/similitud';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { ScaledRecipeView } from './ScaledRecipeView';
 import { RecipeQuickEditor } from './RecipeQuickEditor';
+import { AjustarCantidades } from './AjustarCantidades';
 import { Badge, Button, EmptyState, Input } from '../common/ui';
 import { RecipeMeta } from '../common/RecipeMeta';
 
@@ -25,6 +26,8 @@ interface Props {
   foods?: Alimento[];
   /** Guardar cambios en la receta del banco. */
   onEditarReceta?: (recetaId: string, patch: Partial<Receta>) => void;
+  /** Guardar los gramos ajustados a mano, sólo para esta clienta. */
+  onAjustarCantidades?: (recetaId: string, ajustes: Record<string, number>) => void;
 }
 
 const SLOTS: { id: MealSlot; nombre: string }[] = [
@@ -68,8 +71,11 @@ export function RecipeRecommender({
   onToggle,
   foods = [],
   onEditarReceta,
+  onAjustarCantidades,
 }: Props) {
   const [editando, setEditando] = useState<string | null>(null);
+  /** Receta cuyas cantidades se están ajustando para esta clienta. */
+  const [ajustando, setAjustando] = useState<string | null>(null);
   /**
    * De entrada, el tipo de comida que toca aquí: en el desayuno se enseñan
    * recetas de desayuno. Antes la categoría sólo sumaba puntos, así que un
@@ -470,20 +476,43 @@ export function RecipeRecommender({
                   />
                 </div>
               ) : (
-                <ScaledRecipeView
-                  key={r.id}
-                  receta={r}
-                  requeridos={reparto}
-                  foods={foods}
-                  paraNutricionista
-                  acciones={
-                    onEditarReceta ? (
-                      <Button variant="outline" onClick={() => setEditando(r.id)}>
-                        Editar receta
-                      </Button>
-                    ) : undefined
-                  }
-                />
+                <div key={r.id}>
+                  {ajustando === r.id && onAjustarCantidades ? (
+                    <AjustarCantidades
+                      receta={r}
+                      requeridos={reparto}
+                      foods={foods}
+                      ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
+                      onGuardar={(a) => {
+                        onAjustarCantidades(r.id, a);
+                        setAjustando(null);
+                      }}
+                      onCerrar={() => setAjustando(null)}
+                    />
+                  ) : (
+                    <ScaledRecipeView
+                      receta={r}
+                      requeridos={reparto}
+                      foods={foods}
+                      ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
+                      paraNutricionista
+                      acciones={
+                        <>
+                          {onAjustarCantidades && (
+                            <Button variant="outline" onClick={() => setAjustando(r.id)}>
+                              Ajustar cantidades
+                            </Button>
+                          )}
+                          {onEditarReceta && (
+                            <Button variant="outline" onClick={() => setEditando(r.id)}>
+                              Editar receta
+                            </Button>
+                          )}
+                        </>
+                      }
+                    />
+                  )}
+                </div>
               ),
             )}
           </div>
