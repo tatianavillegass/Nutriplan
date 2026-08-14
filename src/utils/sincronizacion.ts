@@ -8,6 +8,8 @@ import {
   guardarPlantillasDia,
   leerPlantillas,
   leerPlantillasDia,
+  observarPlantillas,
+  sinAvisar,
 } from './plantillas';
 
 /**
@@ -29,6 +31,7 @@ const ESPERA_MS = 1500;
 
 let temporizador: ReturnType<typeof setTimeout> | null = null;
 let desuscribir: (() => void) | null = null;
+let desuscribirPlantillas: (() => void) | null = null;
 let perfilActivo: Perfil | null = null;
 let pendiente = false;
 
@@ -76,8 +79,10 @@ export function olvidarLocal(): void {
     mediciones: [],
     registros: [],
   });
-  guardarPlantillas([]);
-  guardarPlantillasDia([]);
+  sinAvisar(() => {
+    guardarPlantillas([]);
+    guardarPlantillasDia([]);
+  });
   void storage.remove(DUENO_KEY);
 }
 
@@ -107,8 +112,11 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
       if (arribaVacio && !heredable) olvidarLocal();
       void storage.set(DUENO_KEY, perfil.nutriId);
       useAppStore.getState().hidratar(foto);
-      guardarPlantillas(foto.plantillas);
-      guardarPlantillasDia(foto.plantillasDia);
+      // Lo que acaba de bajar ya está arriba: guardarlo no es un cambio.
+      sinAvisar(() => {
+        guardarPlantillas(foto.plantillas);
+        guardarPlantillasDia(foto.plantillasDia);
+      });
     }
     avisar('al-dia');
   } catch (e) {
@@ -226,11 +234,15 @@ export function arrancarSincronizacion(perfil: Perfil): void {
     // Lo que acaba de llegar del servidor ya está arriba: subirlo otra vez
     // sólo daría vueltas.
     if (aplicandoRemoto) return;
-    pendiente = true;
-    avisar('guardando');
-    if (temporizador) clearTimeout(temporizador);
-    temporizador = setTimeout(() => void empujar(), ESPERA_MS);
+    programarSubida();
   });
+
+  /**
+   * Las plantillas de despensa y de día no viven en el estado de la app, así
+   * que hay que escucharlas aparte. Sin esto se guardaban sólo en el navegador
+   * y al volver a entrar las borraba lo que había en el servidor.
+   */
+  desuscribirPlantillas = observarPlantillas(programarSubida);
 
   // Si se cierra la pestaña con algo a medias, se intenta un último envío.
   if (typeof window !== 'undefined') {
@@ -243,6 +255,8 @@ export function pararSincronizacion(): void {
   temporizador = null;
   desuscribir?.();
   desuscribir = null;
+  desuscribirPlantillas?.();
+  desuscribirPlantillas = null;
   canal?.unsubscribe();
   canal = null;
   if (repaso) clearInterval(repaso);
@@ -256,6 +270,14 @@ export function pararSincronizacion(): void {
 
 function alSalirDeLaPagina() {
   if (pendiente) void empujar();
+}
+
+/** Apunta que hay algo que subir y lo manda en cuanto se deje de teclear. */
+function programarSubida(): void {
+  pendiente = true;
+  avisar('guardando');
+  if (temporizador) clearTimeout(temporizador);
+  temporizador = setTimeout(() => void empujar(), ESPERA_MS);
 }
 
 /** Sube lo que toque según quién esté dentro. */

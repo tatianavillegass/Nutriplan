@@ -63,6 +63,45 @@ function sembrar(): void {
   }
 }
 
+/**
+ * LAS PLANTILLAS TAMBIÉN TIENEN QUE SUBIR A LA NUBE
+ *
+ * Viven en el navegador por su cuenta, fuera del estado de la app. La subida
+ * automática escucha ese estado, así que guardar una plantilla no la disparaba:
+ * la plantilla se veía perfectamente mientras la pestaña estuviera abierta y
+ * desaparecía al volver a entrar, porque al arrancar se baja lo que hay en el
+ * servidor —donde nunca llegó— y eso pisa lo del navegador.
+ *
+ * Sólo se perdía si no se tocaba nada más: cambiar cualquier otra cosa después
+ * subía todo de golpe y la plantilla se salvaba de rebote. De ahí que unas
+ * veces se guardaran y otras no.
+ *
+ * Con esto, guardar una plantilla avisa igual que cualquier otro cambio.
+ */
+type Escucha = () => void;
+const escuchas = new Set<Escucha>();
+let callado = false;
+
+export function observarPlantillas(fn: Escucha): () => void {
+  escuchas.add(fn);
+  return () => escuchas.delete(fn);
+}
+
+/** Para escribir sin provocar una subida: lo que acaba de bajar ya está arriba. */
+export function sinAvisar<T>(fn: () => T): T {
+  callado = true;
+  try {
+    return fn();
+  } finally {
+    callado = false;
+  }
+}
+
+function avisarDelCambio(): void {
+  if (callado) return;
+  for (const fn of escuchas) fn();
+}
+
 export function leerPlantillas(): PlantillaDespensa[] {
   sembrar();
   return storage.getSync<PlantillaDespensa[]>(PLANTILLAS_KEY) ?? [];
@@ -70,6 +109,7 @@ export function leerPlantillas(): PlantillaDespensa[] {
 
 export function guardarPlantillas(lista: PlantillaDespensa[]): void {
   void storage.set(PLANTILLAS_KEY, lista);
+  avisarDelCambio();
 }
 
 export function leerPlantillasDia(): PlantillaDia[] {
@@ -79,6 +119,7 @@ export function leerPlantillasDia(): PlantillaDia[] {
 
 export function guardarPlantillasDia(lista: PlantillaDia[]): void {
   void storage.set(PLANTILLAS_DIA_KEY, lista);
+  avisarDelCambio();
 }
 
 /** Crea o reemplaza por nombre, para no acumular "Desayuno" cuatro veces. */

@@ -349,9 +349,12 @@ export function balanceSubgrupo(
         `Tienes ${pautadoComida} de ${nombre} en esta comida y ${pautadoDia} al día. ` +
         `Con ${elegidoComida}, te ${plural(restanteDia, 'queda', 'quedan')} ${restanteDia} para el resto del día.`;
     } else {
+      // El macro que toque: decía «otro grupo de proteína» aunque fueran
+      // grasas o hidratos, que es de cuando esto sólo miraba los proteicos.
+      const macro = info ? LABEL[info.bucket] : 'ese macro';
       mensaje =
         `Te has pasado ${Math.abs(restanteDia)} de ${nombre} sobre el total del día (${pautadoDia}). ` +
-        `Cambia ${elegidoComida - pautadoComida} por otro grupo de proteína o compénsalo luego.`;
+        `Cambia ${elegidoComida - pautadoComida} por otro grupo de ${macro} o compénsalo luego.`;
     }
   }
 
