@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { DayType } from '../../types/plan';
 import type { MacroBucket } from '../../data/exchangeGroups';
 import {
@@ -12,10 +13,10 @@ interface Props {
   seleccion: SeleccionGrupos;
 }
 
-const TONO: Record<MacroBucket, { barra: string; fondo: string; texto: string }> = {
-  proteina: { barra: 'bg-brand-600', fondo: 'bg-brand-100', texto: 'text-brand-800' },
-  carbohidrato: { barra: 'bg-amber-500', fondo: 'bg-amber-100', texto: 'text-amber-800' },
-  grasa: { barra: 'bg-rose-400', fondo: 'bg-rose-100', texto: 'text-rose-800' },
+const TONO: Record<MacroBucket, { arco: string; pista: string; texto: string }> = {
+  proteina: { arco: 'stroke-brand-600', pista: 'stroke-brand-100', texto: 'text-brand-800' },
+  carbohidrato: { arco: 'stroke-amber-500', pista: 'stroke-amber-100', texto: 'text-amber-800' },
+  grasa: { arco: 'stroke-rose-400', pista: 'stroke-rose-100', texto: 'text-rose-800' },
 };
 
 /** «3», «3½». Las medias porciones son parte del sistema. */
@@ -38,6 +39,9 @@ const porciones = (n: number): string => {
  * el orden de la pantalla dice qué es lo que manda.
  */
 export function PresupuestoDia({ dayType, seleccion }: Props) {
+  /** El desglose empieza plegado: en el móvil es lo que ahorra el scroll. */
+  const [detalle, setDetalle] = useState(false);
+
   const macros = presupuestoDelDia(dayType, seleccion);
   const reserva = reservaAceiteDelDia(dayType);
   if (!macros.length) return null;
@@ -55,65 +59,96 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      {/*
+        Tres anillos en fila. En el centro va lo que le QUEDA, que es el número
+        con el que se decide qué comer: «6 de 9» hay que interpretarlo, «te
+        quedan 3» no. El desglose por subgrupo se despliega, porque hace falta
+        al ir a elegir y no todo el rato — y en un móvil eso son tres pantallas
+        de scroll menos.
+      */}
+      <div className="flex items-start justify-around gap-2">
         {macros.map((m) => {
           const t = TONO[m.bucket];
-          const pct = m.pautado > 0 ? Math.min(100, (m.elegido / m.pautado) * 100) : 0;
+          const pct = m.pautado > 0 ? Math.min(1, m.elegido / m.pautado) : 0;
           const pasado = m.restante < -0.01;
+          const completo = !pasado && m.restante < 0.01;
+          const r = 18;
+          const circunferencia = 2 * Math.PI * r;
 
           return (
-            <div key={m.bucket} className="rounded-xl border border-slate-200 p-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className={`text-xs font-semibold ${t.texto}`}>
-                  {BUCKET_LABEL[m.bucket]}
-                </span>
-                <span className="tnum text-[11px] text-slate-500">
-                  {porciones(m.elegido)} de {porciones(m.pautado)}
+            <div key={m.bucket} className="min-w-0 text-center">
+              <div className="relative inline-flex items-center justify-center">
+                <svg viewBox="0 0 44 44" className="h-16 w-16" aria-hidden>
+                  <circle cx="22" cy="22" r={r} fill="none" className={t.pista} strokeWidth="5" />
+                  <circle
+                    cx="22"
+                    cy="22"
+                    r={r}
+                    fill="none"
+                    className={pasado ? 'stroke-rose-500' : t.arco}
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray={`${circunferencia * (pasado ? 1 : pct)} ${circunferencia}`}
+                    transform="rotate(-90 22 22)"
+                  />
+                </svg>
+                <span
+                  className={`tnum absolute text-sm font-semibold ${
+                    pasado ? 'text-rose-700' : completo ? 'text-emerald-700' : t.texto
+                  }`}
+                >
+                  {pasado ? `+${porciones(Math.abs(m.restante))}` : completo ? '✓' : porciones(m.restante)}
                 </span>
               </div>
 
-              <div className={`mt-1.5 h-2 w-full overflow-hidden rounded-full ${t.fondo}`}>
-                <div
-                  className={`h-full rounded-full transition-all ${pasado ? 'bg-rose-500' : t.barra}`}
-                  style={{ width: `${pasado ? 100 : pct}%` }}
-                />
-              </div>
-
-              <p
-                className={`tnum mt-1 text-[11px] ${pasado ? 'text-rose-700' : 'text-slate-500'}`}
-              >
-                {pasado
-                  ? `te has pasado ${porciones(Math.abs(m.restante))}`
-                  : m.restante < 0.01
-                    ? 'completo'
-                    : `te quedan ${porciones(m.restante)}`}
+              <p className={`mt-0.5 truncate text-[11px] font-medium ${t.texto}`}>
+                {BUCKET_LABEL[m.bucket]}
               </p>
-
-              {/* El desglose: es lo que de verdad escoge de su despensa. */}
-              {m.grupos.length > 0 && (
-                <ul className="mt-2 space-y-0.5 border-t border-slate-100 pt-1.5">
-                  {m.grupos.map((g) => (
-                    <li key={g.grupo} className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-[11px] text-slate-500">{g.nombre}</span>
-                      <span
-                        className={`tnum shrink-0 text-[11px] ${
-                          g.restante < -0.01
-                            ? 'text-rose-700'
-                            : g.restante < 0.01
-                              ? 'text-emerald-700'
-                              : 'text-slate-600'
-                        }`}
-                      >
-                        {porciones(g.elegido)}/{porciones(g.pautado)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <p className="tnum text-[10px] text-slate-500">
+                {porciones(m.elegido)} de {porciones(m.pautado)}
+              </p>
             </div>
           );
         })}
       </div>
+
+      <button
+        onClick={() => setDetalle((v) => !v)}
+        aria-expanded={detalle}
+        className="mt-3 w-full rounded-lg border border-slate-200 py-1.5 text-[11px] font-medium text-slate-600 transition hover:border-brand-300 hover:text-brand-700"
+      >
+        {detalle ? 'Ocultar el desglose ⌃' : 'Ver de qué te queda ⌄'}
+      </button>
+
+      {detalle && (
+        <div className="mt-2 space-y-2.5">
+          {macros.map((m) => (
+            <div key={m.bucket}>
+              <p className={`text-[10px] font-medium tracking-wide uppercase ${TONO[m.bucket].texto}`}>
+                {BUCKET_LABEL[m.bucket]}
+              </p>
+              <ul className="mt-0.5 space-y-0.5">
+                {m.grupos.map((g) => (
+                  <li key={g.grupo} className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-xs text-slate-600">{g.nombre}</span>
+                    <span
+                      className={`tnum shrink-0 text-xs ${
+                        g.restante < -0.01
+                          ? 'text-rose-700'
+                          : g.restante < 0.01
+                            ? 'text-emerald-700'
+                            : 'text-slate-700'
+                      }`}
+                    >
+                      {porciones(g.elegido)} de {porciones(g.pautado)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
 
       <p className="mt-3 text-[11px] text-emerald-700">
         La verdura va aparte: al gusto y sin contar.

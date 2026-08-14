@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { PresupuestoDia } from '../phase3/PresupuestoDia';
 import type { DayType } from '../../types/plan';
 
@@ -22,58 +22,87 @@ const DIA: DayType = {
   notas: {},
 };
 
-describe('Lo que lee la clienta en el presupuesto', () => {
-  it('dice el total del día y lo que le queda', () => {
+/**
+ * EL PRESUPUESTO EN TRES ANILLOS
+ *
+ * En el centro de cada anillo va lo que le QUEDA, que es el número con el que
+ * se decide qué comer. El desglose por subgrupo empieza plegado: hace falta al
+ * ir a elegir, no todo el rato, y en un móvil eso son varias pantallas menos.
+ */
+describe('Lo que lee la clienta de un vistazo', () => {
+  it('cada macro tiene su anillo con lo que lleva del total', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ desayuno: { almidones: 2 } }} />);
-    // Carbohidrato: 5 almidones + 1 fruta pautados en todo el día, lleva 2.
-    const carbo = screen.getByText('2 de 6').closest('div')!.parentElement!;
-    expect(carbo.textContent).toContain('te quedan 4');
-    // Y el desglose dice de cuál: 2 de los 5 almidones.
-    expect(carbo.textContent).toContain('2/5');
+    expect(screen.getByText('Proteína')).toBeTruthy();
+    expect(screen.getByText('Carbohidrato')).toBeTruthy();
+    expect(screen.getByText('Grasa')).toBeTruthy();
+    // 5 almidones + 1 fruta pautados en el día; lleva 2.
+    expect(screen.getByText('2 de 6')).toBeTruthy();
   });
 
-  it('desglosa los subgrupos, que es lo que escoge de verdad', () => {
-    render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
-    expect(screen.getByText('Almidones')).toBeTruthy();
-    expect(screen.getByText('Fruta')).toBeTruthy();
-    expect(screen.getByText('Proteicos magros')).toBeTruthy();
+  it('en el centro va lo que queda, no lo consumido', () => {
+    render(<PresupuestoDia dayType={DIA} seleccion={{ desayuno: { almidones: 2 } }} />);
+    // Carbohidrato: 6 pautados, 2 puestos → quedan 4.
+    expect(screen.getAllByText('4').length).toBeGreaterThan(0);
   });
 
-  /**
-   * En la comida se reserva 1 grasa para el aceite, así que de las 2 pautadas
-   * sólo hay 1 que escoger. Contar las dos era lo que dejaba el día sin poder
-   * completarse nunca.
-   */
-  it('avisa cuando ya está completo', () => {
+  it('cuando está completo lo dice con una marca, no con un número', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 1 } }} />);
-    expect(screen.getByText('completo')).toBeTruthy();
+    // La comida reserva 1 grasa para el aceite: con 1 elegida ya está.
+    expect(screen.getByText('✓')).toBeTruthy();
   });
 
-  it('y cuando se ha pasado', () => {
+  it('y si se pasa, cuánto se ha pasado', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 2 } }} />);
-    expect(screen.getByText('te has pasado 1')).toBeTruthy();
+    expect(screen.getByText('+1')).toBeTruthy();
   });
 
   it('las medias porciones se leen como medias', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 0.5 } }} />);
     expect(screen.getByText('½ de 1')).toBeTruthy();
   });
+});
 
-  it('explica que el aceite de cocinar ya está contado', () => {
+describe('El desglose se despliega, no ocupa siempre', () => {
+  it('de entrada no se ven los subgrupos', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
-    expect(screen.getByText(/aceite de cocinar/i)).toBeTruthy();
-    expect(screen.getByText(/no tienes que elegir/i)).toBeTruthy();
+    expect(screen.queryByText('Almidones')).toBeNull();
+    expect(screen.getByText(/Ver de qué te queda/i)).toBeTruthy();
   });
 
-  it('explica que el total manda y el reparto es una intención', () => {
+  it('al abrirlo salen, con lo que queda de cada uno', () => {
+    render(<PresupuestoDia dayType={DIA} seleccion={{ desayuno: { almidones: 2 } }} />);
+    fireEvent.click(screen.getByText(/Ver de qué te queda/i));
+    expect(screen.getByText('Almidones')).toBeTruthy();
+    expect(screen.getByText('Fruta')).toBeTruthy();
+    expect(screen.getByText('Proteicos magros')).toBeTruthy();
+    // 2 de los 5 almidones del día.
+    expect(screen.getByText('2 de 5')).toBeTruthy();
+  });
+
+  it('y se vuelve a plegar', () => {
+    render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
+    fireEvent.click(screen.getByText(/Ver de qué te queda/i));
+    fireEvent.click(screen.getByText(/Ocultar el desglose/i));
+    expect(screen.queryByText('Almidones')).toBeNull();
+  });
+});
+
+describe('Lo que se explica siempre', () => {
+  it('que el total manda y el reparto es una intención', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
     expect(screen.getByText(/lo repartes como te venga mejor/i)).toBeTruthy();
     expect(screen.getByText(/pensado con una intención/i)).toBeTruthy();
   });
 
-  it('recuerda que la verdura va aparte', () => {
+  it('que la verdura va aparte', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
     expect(screen.getByText(/verdura va aparte/i)).toBeTruthy();
     expect(screen.queryByText('Verduras y hortalizas')).toBeNull();
+  });
+
+  it('que el aceite de cocinar ya está contado', () => {
+    render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
+    expect(screen.getByText(/aceite de cocinar/i)).toBeTruthy();
+    expect(screen.getByText(/no tienes que elegir/i)).toBeTruthy();
   });
 });
