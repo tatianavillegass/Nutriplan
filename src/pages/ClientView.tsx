@@ -51,9 +51,7 @@ export function ClientView() {
   const catalogo = useAppStore((s) => s.foods);
   const recipes = useAppStore((s) => s.recipes);
   const registros = useAppStore((s) => s.registros);
-  const mediciones = useAppStore((s) =>
-    s.mediciones.filter((m) => m.clientId === id),
-  );
+  const todasMediciones = useAppStore((s) => s.mediciones);
   const recursos = useAppStore((s) => s.recursos);
   const upsertRegistro = useAppStore((s) => s.upsertRegistro);
 
@@ -76,6 +74,16 @@ export function ClientView() {
   const mios = useMemo(
     () => registros.filter((r) => r.clientId === id),
     [registros, id],
+  );
+  /**
+   * Filtrar DENTRO del selector devolvía una lista nueva en cada pintada y la
+   * pantalla del cliente se quedaba en blanco: el store cree que ha cambiado
+   * algo, vuelve a pintar, vuelve a filtrar, y así hasta que React corta. Se
+   * selecciona la lista entera y se filtra aquí, como con los registros.
+   */
+  const mediciones = useMemo(
+    () => todasMediciones.filter((m) => m.clientId === id),
+    [todasMediciones, id],
   );
   const registro = mios.find((r) => r.fecha === fecha);
 
