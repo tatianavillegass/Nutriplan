@@ -161,15 +161,36 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
   const sb = nube();
 
   const [compartido, fichas] = await Promise.all([
-    sb
-      .from('nutricionistas')
-      .select('recetas, alimentos, plantillas, recursos')
-      .eq('id', perfil.nutriId)
-      .maybeSingle(),
+    /**
+     * SE PIDE LA FILA ENTERA, NO COLUMNA A COLUMNA
+     *
+     * Pidiendo `recursos` por su nombre, una base de datos que todavía no
+     * tuviera esa columna devolvía un error y con él se caía la consulta
+     * completa: sin recetas, sin catálogo y sin plantillas. Todo el trabajo de
+     * la nutricionista desaparecía de la pantalla por una columna que ni
+     * siquiera hace falta para comer.
+     *
+     * Con `*` viene lo que haya. Lo que falte se queda vacío y la app sigue.
+     */
+    sb.from('nutricionistas').select('*').eq('id', perfil.nutriId).maybeSingle(),
     perfil.rol === 'cliente'
       ? sb.from('clientes').select('*').eq('id', perfil.clientId!)
       : sb.from('clientes').select('*').eq('nutri_id', perfil.nutriId),
   ]);
+
+  /**
+   * SI NO SE PUEDE LEER, NO SE FINGE QUE NO HAY NADA
+   *
+   * Cuando esta consulta fallaba, la app se quedaba con la respuesta vacía y la
+   * trataba igual que una cuenta recién estrenada: recetas de ejemplo, catálogo
+   * de fábrica y las plantillas borradas. Un error de una columna acababa
+   * pareciendo que el trabajo de meses no existía.
+   *
+   * Fallar en alto es lo correcto: quien llama se queda con lo que ya tenía en
+   * el navegador y enseña que no se ha podido guardar.
+   */
+  if (compartido.error) throw new Error(`No se pudo leer la consulta: ${compartido.error.message}`);
+  if (fichas.error) throw new Error(`No se pudieron leer los clientes: ${fichas.error.message}`);
 
   const filas = (fichas.data ?? []) as FilaCliente[];
   const ids = filas.map((f) => f.id);
@@ -209,18 +230,28 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
   if (perfil.rol !== 'nutricionista') return;
   const sb = nube();
 
-  await sb.from('nutricionistas').upsert(
-    {
-      id: perfil.nutriId,
-      nombre: perfil.nombre,
-      recetas: foto.recipes,
-      alimentos: foto.foods,
-      plantillas: { comidas: foto.plantillas, dias: foto.plantillasDia },
-      recursos: foto.recursos,
-      actualizado: new Date().toISOString(),
-    },
-    { onConflict: 'id' },
-  );
+  const suyo = {
+    id: perfil.nutriId,
+    nombre: perfil.nombre,
+    recetas: foto.recipes,
+    alimentos: foto.foods,
+    plantillas: { comidas: foto.plantillas, dias: foto.plantillasDia },
+    actualizado: new Date().toISOString(),
+  };
+
+  /**
+   * Los recursos son lo último que se añadió y puede que la base de datos
+   * todavía no tenga su columna. Si no la tiene, se sube todo lo demás igual:
+   * que falte la guía de raciones no puede impedir que se guarde un plan.
+   */
+  const { error } = await sb
+    .from('nutricionistas')
+    .upsert({ ...suyo, recursos: foto.recursos }, { onConflict: 'id' });
+
+  if (error) {
+    console.warn('[nube] falta la columna «recursos»; se sube el resto', error.message);
+    await sb.from('nutricionistas').upsert(suyo, { onConflict: 'id' });
+  }
 
   const filas = aFilas(perfil.nutriId, foto).map((f) => ({
     ...f,
