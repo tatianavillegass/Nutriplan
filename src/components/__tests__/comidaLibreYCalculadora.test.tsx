@@ -231,3 +231,80 @@ describe('Ordenar el banco por tipo de comida', () => {
     expect(banco.filter((r) => enCarpeta(r, 'todas'))).toHaveLength(4);
   });
 });
+
+/**
+ * MEDIAS PORCIONES EN FASE 3
+ *
+ * El plan se pauta en medios intercambios desde siempre: media tostada, medio
+ * yogur, media pieza de fruta. Obligar a la clienta a saltar de uno en uno
+ * hacía imposible cuadrar el día con lo que de verdad se había comido.
+ */
+describe('Marcar de media en media', () => {
+  const DIA3: DayType = {
+    id: 'dt',
+    nombre: 'Base',
+    proteinaGkg: 2,
+    hcGkg: 3,
+    meals: [{ id: 'comida', nombre: 'Comida', slot: 'comida', orden: 1 }],
+    grid: { comida: { proteicos_magros: 3 } },
+    notas: {},
+  };
+
+  /** Los botones de +/− sólo salen en lo que ya está elegido. */
+  const conPolloMarcado = async () => {
+    const { FOOD_CATALOG } = await import('../../data/foodCatalog');
+    const pollo = FOOD_CATALOG.find((f) => f.grupo === 'proteicos_magros' && !f.equivale)!;
+    return { FOOD_CATALOG, porciones: { comida: { [pollo.id]: 2 } } };
+  };
+
+  it('cada pulsación mueve media porción', async () => {
+    const { FoodPortionPicker } = await import('../phase3/FoodPortionPicker');
+    const { FOOD_CATALOG, porciones } = await conPolloMarcado();
+    const onMarcar = vi.fn();
+    render(
+      <FoodPortionPicker
+        dayType={DIA3}
+        meal={DIA3.meals[0]}
+        foods={FOOD_CATALOG}
+        porciones={porciones}
+        onMarcar={onMarcar}
+      />,
+    );
+    fireEvent.click(screen.getAllByLabelText(/Añadir media porción/)[0]);
+    expect(onMarcar.mock.calls[0][2]).toBe(0.5);
+  });
+
+  it('y la media se lee como media, no como 0,5', async () => {
+    const { FoodPortionPicker } = await import('../phase3/FoodPortionPicker');
+    const { FOOD_CATALOG } = await import('../../data/foodCatalog');
+    const pollo = FOOD_CATALOG.find((f) => f.grupo === 'proteicos_magros' && !f.equivale)!;
+    render(
+      <FoodPortionPicker
+        dayType={DIA3}
+        meal={DIA3.meals[0]}
+        foods={FOOD_CATALOG}
+        porciones={{ comida: { [pollo.id]: 1.5 } }}
+        onMarcar={() => {}}
+      />,
+    );
+    expect(screen.getByText('1½')).toBeTruthy();
+  });
+
+  it('las acciones de la comida van en su cabecera', async () => {
+    const { FoodPortionPicker } = await import('../phase3/FoodPortionPicker');
+    const { FOOD_CATALOG } = await import('../../data/foodCatalog');
+    render(
+      <FoodPortionPicker
+        dayType={DIA3}
+        meal={DIA3.meals[0]}
+        foods={FOOD_CATALOG}
+        porciones={{}}
+        onMarcar={() => {}}
+        acciones={<button>Marcar hecha</button>}
+      />,
+    );
+    // El botón está dentro de la cabecera, junto al nombre de la comida.
+    const cabecera = screen.getByText('Comida').closest('header')!;
+    expect(cabecera.textContent).toContain('Marcar hecha');
+  });
+});

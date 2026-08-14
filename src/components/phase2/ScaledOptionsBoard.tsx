@@ -20,6 +20,8 @@ interface Props {
   onElegir?: (opcion: OpcionEscalada) => void;
   onNota?: (texto: string) => void;
   onPostre?: (texto: string) => void;
+  /** Marcar como hecha y comida libre, junto al nombre de la comida. */
+  acciones?: React.ReactNode;
 }
 
 /**
@@ -36,6 +38,7 @@ export function ScaledOptionsBoard({
   onElegir,
   onNota,
   onPostre,
+  acciones,
 }: Props) {
   const interactivo = !!porciones && !!onElegir;
 
@@ -63,8 +66,9 @@ export function ScaledOptionsBoard({
 
   return (
     <section className="print-sheet break-inside-avoid rounded-xl border border-slate-200 bg-white">
-      <header className="border-b border-slate-100 px-5 py-2.5">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-2.5">
         <h3 className="text-base font-bold tracking-wide text-slate-300 uppercase">{meal.nombre}</h3>
+        {acciones && <div className="flex flex-wrap items-center gap-1.5 no-print">{acciones}</div>}
       </header>
 
       <div className="grid gap-5 p-5 md:grid-cols-3">

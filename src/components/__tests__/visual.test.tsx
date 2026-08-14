@@ -101,8 +101,8 @@ describe('Fase 3 con anillos', () => {
     );
     const tarjeta = screen.getAllByText('Queso cottage')[0].closest('li')!;
     expect(within(tarjeta).getAllByText(/100 g/).length).toBeGreaterThan(0);
-    expect(within(tarjeta).getByLabelText(/Añadir una porción/)).toBeTruthy();
-    expect(within(tarjeta).getByLabelText(/Quitar una porción/)).toBeTruthy();
+    expect(within(tarjeta).getByLabelText(/Añadir media porción/)).toBeTruthy();
+    expect(within(tarjeta).getByLabelText(/Quitar media porción/)).toBeTruthy();
   });
 
   it('el anillo refleja lo marcado', () => {

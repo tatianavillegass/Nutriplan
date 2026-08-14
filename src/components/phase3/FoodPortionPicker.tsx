@@ -21,6 +21,25 @@ interface Props {
   /** Porciones marcadas de todo el día: mealId → foodId → nº. */
   porciones: PorcionesMarcadas;
   onMarcar: (mealId: string, foodId: string, delta: number) => void;
+  /**
+   * Marcar como hecha y comida libre. Van en la cabecera, junto al nombre de
+   * la comida: abajo del todo no se sabía si eran de la merienda o de la cena.
+   */
+  acciones?: React.ReactNode;
+}
+
+/**
+ * Cuánto sube o baja cada pulsación. Medio intercambio, que es la unidad con
+ * la que se pauta: media tostada, medio yogur, media pieza de fruta.
+ */
+const PASO_PORCION = 0.5;
+
+/** «1», «1½»: como se dice en la consulta, no como lo escribe un ordenador. */
+function enPorciones(n: number): string {
+  const entero = Math.floor(n + 0.001);
+  const media = n - entero >= 0.4;
+  if (!media) return String(entero);
+  return entero === 0 ? '½' : `${entero}½`;
 }
 
 /** Subgrupos que se presentan con su nombre general y se concretan al pulsar. */
@@ -229,7 +248,7 @@ function GrupoGenerico({
  * cliente ve el alimento y sus gramos; el aviso vive en la despensa de la
  * nutricionista, que es quien decide si lo pone o no.
  */
-export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar }: Props) {
+export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, acciones }: Props) {
   // El presupuesto se mira a dos niveles: por macro y por subgrupo.
   const seleccion = useMemo(() => seleccionPorBucket(porciones, foods), [porciones, foods]);
   const porGrupo = useMemo(() => seleccionPorGrupo(porciones, foods), [porciones, foods]);
@@ -265,8 +284,9 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar }:
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white">
-      <header className="border-b border-slate-100 px-5 py-2.5">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-2.5">
         <h3 className="text-base font-bold tracking-wide text-slate-300 uppercase">{meal.nombre}</h3>
+        {acciones && <div className="flex flex-wrap items-center gap-1.5 no-print">{acciones}</div>}
       </header>
 
       <div className="grid gap-5 p-5 md:grid-cols-3">
@@ -326,21 +346,27 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar }:
                               </span>
                             </p>
                           </div>
+                          {/*
+                            De media en media: media tostada y medio yogur son
+                            porciones de verdad, y el plan se pauta en medios
+                            intercambios desde siempre. Obligar a saltar de uno
+                            en uno hacía imposible cuadrar el día.
+                          */}
                           <div className="flex shrink-0 items-center gap-1 rounded-lg bg-white/70 px-1 py-0.5">
                             <button
-                              onClick={() => onMarcar(meal.id, f.id, -1)}
-                              className="h-6 w-6 rounded text-base leading-none text-brand-700 transition hover:bg-brand-100"
-                              aria-label={`Quitar una porción de ${f.nombre}`}
+                              onClick={() => onMarcar(meal.id, f.id, -PASO_PORCION)}
+                              className="h-7 w-7 rounded text-base leading-none text-brand-700 transition hover:bg-brand-100"
+                              aria-label={`Quitar media porción de ${f.nombre}`}
                             >
                               −
                             </button>
-                            <span className="tnum w-5 text-center text-sm font-semibold text-brand-900">
-                              {fmt(n, n % 1 ? 1 : 0)}
+                            <span className="tnum w-7 text-center text-sm font-semibold text-brand-900">
+                              {enPorciones(n)}
                             </span>
                             <button
-                              onClick={() => onMarcar(meal.id, f.id, 1)}
-                              className="h-6 w-6 rounded text-base leading-none text-brand-700 transition hover:bg-brand-100"
-                              aria-label={`Añadir una porción de ${f.nombre}`}
+                              onClick={() => onMarcar(meal.id, f.id, PASO_PORCION)}
+                              className="h-7 w-7 rounded text-base leading-none text-brand-700 transition hover:bg-brand-100"
+                              aria-label={`Añadir media porción de ${f.nombre}`}
                             >
                               +
                             </button>

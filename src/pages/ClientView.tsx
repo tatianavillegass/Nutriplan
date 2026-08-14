@@ -150,6 +150,36 @@ export function ClientView() {
     />
   );
 
+  /**
+   * LOS DOS BOTONES DE CADA COMIDA, EN SU CABECERA
+   *
+   * Estaban al final del bloque y no se sabía si el «marcar como hecha» era de
+   * la merienda o de la cena. Junto al nombre de la comida no hay duda posible.
+   */
+  const accionesDe = (mealId: string, nombre: string) => (
+    <>
+      <button
+        onClick={() => alternarCumplida(mealId)}
+        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+          cumplida(mealId)
+            ? 'border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700'
+            : 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100'
+        }`}
+      >
+        {cumplida(mealId) ? 'Hecha ✓' : 'Marcar hecha'}
+      </button>
+      {!libres[mealId] && (
+        <button
+          onClick={() => marcarLibre(mealId)}
+          className="rounded-lg border border-violet-200 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:bg-violet-50"
+          title={`Marcar ${nombre.toLowerCase()} como comida libre`}
+        >
+          Libre
+        </button>
+      )}
+    </>
+  );
+
   /** El «+ Añadir extra» de una comida: el mismo en las tres fases. */
   const extrasDe = (mealId: string, nombre: string) => (
     <MealExtras
@@ -403,6 +433,7 @@ export function ClientView() {
                   foods={foods}
                   porciones={porciones}
                   onElegir={(o) => elegirOpcionComida(m.id, o)}
+                  acciones={accionesDe(m.id, m.nombre)}
                 />
                 <RecipeShortcuts
                   dayType={dayType}
@@ -413,18 +444,6 @@ export function ClientView() {
                   porciones={porciones}
                   onUsar={usarReceta}
                 />
-                <div className="mt-1.5 flex justify-end no-print">
-                  <button
-                    onClick={() => alternarCumplida(m.id)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                      cumplida(m.id)
-                        ? 'border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700'
-                        : 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100'
-                    }`}
-                  >
-                    {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
-                  </button>
-                </div>
                 {extrasDe(m.id, m.nombre)}
                 {libreDe(m.id, m.nombre)}
               </div>
@@ -444,6 +463,7 @@ export function ClientView() {
                     foods={foods}
                     porciones={porciones}
                     onMarcar={marcarPorcion}
+                    acciones={accionesDe(m.id, m.nombre)}
                   />
                   <RecipeShortcuts
                     dayType={dayType}
@@ -454,18 +474,6 @@ export function ClientView() {
                     porciones={porciones}
                     onUsar={usarReceta}
                   />
-                  <div className="mt-1.5 flex justify-end no-print">
-                    <button
-                      onClick={() => alternarCumplida(m.id)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                        cumplida(m.id)
-                          ? 'border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700'
-                          : 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100'
-                      }`}
-                    >
-                      {cumplida(m.id) ? 'Hecha ✓' : 'Marcar como hecha'}
-                    </button>
-                  </div>
                   {extrasDe(m.id, m.nombre)}
                   {libreDe(m.id, m.nombre)}
                 </div>
