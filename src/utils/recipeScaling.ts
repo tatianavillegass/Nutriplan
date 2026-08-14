@@ -190,7 +190,21 @@ export function scaleRecipe(
       const lacteos = filtrar(enReceta, esLacteo);
       const proteicos = filtrar(enReceta, (g) => !esLacteo(g));
 
-      if (Object.keys(lacteos).length && Object.keys(proteicos).length) {
+      /**
+       * SÓLO SI HAY LÁCTEO PAUTADO
+       *
+       * Cuando el plan pauta un lácteo, el lácteo cubre el suyo y el proteico
+       * el resto: es el plato de pollo con un yogur de postre.
+       *
+       * Cuando NO hay lácteo pautado, los dos son fuentes de proteína y se
+       * reparten lo pautado en la proporción que traiga la receta. Antes el
+       * proteico se estiraba hasta cubrirlo todo él solo y el lácteo sumaba
+       * encima: en un bol de avena con yogur y whey salían 5 porciones de
+       * proteína donde había 4 pautadas.
+       */
+      const hayLacteoPautado = Object.keys(filtrar(pautado, esLacteo)).length > 0;
+
+      if (hayLacteoPautado && Object.keys(lacteos).length && Object.keys(proteicos).length) {
         const mLacteos = exchangesToMacros(lacteos);
         const mProteicos = exchangesToMacros(proteicos);
 

@@ -133,22 +133,17 @@ describe('Opción 2: avena con yogur, whey, chía y crema de almendras', () => {
   });
 
   /**
-   * PENDIENTE DE DECIDIR CON TATS
-   *
-   * Esta receta se pasa de proteína: 5 porciones donde había 4 pautadas. No es
-   * un fallo del cálculo, es la regla del lácteo complemento, escrita para un
-   * plato de pollo con un yogur de postre: «la proteína la pone el proteico; el
-   * lácteo entra con el sitio que sobre».
-   *
-   * En un bol de desayuno esa regla no encaja: el yogur y la whey son las dos
-   * fuentes de proteína y deberían repartirse las 4 porciones, no cubrirlas la
-   * whey sola y el yogur sumar encima. Se deja fijado tal cual está para que el
-   * día que se cambie, se vea.
+   * El yogur y la whey se reparten las 4 porciones de proteína en la
+   * proporción que trae la receta. Antes la whey se estiraba hasta cubrirlas
+   * ella sola y el yogur sumaba encima: salían 5 porciones donde había 4.
    */
-  it('hoy el yogur suma proteína por encima de la whey (regla del complemento)', () => {
-    expect(r.filas.find((f) => f.bucket === 'proteina')!.estado).toBe('exceso');
-    expect(e.factores.proteicos_magros).toBe(4);
-    expect(e.factores.lacteos_proteicos).toBe(1);
+  it('el yogur y la whey se reparten la proteína, no suman encima', () => {
+    expect(r.filas.find((f) => f.bucket === 'proteina')!.estado).toBe('ok');
+    expect(e.factores.lacteos_proteicos).toBeCloseTo(e.factores.proteicos_magros!, 5);
+  });
+
+  it('la comida queda completa', () => {
+    expect(r.estado).toBe('completa');
   });
 });
 

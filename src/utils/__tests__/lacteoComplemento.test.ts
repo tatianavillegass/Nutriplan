@@ -7,11 +7,16 @@ import type { Ingrediente, Receta, RecipeBase } from '../../types/recipe';
 import type { ExchangeCounts } from '../exchanges';
 
 /**
- * EL LÁCTEO ES COMPLEMENTO, NUNCA LA PROTEÍNA DEL PLATO
+ * EL LÁCTEO, SEGÚN SI SE PAUTÓ O NO
  *
- * En un plato con pollo y un yogur, la proteína pautada la pone el pollo. El
- * yogur sólo cubre el lácteo que esté pautado; si no hay ninguno, entra con
- * el sitio que sobre. Lo que se recorta cuando no cuadra es el yogur.
+ * Si el plan pauta un lácteo, cada uno cubre lo suyo: es el plato de pollo con
+ * un yogur de postre, y ahí la proteína la pone el pollo.
+ *
+ * Si NO se pautó lácteo, los dos son fuentes de proteína y se reparten lo
+ * pautado en la proporción que traiga la receta. Antes el proteico se estiraba
+ * hasta cubrirlo todo él solo y el lácteo entraba con el sitio que sobrara: en
+ * un bol de avena con yogur y whey eso daba 5 porciones de proteína donde
+ * había 4 pautadas, y en un plato de pollo el yogur desaparecía del todo.
  */
 
 const pollo = FOOD_CATALOG.find((f) => f.nombre === 'Pechuga de pollo cruda')!;
@@ -89,18 +94,35 @@ describe('Cuando el lácteo también está pautado', () => {
   });
 });
 
-describe('Cuando sólo se pauta proteína', () => {
-  it('la proteína la cubre entera el pollo, no el yogur', () => {
+describe('Cuando sólo se pauta proteína, se la reparten', () => {
+  it('el pollo y el yogur escalan a la vez, con el mismo factor', () => {
     const e = scaleRecipe(PLATO, { proteicos_magros: 4, almidones: 1 }, FOOD_CATALOG);
-    // 28 g de proteína pautados / 14 g del pollo en la receta.
-    expect(e.factores.proteicos_magros).toBeCloseTo(2, 3);
-    expect(de(e, 'Pollo').cantidad_final).toBe(120);
+    expect(e.factores.lacteos_proteicos).toBeCloseTo(e.factores.proteicos_magros!, 5);
+    expect(e.factores.proteicos_magros!).toBeGreaterThan(1.2);
   });
 
-  it('y el yogur sale del plato, porque no hay sitio para él', () => {
+  it('el yogur ya no desaparece del plato', () => {
     const e = scaleRecipe(PLATO, { proteicos_magros: 4, almidones: 1 }, FOOD_CATALOG);
-    expect(e.factores.lacteos_proteicos).toBe(0);
-    expect(e.notas.join(' ')).toMatch(/no queda sitio/i);
+    expect(e.factores.lacteos_proteicos!).toBeGreaterThan(0);
+    expect(de(e, 'Yogur').cantidad_final).toBeGreaterThan(0);
+  });
+
+  /**
+   * Se quedan en 26 g y no en los 28 pautados porque el tope de calorías los
+   * frena: el yogur arrastra 3 g de hidrato que una pechuga no tiene, así que
+   * cubrir la proteína entera con esta mezcla costaría más de lo pautado. Es
+   * la regla de siempre —en proteicos se miran grasa y calorías— y aquí actúa
+   * a favor: antes esto se resolvía borrando el yogur del plato.
+   */
+  it('se acercan a la proteína pautada sin pasarse de calorías', () => {
+    const e = scaleRecipe(PLATO, { proteicos_magros: 4, almidones: 1 }, FOOD_CATALOG);
+    const deProteicos = exchangesToMacros({
+      proteicos_magros: e.cubiertos.proteicos_magros ?? 0,
+      lacteos_proteicos: e.cubiertos.lacteos_proteicos ?? 0,
+    }).proteina;
+    const pedida = exchangesToMacros({ proteicos_magros: 4 }).proteina; // 28 g
+    expect(deProteicos).toBeGreaterThan(pedida * 0.9);
+    expect(deProteicos).toBeLessThanOrEqual(pedida);
   });
 
   it('nunca se pasa de lo pautado', () => {
