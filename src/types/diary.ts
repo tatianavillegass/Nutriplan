@@ -142,6 +142,17 @@ export interface RegistroDia {
    */
   comidasGuardadas?: ComidaGuardada[];
   comidasBorradas?: string[];
+  /**
+   * Reto: lo que hizo antes de empezar —medirse, la foto, leerse la guía—. Va
+   * aquí por lo mismo que todo lo demás que escribe ella: el registro es lo
+   * único que sube su app. Se junta leyendo sus días.
+   */
+  preparacion?: {
+    hechos: ('medidas' | 'foto' | 'guia')[];
+    cintura?: number;
+    cadera?: number;
+    foto?: string;
+  };
   notas?: string;
 }
 

@@ -41,7 +41,39 @@ export interface Reto {
   recursos: string[];
   /** Recetas del reto, con el día en que se abren. */
   recetas: RecetaDeReto[];
+  /** Entrenos, con su día de apertura. Opcional: un reto puede no llevarlos. */
+  entrenos?: EntrenoDeReto[];
   createdAt: string;
+}
+
+/**
+ * UN ENTRENO DEL RETO
+ *
+ * Se abre por días, como las recetas. Lleva el vídeo —que es lo que de verdad
+ * enseña a hacerlo— y la lista de ejercicios con sus series: sin ellas hay que
+ * mirar el vídeo entero cada vez para saber cuántas vueltas quedan.
+ */
+export interface EntrenoDeReto {
+  id: string;
+  nombre: string;
+  /** Para qué es y qué hace falta. Dos líneas. */
+  descripcion?: string;
+  /** El enlace a tu vídeo: YouTube, Drive, donde lo tengas. */
+  videoUrl?: string;
+  /** Día del reto en que aparece. 1 = el primer día. */
+  desdeDia: number;
+  ejercicios: EjercicioDeEntreno[];
+}
+
+export interface EjercicioDeEntreno {
+  id: string;
+  nombre: string;
+  /** Cuántas series. */
+  series?: number;
+  /** «10-12», «40 s», «al fallo»: por eso es texto y no un número. */
+  repeticiones?: string;
+  descanso?: string;
+  nota?: string;
 }
 
 /**

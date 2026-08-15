@@ -70,6 +70,12 @@ export function clienteDeSolicitud(
     alergias: [],
     preferencias: [],
     basePeso: imc >= 27 && puedeAjustarse ? "ajustado" : "total",
+    /**
+     * Llegó por el enlace del reto, así que vive en la pantalla del reto y no
+     * en la lista de la consulta. Es una clienta por dentro —hereda todo— pero
+     * mezclarla con las de siempre deja esa lista inservible.
+     */
+    soloReto: true,
     notas: notasDeSolicitud(s),
   };
 }

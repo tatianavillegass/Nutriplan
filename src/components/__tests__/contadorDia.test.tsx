@@ -160,6 +160,35 @@ describe('Lo que ve quien cuenta macros', () => {
     expect(bocado.macros.proteina).toBeCloseTo(6.9, 5);
   });
 
+  /**
+   * Un desayuno son cuatro o cinco cosas: cerrando el buscador tras cada una
+   * había que pulsar «añadir» cinco veces para apuntar una tostada.
+   */
+  it('el buscador se queda abierto para lo siguiente', () => {
+    const onAnadir = vi.fn();
+    pintar([], onAnadir);
+    abrirEn('comida');
+
+    fireEvent.change(screen.getByPlaceholderText(/Qué has comido/i), {
+      target: { value: 'pollo' },
+    });
+    fireEvent.click(screen.getByText(/Pechuga de pollo/));
+    fireEvent.click(screen.getByText('Añadir'));
+
+    expect(onAnadir).toHaveBeenCalledTimes(1);
+    // Y sigue ahí, vacío, esperando lo siguiente.
+    expect(screen.getByPlaceholderText(/Qué has comido/i)).toBeTruthy();
+  });
+
+  it('y se cierra al tocar en cualquier otro sitio', () => {
+    pintar();
+    abrirEn('comida');
+    expect(screen.getByPlaceholderText(/Qué has comido/i)).toBeTruthy();
+
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByPlaceholderText(/Qué has comido/i)).toBeNull();
+  });
+
   /** Sin esta salida, un yogur de marca dejaba el día a medias. */
   it('lo que no está en la lista se apunta con su etiqueta', () => {
     const onAnadir = vi.fn();

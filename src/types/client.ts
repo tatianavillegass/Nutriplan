@@ -50,6 +50,18 @@ export interface Client {
    * calcula con el peso real: mover un cuerpo pesa lo que pesa.
    */
   basePeso?: 'total' | 'ajustado' | 'magra';
+  /**
+   * SÓLO DEL RETO
+   *
+   * Se marca al dar de alta a alguien que llegó por el enlace público. Por
+   * dentro es una clienta como las demás —así hereda acceso, plan, registro y
+   * rachas sin inventar nada—, pero no sale en la lista de la consulta: con
+   * veinte participantes, la lista de tus clientas dejaba de servir para
+   * encontrar a tus clientas.
+   *
+   * Si alguna se queda de consulta, se le quita la marca y pasa a la lista.
+   */
+  soloReto?: boolean;
   notas?: string;
   /**
    * RECURSOS HABILITADOS

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Alimento, Nutrientes100 } from '../../types/food';
 import type { Bocado } from '../../types/diary';
 import type { DayType } from '../../types/plan';
@@ -110,6 +110,33 @@ export function ContadorDia({
   /** Qué comida tiene el formulario abierto. Sólo una a la vez. */
   const [anadiendo, setAnadiendo] = useState<string | null>(null);
 
+  /**
+   * EL BUSCADOR SE QUEDA ABIERTO Y SE CIERRA TOCANDO FUERA
+   *
+   * Un desayuno son cuatro o cinco cosas. Cerrando el formulario tras cada una
+   * había que volver a pulsar «añadir» cinco veces para apuntar una tostada.
+   * Ahora se queda listo para lo siguiente y se cierra al tocar en cualquier
+   * otro sitio, que es lo que hace la mano sola cuando ha terminado.
+   *
+   * La caja escuchada es la comida entera, no sólo el formulario: si fuera
+   * sólo el formulario, su propio botón de «Cerrar» contaría como tocar fuera
+   * y se volvería a abrir en el mismo gesto.
+   */
+  const cajaAbierta = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!anadiendo) return;
+    const tocarFuera = (e: MouseEvent | TouchEvent) => {
+      if (!cajaAbierta.current?.contains(e.target as Node)) setAnadiendo(null);
+    };
+    document.addEventListener('mousedown', tocarFuera);
+    document.addEventListener('touchstart', tocarFuera);
+    return () => {
+      document.removeEventListener('mousedown', tocarFuera);
+      document.removeEventListener('touchstart', tocarFuera);
+    };
+  }, [anadiendo]);
+
   const porComida = useMemo(
     () => bocadosPorComida(dayType.meals, bocados),
     [dayType.meals, bocados],
@@ -145,7 +172,11 @@ export function ContadorDia({
       */}
       <div className="mt-4 space-y-1">
         {porComida.map(({ meal, bocados: suyos, total: suTotal }) => (
-          <div key={meal.id} className="border-t border-slate-100 pt-2">
+          <div
+            key={meal.id}
+            ref={anadiendo === meal.id ? cajaAbierta : undefined}
+            className="border-t border-slate-100 pt-2"
+          >
             <div className="flex items-baseline gap-2">
               <span className="flex-1 text-xs font-semibold text-brand-800">{meal.nombre}</span>
               <span className="tnum text-[11px] text-slate-500">
@@ -199,14 +230,7 @@ export function ContadorDia({
             )}
 
             {anadiendo === meal.id && (
-              <AnadirBocado
-                foods={foods}
-                momento={meal.id}
-                onAnadir={(bocado, nuevo) => {
-                  onAnadir(bocado, nuevo);
-                  setAnadiendo(null);
-                }}
-              />
+              <AnadirBocado foods={foods} momento={meal.id} onAnadir={onAnadir} />
             )}
           </div>
         ))}
@@ -247,6 +271,12 @@ function AnadirBocado({
   const [cantidad, setCantidad] = useState(100);
   const [porEtiqueta, setPorEtiqueta] = useState(false);
   const [n, setN] = useState<Nutrientes100>({ hc: 0, proteina: 0, grasa: 0 });
+  /**
+   * Cambiar esto vuelve a montar el buscador, y con ello vuelve el foco a la
+   * caja de búsqueda: tras apuntar la avena se puede escribir «plátano» sin
+   * tocar nada.
+   */
+  const [vuelta, setVuelta] = useState(0);
 
   const food = foodId ? foods.find((f) => f.id === foodId) : undefined;
 
@@ -270,6 +300,7 @@ function AnadirBocado({
     setCantidad(100);
     setPorEtiqueta(false);
     setN({ hc: 0, proteina: 0, grasa: 0 });
+    setVuelta((v) => v + 1);
   };
 
   const anadir = () => {
@@ -313,6 +344,7 @@ function AnadirBocado({
     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
       {!porEtiqueta ? (
         <FoodPicker
+          key={vuelta}
           foods={foods}
           value={foodId}
           nombreLibre={nombre}

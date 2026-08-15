@@ -1,12 +1,21 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { RetosPage } from '../../pages/RetosPage';
 import { useAppStore } from '../../store/useAppStore';
 import type { Reto } from '../../types/reto';
 import type { Client } from '../../types/client';
 
 afterEach(cleanup);
+
+/** La pantalla enlaza a las fichas de las participantes, así que necesita rutas. */
+const abrir = () =>
+  render(
+    <MemoryRouter>
+      <RetosPage />
+    </MemoryRouter>,
+  );
 
 const CLIENTA = (id: string, nombre: string) =>
   ({ id, nombre, email: `${id}@ejemplo.com` }) as unknown as Client;
@@ -44,24 +53,34 @@ beforeEach(() => {
  */
 describe('Ver los retos', () => {
   it('sale con sus fechas y cuánta gente hay', () => {
-    render(<RetosPage />);
+    abrir();
     expect(screen.getByText('UPGRADE 1.0')).toBeTruthy();
     expect(screen.getByText(/1 participante/)).toBeTruthy();
   });
 
-  it('se despliega para trabajar en él', () => {
-    render(<RetosPage />);
-    expect(screen.queryByText('Participantes')).toBeNull();
+  it('se despliega con todo lo que se monta desde aquí', () => {
+    abrir();
+    expect(screen.queryByText('Quién está dentro')).toBeNull();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
-    expect(screen.getByText('Participantes')).toBeTruthy();
+    expect(screen.getByText('Quién está dentro')).toBeTruthy();
     expect(screen.getByText('Recetas del reto')).toBeTruthy();
+    expect(screen.getByText('Entrenos del reto')).toBeTruthy();
     expect(screen.getByText('Recursos del reto')).toBeTruthy();
+  });
+
+  /** Con veinte participantes no se puede abrir ficha por ficha cada mañana. */
+  it('y con el seguimiento del grupo dentro', () => {
+    abrir();
+    fireEvent.click(screen.getByText('UPGRADE 1.0'));
+    expect(screen.getByText('Cómo va el grupo')).toBeTruthy();
+    // Sale en el seguimiento y en la lista de quién está dentro.
+    expect(screen.getAllByText('Catalina').length).toBe(2);
   });
 });
 
 describe('Apuntar gente al reto', () => {
   it('salen todas las clientas, marcadas las que ya están', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     const cajas = screen.getAllByRole('checkbox') as HTMLInputElement[];
     // Las dos clientas más el recurso.
@@ -71,14 +90,14 @@ describe('Apuntar gente al reto', () => {
   });
 
   it('marcar a alguien la apunta', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     fireEvent.click(screen.getAllByRole('checkbox')[1]);
     expect(useAppStore.getState().retos[0].participantes).toEqual(['cl1', 'cl2']);
   });
 
   it('y desmarcarla la saca', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     fireEvent.click(screen.getAllByRole('checkbox')[0]);
     expect(useAppStore.getState().retos[0].participantes).toEqual([]);
@@ -95,7 +114,7 @@ describe('Las recetas, con su día de apertura', () => {
    * para esa comida y se toca la que se quiere.
    */
   it('sólo salen las recetas de la comida que se está montando', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
 
     // Empieza en desayuno.
@@ -107,7 +126,7 @@ describe('Las recetas, con su día de apertura', () => {
   });
 
   it('un toque la añade con el día que esté puesto', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     fireEvent.click(screen.getByRole('button', { name: /^Cena$/ }));
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '8' } });
@@ -119,14 +138,14 @@ describe('Las recetas, con su día de apertura', () => {
   });
 
   it('y otro toque la quita', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     fireEvent.click(screen.getAllByText('Porridge de avena')[0]);
     expect(useAppStore.getState().retos[0].recetas).toEqual([]);
   });
 
   it('la que ya está dice en qué día se abre', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     expect(screen.getByText('Día 1')).toBeTruthy();
     expect(screen.getByText(/Abierta el día 1/)).toBeTruthy();
@@ -134,7 +153,7 @@ describe('Las recetas, con su día de apertura', () => {
 
   it('una receta borrada del banco no deja el hueco en blanco', () => {
     useAppStore.setState({ recipes: [] });
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     expect(screen.getByText('receta borrada')).toBeTruthy();
   });
@@ -142,7 +161,7 @@ describe('Las recetas, con su día de apertura', () => {
 
 describe('Crear un reto', () => {
   it('pide nombre y fecha, y no deja crearlo vacío', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('+ Nuevo reto'));
     const crear = screen.getByText('Crear reto') as HTMLButtonElement;
     expect(crear.disabled).toBe(true);
@@ -157,7 +176,7 @@ describe('Crear un reto', () => {
   });
 
   it('empieza con 30 días, que es lo corriente', () => {
-    render(<RetosPage />);
+    abrir();
     fireEvent.click(screen.getByText('+ Nuevo reto'));
     fireEvent.change(screen.getByPlaceholderText('UPGRADE 1.0'), {
       target: { value: 'Otro' },

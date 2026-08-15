@@ -34,7 +34,10 @@ import {
 import { claveFecha, fechaLegible } from "../types/diary";
 import { LABEL_MODO_CITA, metasActivas } from "../types/client";
 import { citaLegible, citaPasada } from "../utils/agenda";
-import { estadoDelReto, retoDe, textoDelDia } from "../utils/retos";
+import { diasEntre, estadoDelReto, retoDe, textoDelDia } from "../utils/retos";
+import { preparacionDe } from "../utils/preparacion";
+import { Preparacion } from "../components/client/Preparacion";
+import { RetoDelDia } from "../components/client/RetoDelDia";
 import {
   balanceDelDia,
   extrasDeComida,
@@ -181,6 +184,9 @@ export function ClientView() {
     [todasMediciones, id],
   );
   const registro = mios.find((r) => r.fecha === fecha);
+
+  /** Su preparación del reto: cada paso pudo marcarlo un día distinto. */
+  const preparacion = useMemo(() => preparacionDe(mios), [mios]);
 
   const dayType = useMemo(() => {
     if (!plan) return undefined;
@@ -608,19 +614,52 @@ export function ClientView() {
               línea, sin robarle sitio a la comida.
             */}
             {reto && estadoDelReto(reto, fecha) !== "terminado" && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-brand-300 bg-brand-600 px-4 py-2.5 no-print">
-                <span className="text-sm font-semibold text-white">
-                  {reto.nombre}
-                </span>
-                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                  {textoDelDia(reto, fecha)}
-                </span>
-                {reto.descripcion && (
-                  <span className="min-w-0 flex-1 truncate text-xs text-white/80">
-                    {reto.descripcion}
+              <>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-brand-300 bg-brand-600 px-4 py-2.5 no-print">
+                  <span className="text-sm font-semibold text-white">
+                    {reto.nombre}
                   </span>
+                  <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
+                    {textoDelDia(reto, fecha)}
+                  </span>
+                  {reto.descripcion && (
+                    <span className="min-w-0 flex-1 truncate text-xs text-white/80">
+                      {reto.descripcion}
+                    </span>
+                  )}
+                </div>
+
+                {/*
+                  Antes de empezar, la preparación: entre apuntarse y arrancar
+                  pasan días y ese hueco es donde se pierde la gente. Una vez
+                  empezado, lo que se abre cada día.
+                */}
+                {estadoDelReto(reto, fecha) === "proximo" ? (
+                  <Preparacion
+                    nombreReto={reto.nombre}
+                    faltan={diasEntre(fecha, reto.fechaInicio)}
+                    datos={preparacion}
+                    onGuardar={(patch) =>
+                      guardar({
+                        preparacion: {
+                          hechos: patch.hechos ?? preparacion.hechos,
+                          cintura: patch.cintura ?? preparacion.cintura,
+                          cadera: patch.cadera ?? preparacion.cadera,
+                          foto: patch.foto ?? preparacion.foto,
+                        },
+                      })
+                    }
+                  />
+                ) : (
+                  <RetoDelDia
+                    reto={reto}
+                    hoy={fecha}
+                    recetas={recipes}
+                    dayType={dayType}
+                    foods={foods}
+                  />
                 )}
-              </div>
+              </>
             )}
 
             {/*

@@ -1,4 +1,9 @@
-import type { EstadoReto, RecetaDeReto, Reto } from "../types/reto";
+import type {
+  EntrenoDeReto,
+  EstadoReto,
+  RecetaDeReto,
+  Reto,
+} from "../types/reto";
 import type { MealSlot } from "../types/food";
 import { diaAnterior } from "./racha";
 
@@ -79,6 +84,15 @@ export function recetasAbiertasDe(
   slot: MealSlot,
 ): RecetaDeReto[] {
   return recetasAbiertas(reto, hoy).filter((r) => r.slot === slot);
+}
+
+/** Los entrenos abiertos hoy. Misma regla que las recetas: lo abierto suma. */
+export function entrenosAbiertos(reto: Reto, hoy: string): EntrenoDeReto[] {
+  const dia = diaDelReto(reto, hoy);
+  if (dia < 1) return [];
+  return (reto.entrenos ?? [])
+    .filter((e) => e.desdeDia <= dia)
+    .sort((a, b) => a.desdeDia - b.desdeDia);
 }
 
 /** Las que se abren mañana, para poder decir «el lunes tienes tres nuevas». */

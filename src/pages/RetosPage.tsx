@@ -23,6 +23,8 @@ import {
 import { uid, nowIso } from "../utils/storage";
 import { avisosDeSolicitud, type Solicitud } from "../types/solicitud";
 import { borrarSolicitud, leerSolicitudes } from "../utils/solicitudes";
+import { EntrenosDelReto } from "../components/retos/EntrenosDelReto";
+import { SeguimientoDelReto } from "../components/retos/SeguimientoDelReto";
 import { clienteDeSolicitud, comidasDelPlan } from "../utils/altaDeSolicitud";
 
 const hoyIso = () => new Date().toISOString().slice(0, 10);
@@ -81,6 +83,9 @@ export function RetosPage() {
   const clients = useAppStore((s) => s.clients);
   const recetas = useAppStore((s) => s.recipes);
   const recursos = useAppStore((s) => s.recursos);
+  const plans = useAppStore((s) => s.plans);
+  const registros = useAppStore((s) => s.registros);
+  const mediciones = useAppStore((s) => s.mediciones);
   const upsertReto = useAppStore((s) => s.upsertReto);
   const borrarReto = useAppStore((s) => s.borrarReto);
   const addClient = useAppStore((s) => s.addClient);
@@ -441,15 +446,31 @@ export function RetosPage() {
                       </code>
                     </div>
 
+                    {/* ── Cómo va el grupo ──────────────────── */}
+                    <div>
+                      <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-brand-800 uppercase">
+                        Cómo va el grupo
+                      </h3>
+                      <SeguimientoDelReto
+                        reto={reto}
+                        hoy={hoy}
+                        clients={clients}
+                        plans={plans}
+                        registros={registros}
+                        mediciones={mediciones}
+                      />
+                    </div>
+
                     {/* ── Participantes ─────────────────────── */}
                     <div>
                       <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-brand-800 uppercase">
-                        Participantes
+                        Quién está dentro
                       </h3>
                       <p className="mb-2 text-[11px] leading-snug text-slate-500">
-                        Se apuntan desde tus clientas. Una clienta de siempre
-                        puede estar en el reto sin dejar de tener su plan:
-                        hereda su acceso, sus porciones y su seguimiento.
+                        Las que llegan por el enlace se apuntan solas al darlas
+                        de alta y sólo se ven aquí. Una clienta de consulta
+                        puede entrar sin dejar de ser tu clienta: hereda su
+                        acceso, sus porciones y su seguimiento.
                       </p>
                       {clients.length ? (
                         <ul className="grid gap-1.5 sm:grid-cols-2">
@@ -568,6 +589,17 @@ export function RetosPage() {
                             })}
                         </ul>
                       )}
+                    </div>
+
+                    {/* ── Entrenos ──────────────────────────── */}
+                    <div>
+                      <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-brand-800 uppercase">
+                        Entrenos del reto
+                      </h3>
+                      <EntrenosDelReto
+                        entrenos={reto.entrenos ?? []}
+                        onCambiar={(entrenos) => editar(reto, { entrenos })}
+                      />
                     </div>
 
                     {/* ── Recursos ──────────────────────────── */}

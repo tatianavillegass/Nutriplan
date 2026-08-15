@@ -165,15 +165,47 @@ export function ApuntarsePage() {
           </p>
         </div>
 
-        <div className="mt-5 border-t border-slate-200 pt-4 text-left">
-          <p className="mb-2 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            Mientras tanto
+        {/*
+          LO QUE VA A HACER, ENSEÑADO YA
+          ==============================================================
+          Entre apuntarse y empezar pasan días y es donde se pierde la gente.
+          Ver la lista ahora convierte la espera en algo que ya ha empezado.
+
+          Aquí sólo se enseña: se marca en su app, que es donde queda guardado
+          y donde lo ve su nutricionista. Poner casillas que no guardan nada
+          sería pedirle el trabajo dos veces.
+        */}
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 text-left">
+          <p className="text-sm font-semibold text-brand-900">
+            Lo primero que harás en la app
           </p>
-          <p className="mb-1.5 text-sm leading-snug text-slate-600">
-            Hazte una foto y mídete la cintura el primer día: es con lo que vas
-            a comparar.
+          <p className="mt-0.5 text-xs leading-snug text-slate-500">
+            Tres cosas, una vez. Es tu punto de partida: sin ellas, el último
+            día no hay con qué comparar.
           </p>
-          <p className="text-sm leading-snug text-slate-600">
+
+          <ul className="mt-3 space-y-2.5">
+            {[
+              ["Mídete la cintura y la cadera", "Con una cinta, en ayunas"],
+              ["Hazte la foto del primer día", "La comparación que más motiva"],
+              ["Léete la guía de raciones", "Diez minutos que te ahorran dudas"],
+            ].map(([titulo, detalle]) => (
+              <li key={titulo} className="flex items-start gap-2.5">
+                <span
+                  aria-hidden
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-slate-300"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm text-slate-800">{titulo}</span>
+                  <span className="block text-[11px] leading-snug text-slate-500">
+                    {detalle}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] leading-snug text-slate-500">
             El acceso a la app te llega unos días antes de empezar, al correo
             que has puesto.
           </p>

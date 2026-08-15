@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { hayCambiosSinEnviar } from "../types/plan";
 import { useAuthStore } from "../store/useAuthStore";
@@ -192,6 +192,16 @@ export function Clients() {
   const [editando, setEditando] = useState<string | null>(null);
   const enEdicion = clients.find((c) => c.id === editando);
 
+  /**
+   * LAS PARTICIPANTES DEL RETO NO SALEN AQUÍ
+   *
+   * Por dentro son clientas —heredan acceso, plan, registro y rachas— pero
+   * viven en la pantalla del reto. Con veinte apuntadas, esta lista dejaba de
+   * servir para lo que sirve: encontrar a tus clientas de consulta.
+   */
+  const deConsulta = clients.filter((c) => !c.soloReto);
+  const delReto = clients.length - deConsulta.length;
+
   /** Borrar arrastra planes, mediciones y registros: por eso se avisa. */
   const borrar = (c: Client) => {
     if (
@@ -225,7 +235,18 @@ export function Clients() {
             Clientes
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {clients.length} {clients.length === 1 ? "cliente" : "clientes"}
+            {deConsulta.length}{" "}
+            {deConsulta.length === 1 ? "cliente" : "clientes"}
+            {delReto > 0 && (
+              <span className="text-slate-400">
+                {" · "}
+                {delReto} {delReto === 1 ? "participante" : "participantes"} de
+                reto, en{" "}
+                <Link to="/retos" className="underline hover:text-brand-700">
+                  Retos
+                </Link>
+              </span>
+            )}
           </p>
         </div>
         <Button onClick={() => setEditando(editando ? null : "nuevo")}>
@@ -253,7 +274,7 @@ export function Clients() {
         />
       )}
 
-      {clients.length === 0 ? (
+      {deConsulta.length === 0 ? (
         <EmptyState title="Todavía no hay clientes">
           Crea el primero para calcular su GET y armar su plan.
         </EmptyState>
@@ -276,7 +297,7 @@ export function Clients() {
               </tr>
             </thead>
             <tbody>
-              {clients.map((c) => (
+              {deConsulta.map((c) => (
                 <ClientRow
                   key={c.id}
                   client={c}
