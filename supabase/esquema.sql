@@ -243,11 +243,24 @@ create policy "solicitudes_alta" on public.solicitudes
   for insert with check (true);
 
 -- Pero NO leer: quien se apunta no puede ver quién más se ha apuntado.
--- Sólo las lee y borra quien ha entrado con cuenta.
+--
+-- Y no basta con «que haya entrado con cuenta»: aquí hay nombres, correos,
+-- pesos y antecedentes de salud. Sólo puede leerlas la dueña del reto al que
+-- pertenecen, comprobado contra `retos_publicos`.
 drop policy if exists "solicitudes_lectura" on public.solicitudes;
 create policy "solicitudes_lectura" on public.solicitudes
-  for select using (auth.uid() is not null);
+  for select using (
+    exists (
+      select 1 from public.retos_publicos r
+      where r.id = solicitudes.reto_id and r.nutri_id = auth.uid()
+    )
+  );
 
 drop policy if exists "solicitudes_borrado" on public.solicitudes;
 create policy "solicitudes_borrado" on public.solicitudes
-  for delete using (auth.uid() is not null);
+  for delete using (
+    exists (
+      select 1 from public.retos_publicos r
+      where r.id = solicitudes.reto_id and r.nutri_id = auth.uid()
+    )
+  );
