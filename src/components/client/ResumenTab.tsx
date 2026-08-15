@@ -5,7 +5,18 @@ import type { DayType } from "../../types/plan";
 import type { RegistroDia } from "../../types/diary";
 import type { Medicion } from "../../types/anthropometry";
 import { calcComposicion, ordenarMediciones } from "../../utils/anthropometry";
-import { calcularRacha, inicioDeMes, libresDesde } from "../../utils/racha";
+import {
+  calcularRacha,
+  calcularRachaMetas,
+  diaCerrado,
+  diaDeMetasCerrado,
+  diasDelMes,
+  inicioDeMes,
+  libresDesde,
+  type DiaDelMes,
+  type Racha,
+} from "../../utils/racha";
+import { metasActivas } from "../../types/client";
 import { fmt } from "../common/ui";
 
 interface Props {
@@ -78,6 +89,76 @@ function Dato({
 }
 
 /**
+ * LOS DÍAS DEL MES, EN CÍRCULOS
+ *
+ * Un círculo por día, lleno cuando está cumplido. Sólo hasta hoy: pintar el
+ * resto del mes vacío por delante se lee como deuda, y todavía no ha pasado
+ * nada.
+ */
+function CirculosDelMes({
+  dias,
+  tono,
+}: {
+  dias: DiaDelMes[];
+  tono: { lleno: string; vacio: string };
+}) {
+  if (!dias.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1">
+      {dias.map((d) => (
+        <span
+          key={d.fecha}
+          title={`Día ${Number(d.fecha.slice(8, 10))}`}
+          className={`flex h-5 w-5 items-center justify-center rounded-full border text-[9px] ${
+            d.cerrado ? tono.lleno : tono.vacio
+          }`}
+        >
+          {d.cerrado ? "✓" : ""}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** La tarjeta de una racha: el número grande, la frase y los círculos. */
+function TarjetaDeRacha({
+  titulo,
+  racha,
+  dias,
+  tono,
+  frase,
+}: {
+  titulo: string;
+  racha: Racha;
+  dias: DiaDelMes[];
+  tono: { caja: string; texto: string; lleno: string; vacio: string };
+  frase: string;
+}) {
+  return (
+    <section>
+      <h2 className="mb-2 text-sm font-bold tracking-widest text-brand-800 uppercase">
+        {titulo}
+      </h2>
+      <div className={`rounded-xl px-4 py-3 ${tono.caja}`}>
+        <p className={`tnum text-2xl font-semibold ${tono.texto}`}>
+          {racha.actual}{" "}
+          <span className="text-sm font-normal">
+            {racha.actual === 1 ? "día seguido" : "días seguidos"}
+          </span>
+        </p>
+        <p className="mt-0.5 text-xs leading-snug text-slate-600">{frase}</p>
+        <CirculosDelMes dias={dias} tono={tono} />
+        {racha.mejor > racha.actual && (
+          <p className={`tnum mt-1.5 text-[11px] ${tono.texto}`}>
+            Tu mejor racha son {racha.mejor} días.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
  * RESUMEN DE LA CLIENTA
  *
  * Lo que quiere ver cuando entra y no está comiendo: cómo va su cuerpo, cuánto
@@ -124,6 +205,31 @@ export function ResumenTab({
     [registros, fecha],
   );
 
+  /** Las metas que hay que marcar hoy: las jubiladas ya no cuentan. */
+  const metas = useMemo(() => metasActivas(client), [client]);
+
+  const rachaMetas = useMemo(
+    () => calcularRachaMetas(registros, metas, fecha),
+    [registros, metas, fecha],
+  );
+
+  /**
+   * Un círculo por día del mes hasta hoy. El tipo de día que se mira es el que
+   * la clienta tenía puesto ese día, no el de hoy.
+   */
+  const diasComidas = useMemo(
+    () =>
+      diasDelMes(registros, fecha, (r) =>
+        diaCerrado(r, dayTypes.find((d) => d.id === r?.dayTypeId) ?? dayTypes[0]),
+      ),
+    [registros, fecha, dayTypes],
+  );
+
+  const diasMetas = useMemo(
+    () => diasDelMes(registros, fecha, (r) => diaDeMetasCerrado(r, metas)),
+    [registros, fecha, metas],
+  );
+
   const restaDe = (a?: number, b?: number) =>
     a != null && b != null ? a - b : undefined;
 
@@ -166,32 +272,51 @@ export function ResumenTab({
         )}
       </section>
 
-      {/* ── Racha ──────────────────────────────────────── */}
-      <section>
-        <h2 className="mb-2 text-sm font-bold tracking-widest text-brand-800 uppercase">
-          Tu constancia
-        </h2>
-        <div className="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3">
-          <p className="tnum text-2xl font-semibold text-brand-900">
-            {racha.actual}{" "}
-            <span className="text-sm font-normal text-brand-700">
-              {racha.actual === 1 ? "día seguido" : "días seguidos"}
-            </span>
-          </p>
-          <p className="mt-0.5 text-xs leading-snug text-slate-600">
-            {racha.actual === 0
-              ? "Un día cuenta cuando marcas todas tus comidas. Hoy puedes empezar."
-              : racha.hoyCerrado
-                ? "Hoy ya está completo. Un día cuenta con todas las comidas marcadas — comer fuera también cuenta."
-                : "Hoy todavía lo tienes a medias, y no pasa nada: se suma en cuanto lo cierres."}
-          </p>
-          {racha.mejor > racha.actual && (
-            <p className="tnum mt-1 text-[11px] text-brand-700">
-              Tu mejor racha son {racha.mejor} días.
-            </p>
-          )}
-        </div>
-      </section>
+      {/* ── Racha de comidas ───────────────────────────── */}
+      <TarjetaDeRacha
+        titulo="Tu constancia"
+        racha={racha}
+        dias={diasComidas}
+        tono={{
+          caja: "border border-brand-200 bg-brand-50/60",
+          texto: "text-brand-800",
+          lleno: "border-brand-300 bg-brand-600 text-white",
+          vacio: "border-dashed border-brand-200 bg-white",
+        }}
+        frase={
+          racha.actual === 0
+            ? "Un día cuenta cuando marcas todas tus comidas. Hoy puedes empezar."
+            : racha.hoyCerrado
+              ? "Hoy ya está completo. Un día cuenta con todas las comidas marcadas — comer fuera también cuenta."
+              : "Hoy todavía lo tienes a medias, y no pasa nada: se suma en cuanto lo cierres."
+        }
+      />
+
+      {/*
+        ── Racha de metas ───────────────────────────────
+        Va aparte de la de comidas a propósito: un día de poca agua no puede
+        tirar por tierra veinte días de comer bien, ni al revés.
+      */}
+      {metas.length > 0 && (
+        <TarjetaDeRacha
+          titulo="Tus metas"
+          racha={rachaMetas}
+          dias={diasMetas}
+          tono={{
+            caja: "border border-sky-200 bg-sky-50/60",
+            texto: "text-sky-800",
+            lleno: "border-sky-300 bg-sky-500 text-white",
+            vacio: "border-dashed border-sky-200 bg-white",
+          }}
+          frase={
+            rachaMetas.actual === 0
+              ? `Un día cuenta con ${metas.length === 1 ? "tu meta marcada" : `tus ${metas.length} metas marcadas`}. Van por su cuenta: no tocan las comidas.`
+              : rachaMetas.hoyCerrado
+                ? "Hoy están todas. Esta racha va por su cuenta: no toca la de las comidas."
+                : "Todavía te queda alguna por marcar hoy."
+          }
+        />
+      )}
 
       {/* ── Comidas fuera ──────────────────────────────── */}
       <section>

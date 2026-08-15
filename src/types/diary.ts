@@ -55,6 +55,11 @@ export interface RegistroDia {
    */
   libres?: Record<string, { nota?: string }>;
   /**
+   * Metas diarias cumplidas: ids de `Client.metas`. Van aquí y no en la ficha
+   * porque son de ese día concreto, como las comidas hechas.
+   */
+  metas?: string[];
+  /**
    * Alimentos que la clienta ha definido con la calculadora: la granola del
    * armario que no está en su despensa. Viven aquí y no en el catálogo de la
    * nutricionista porque son de ese día y de esa persona. Se pasan junto al
@@ -76,6 +81,7 @@ export function registroVacio(clientId: string, fecha: string, id: string): Regi
     sustituciones: {},
     extras: [],
     libres: {},
+    metas: [],
   };
 }
 

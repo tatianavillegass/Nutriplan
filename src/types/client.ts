@@ -42,8 +42,105 @@ export interface Client {
   /** Fórmula de % graso elegida para los informes de antropometría. */
   formulaGrasa?: 'faulkner' | 'yuhasz' | 'durnin_womersley';
   notas?: string;
+  /**
+   * RECURSOS HABILITADOS
+   *
+   * Los recursos se escriben una vez para toda la consulta, pero no todos
+   * valen para todo el mundo ni desde el primer día: la guía de raciones se da
+   * al empezar y la de comer fuera cuando ya hay costumbre.
+   *
+   * Sin lista, no ve ninguno. Se abren desde la pestaña de entrega.
+   */
+  recursos?: string[];
+  /** Costumbres que se marcan cada día: 10.000 pasos, 2 l de agua. */
+  metas?: Meta[];
+  /** La siguiente cita, para que las dos la tengan delante. */
+  cita?: Cita;
+  /** Lo que tiene contratado. Sólo lo ve la nutricionista. */
+  tarifa?: Tarifa;
+  /** Lo que ha ido pagando. Sólo lo ve la nutricionista. */
+  pagos?: Pago[];
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * UNA META DIARIA
+ *
+ * No es comida: es la costumbre de alrededor, que es la mitad del resultado.
+ * Se marca con un gesto y no pide número — «2 litros» es la meta, no hay que
+ * apuntar cuántos vasos.
+ *
+ * Las metas hacen racha aparte de las comidas a propósito. Un día de poca agua
+ * no puede tirar por tierra veinte días de comer bien, ni al revés: son dos
+ * costumbres distintas y mezclarlas sólo sirve para castigar dos veces.
+ */
+export interface Meta {
+  id: string;
+  /** Como se la lee la clienta: «Beber 2 litros de agua». */
+  texto: string;
+  /** Se puede jubilar una meta sin borrar el historial de días cumplidos. */
+  activa: boolean;
+  createdAt: string;
+}
+
+export const MODOS_CITA = ['consulta', 'videollamada', 'llamada'] as const;
+export type ModoCita = (typeof MODOS_CITA)[number];
+
+export const LABEL_MODO_CITA: Record<ModoCita, string> = {
+  consulta: 'En consulta',
+  videollamada: 'Videollamada',
+  llamada: 'Llamada',
+};
+
+export interface Cita {
+  /** YYYY-MM-DD */
+  fecha: string;
+  /** HH:MM en 24 h. */
+  hora?: string;
+  /** Cuántos minutos dura, para el archivo de calendario. */
+  duracionMin?: number;
+  modo: ModoCita;
+  /** Dirección si es en consulta, o el enlace si es videollamada. */
+  donde?: string;
+  nota?: string;
+}
+
+export const PERIODICIDADES = ['mensual', 'trimestral', 'sesion', 'paquete'] as const;
+export type Periodicidad = (typeof PERIODICIDADES)[number];
+
+export const LABEL_PERIODICIDAD: Record<Periodicidad, string> = {
+  mensual: 'Al mes',
+  trimestral: 'Al trimestre',
+  sesion: 'Por sesión',
+  paquete: 'Paquete cerrado',
+};
+
+export interface Tarifa {
+  nombre: string;
+  importe: number;
+  periodicidad: Periodicidad;
+  /** Símbolo, tal cual se escribe: €, $, COP… */
+  moneda?: string;
+}
+
+export interface Pago {
+  id: string;
+  /** YYYY-MM-DD */
+  fecha: string;
+  importe: number;
+  concepto?: string;
+  metodo?: string;
+}
+
+/** Las metas que hay que marcar hoy: las jubiladas no cuentan. */
+export function metasActivas(client: Pick<Client, 'metas'>): Meta[] {
+  return (client.metas ?? []).filter((m) => m.activa && m.texto.trim());
+}
+
+/** Los recursos habilitados a esta clienta. Sin lista, ninguno. */
+export function recursosDeCliente(client: Pick<Client, 'recursos'>): string[] {
+  return client.recursos ?? [];
 }
 
 /** Años cumplidos a una fecha. Cuenta el mes y el día, no sólo el año. */

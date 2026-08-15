@@ -15,6 +15,7 @@ import { ExtrasPanel } from "../components/client/ExtrasPanel";
 import { MealExtras } from "../components/client/MealExtras";
 import { ComidaLibre } from "../components/client/ComidaLibre";
 import { ResumenTab } from "../components/client/ResumenTab";
+import { MetasDiarias } from "../components/client/MetasDiarias";
 import { RecursosTab } from "../components/client/RecursosTab";
 import { PlanDocument } from "../components/export/PlanDocument";
 import { usePrintDocument } from "../components/export/printing";
@@ -27,6 +28,8 @@ import {
   FASE_POR_NUMERO,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
+import { LABEL_MODO_CITA, metasActivas } from "../types/client";
+import { citaLegible, citaPasada } from "../utils/agenda";
 import {
   balanceDelDia,
   extrasDeComida,
@@ -66,6 +69,13 @@ export function ClientView() {
    * demás se consulta de vez en cuando, la comida es todos los días.
    */
   const [tab, setTab] = useState<"hoy" | "resumen" | "recursos">("hoy");
+
+  /** Las costumbres de hoy y los recursos que su nutricionista le ha abierto. */
+  const metas = useMemo(() => (client ? metasActivas(client) : []), [client]);
+  const susRecursos = useMemo(() => {
+    const dados = new Set(client?.recursos ?? []);
+    return recursos.filter((r) => dados.has(r.id));
+  }, [recursos, client]);
 
   const imprimir = usePrintDocument(
     `Plan ${client?.nombre ?? ""} — Fase ${plan?.fase ?? ""}`.trim(),
@@ -195,6 +205,19 @@ export function ClientView() {
   const quitarLibre = (mealId: string) => {
     const { [mealId]: _fuera, ...resto } = libres;
     guardar({ libres: resto });
+  };
+
+  /**
+   * Marcar una meta del día. Va en el registro, como las comidas hechas: es de
+   * hoy, no de la ficha.
+   */
+  const alternarMeta = (metaId: string) => {
+    const hechas = registro?.metas ?? [];
+    guardar({
+      metas: hechas.includes(metaId)
+        ? hechas.filter((x) => x !== metaId)
+        : [...hechas, metaId],
+    });
   };
 
   /**
@@ -350,10 +373,32 @@ export function ClientView() {
           />
         )}
 
-        {tab === "recursos" && <RecursosTab recursos={recursos} />}
+        {tab === "recursos" && <RecursosTab recursos={susRecursos} />}
 
         {tab === "hoy" && (
           <div className="space-y-5">
+            {/*
+              La cita va arriba y en una línea: es lo único de la app que pasa
+              fuera de la app, y enterarse el día después no sirve de nada.
+            */}
+            {client.cita && !citaPasada(client.cita) && (
+              <p className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm text-brand-900 no-print">
+                <span className="font-medium">Próxima cita:</span>{" "}
+                {citaLegible(client.cita)}
+                <span className="text-slate-500">
+                  {" · "}
+                  {LABEL_MODO_CITA[client.cita.modo]}
+                  {client.cita.donde ? ` · ${client.cita.donde}` : ""}
+                </span>
+              </p>
+            )}
+
+            <MetasDiarias
+              metas={metas}
+              hechas={registro?.metas ?? []}
+              onAlternar={alternarMeta}
+            />
+
             <WeekStrip
               fecha={fecha}
               onFecha={setFecha}

@@ -128,3 +128,82 @@ export function libresDesde(registros: RegistroDia[], desde: string): Libres {
 export function inicioDeMes(iso: string): string {
   return `${iso.slice(0, 7)}-01`;
 }
+
+/**
+ * LAS METAS HACEN RACHA APARTE
+ *
+ * Un día de poca agua no puede tirar por tierra veinte días de comer bien, ni
+ * al revés. Son dos costumbres distintas y juntarlas en un solo número sólo
+ * sirve para castigar dos veces por el mismo día flojo.
+ *
+ * El día de metas está cerrado cuando están marcadas TODAS las activas. Con
+ * media docena de metas eso sería imposible, así que la nutricionista pone
+ * dos o tres: la lista corta es parte del diseño.
+ */
+export function diaDeMetasCerrado(
+  registro: RegistroDia | undefined,
+  metasActivas: { id: string }[],
+): boolean {
+  if (!metasActivas.length) return false;
+  const hechas = new Set(registro?.metas ?? []);
+  return metasActivas.every((m) => hechas.has(m.id));
+}
+
+export function calcularRachaMetas(
+  registros: RegistroDia[],
+  metasActivas: { id: string }[],
+  hoy: string,
+): Racha {
+  const porFecha = new Map(registros.map((r) => [r.fecha, r]));
+  const cerrado = (fecha: string) => diaDeMetasCerrado(porFecha.get(fecha), metasActivas);
+
+  const hoyCerrado = cerrado(hoy);
+  let actual = 0;
+  let dia = hoyCerrado ? hoy : diaAnterior(hoy);
+  while (cerrado(dia)) {
+    actual += 1;
+    dia = diaAnterior(dia);
+  }
+
+  let mejor = 0;
+  let seguidos = 0;
+  let anterior: string | undefined;
+  for (const f of [...porFecha.keys()].sort()) {
+    if (!cerrado(f)) {
+      seguidos = 0;
+      anterior = f;
+      continue;
+    }
+    seguidos = anterior && diaAnterior(f) === anterior ? seguidos + 1 : 1;
+    mejor = Math.max(mejor, seguidos);
+    anterior = f;
+  }
+
+  return { actual, mejor: Math.max(mejor, actual), hoyCerrado };
+}
+
+/**
+ * LOS DÍAS DEL MES, UNO A UNO
+ *
+ * Para pintarlos en círculos: uno por día, hasta hoy. El futuro no se pinta —
+ * un mes lleno de huecos por delante se lee como deuda, y no lo es.
+ */
+export interface DiaDelMes {
+  fecha: string;
+  cerrado: boolean;
+}
+
+export function diasDelMes(
+  registros: RegistroDia[],
+  hoy: string,
+  cerrado: (registro: RegistroDia | undefined) => boolean,
+): DiaDelMes[] {
+  const porFecha = new Map(registros.map((r) => [r.fecha, r]));
+  const ultimo = Number(hoy.slice(8, 10));
+  const out: DiaDelMes[] = [];
+  for (let d = 1; d <= ultimo; d++) {
+    const fecha = `${hoy.slice(0, 7)}-${String(d).padStart(2, '0')}`;
+    out.push({ fecha, cerrado: cerrado(porFecha.get(fecha)) });
+  }
+  return out;
+}
