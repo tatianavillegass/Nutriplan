@@ -370,14 +370,18 @@ export function RetosPage() {
                         cocinan.
                       </p>
 
-                      <AnadirReceta
+                      <ElegirRecetas
                         recetas={recetas.map((r) => ({
                           id: r.id,
                           nombre: r.nombre,
+                          categorias: r.categorias,
+                          foto: r.foto_url,
                         }))}
+                        puestas={reto.recetas}
                         onAnadir={(recetaId, slot, dia) =>
                           anadirReceta(reto, recetaId, slot, dia)
                         }
+                        onQuitar={(r) => quitarReceta(reto, r)}
                       />
 
                       {reto.recetas.length > 0 && (
@@ -488,17 +492,47 @@ export function RetosPage() {
   );
 }
 
-/** Añadir una receta al reto: cuál, para qué comida y desde qué día. */
-function AnadirReceta({
+/**
+ * ELEGIR RECETAS COMO SE ELIGEN AL PAUTAR
+ *
+ * Se mira la comida, se ven las recetas que valen para esa comida y se toca la
+ * que se quiere. Un desplegable con cuarenta nombres obliga a acordarse de cómo
+ * se llamaba cada una; una rejilla se reconoce de un vistazo.
+ *
+ * El día de apertura se pone arriba y se queda puesto: lo normal es abrir tres
+ * o cuatro del mismo día seguidas, no una de cada.
+ */
+function ElegirRecetas({
   recetas,
+  puestas,
   onAnadir,
+  onQuitar,
 }: {
-  recetas: { id: string; nombre: string }[];
+  recetas: {
+    id: string;
+    nombre: string;
+    categorias: MealSlot[];
+    foto?: string;
+  }[];
+  puestas: RecetaDeReto[];
   onAnadir: (recetaId: string, slot: MealSlot, desdeDia: number) => void;
+  onQuitar: (r: RecetaDeReto) => void;
 }) {
-  const [recetaId, setRecetaId] = useState("");
   const [slot, setSlot] = useState<MealSlot>("desayuno");
   const [dia, setDia] = useState(1);
+  const [busca, setBusca] = useState("");
+
+  const deEsaComida = useMemo(() => {
+    const texto = busca.trim().toLowerCase();
+    return recetas.filter(
+      (r) =>
+        r.categorias?.includes(slot) &&
+        (!texto || r.nombre.toLowerCase().includes(texto)),
+    );
+  }, [recetas, slot, busca]);
+
+  const puestaEn = (recetaId: string) =>
+    puestas.find((p) => p.recetaId === recetaId && p.slot === slot);
 
   if (!recetas.length) {
     return (
@@ -509,47 +543,108 @@ function AnadirReceta({
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <Field label="Receta" className="min-w-48 flex-1">
-        <Select value={recetaId} onChange={(e) => setRecetaId(e.target.value)}>
-          <option value="">Elige una…</option>
-          {recetas.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.nombre}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Comida">
-        <Select
-          value={slot}
-          onChange={(e) => setSlot(e.target.value as MealSlot)}
-        >
-          {SLOTS.map((s) => (
-            <option key={s} value={s}>
-              {LABEL_SLOT[s] ?? s}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Desde el día">
-        <Input
-          type="number"
-          min={1}
-          value={dia}
-          onChange={(e) => setDia(Math.max(1, Number(e.target.value) || 1))}
-          className="w-24"
-        />
-      </Field>
-      <Button
-        disabled={!recetaId}
-        onClick={() => {
-          onAnadir(recetaId, slot, dia);
-          setRecetaId("");
-        }}
-      >
-        Añadir
-      </Button>
+    <div>
+      {/* Qué comida se está montando */}
+      <div className="flex flex-wrap gap-1.5">
+        {SLOTS.map((sl) => {
+          const cuantas = puestas.filter((p) => p.slot === sl).length;
+          return (
+            <button
+              key={sl}
+              onClick={() => setSlot(sl)}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                slot === sl
+                  ? "border-brand-500 bg-brand-600 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-brand-300"
+              }`}
+            >
+              {LABEL_SLOT[sl]}
+              {cuantas > 0 && (
+                <span
+                  className={`tnum ml-1.5 text-[11px] ${slot === sl ? "text-white/70" : "text-slate-400"}`}
+                >
+                  {cuantas}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <Field label="Las que elija ahora se abren el día">
+          <Input
+            type="number"
+            min={1}
+            value={dia}
+            onChange={(e) => setDia(Math.max(1, Number(e.target.value) || 1))}
+            className="w-24"
+          />
+        </Field>
+        <Field label="Buscar" className="min-w-40 flex-1">
+          <Input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Nombre de la receta…"
+          />
+        </Field>
+      </div>
+
+      {deEsaComida.length ? (
+        <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {deEsaComida.map((r) => {
+            const ya = puestaEn(r.id);
+            return (
+              <li key={r.id}>
+                <button
+                  onClick={() =>
+                    ya ? onQuitar(ya) : onAnadir(r.id, slot, dia)
+                  }
+                  aria-pressed={!!ya}
+                  className={`flex w-full items-center gap-2.5 rounded-xl border p-2 text-left transition ${
+                    ya
+                      ? "border-brand-400 bg-brand-50"
+                      : "border-slate-200 bg-white hover:border-brand-300"
+                  }`}
+                >
+                  {r.foto ? (
+                    <img
+                      src={r.foto}
+                      alt=""
+                      className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-400"
+                    >
+                      sin foto
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-slate-800">
+                      {r.nombre}
+                    </span>
+                    <span
+                      className={`tnum text-[11px] ${ya ? "text-brand-700" : "text-slate-400"}`}
+                    >
+                      {ya
+                        ? `Abierta el día ${ya.desdeDia} · toca para quitar`
+                        : "Toca para añadir"}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-slate-500">
+          Ninguna receta del banco está marcada para{" "}
+          {LABEL_SLOT[slot].toLowerCase()}. Se marca en el banco de recetas, en
+          «tipo de comida».
+        </p>
+      )}
     </div>
   );
 }

@@ -28,7 +28,10 @@ beforeEach(() => {
   useAppStore.setState({
     retos: [RETO],
     clients: [CLIENTA('cl1', 'Catalina'), CLIENTA('cl2', 'Jaia')],
-    recipes: [{ id: 'rc1', nombre: 'Porridge de avena' }] as never,
+    recipes: [
+      { id: 'rc1', nombre: 'Porridge de avena', categorias: ['desayuno'] },
+      { id: 'rc2', nombre: 'Pollo al horno', categorias: ['comida', 'cena'] },
+    ] as never,
     recursos: [{ id: 'rs1', titulo: 'Guía de raciones', orden: 0, createdAt: '' }],
   });
 });
@@ -87,32 +90,46 @@ describe('Apuntar gente al reto', () => {
  * cierran, tres cada semana se cocinan.
  */
 describe('Las recetas, con su día de apertura', () => {
-  it('se añade una para una comida y un día', () => {
+  /**
+   * Se elige como al pautar: se mira la comida, se ven las recetas que valen
+   * para esa comida y se toca la que se quiere.
+   */
+  it('sólo salen las recetas de la comida que se está montando', () => {
     render(<RetosPage />);
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
 
-    const selects = screen.getAllByRole('combobox') as HTMLSelectElement[];
-    // El primero es la duración del reto; el de la receta viene después.
-    const receta = selects.find((s) => s.querySelector('option[value="rc1"]'))!;
-    fireEvent.change(receta, { target: { value: 'rc1' } });
+    // Empieza en desayuno.
+    expect(screen.getAllByText('Porridge de avena').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Pollo al horno')).toBeNull();
 
-    const comida = selects.find((s) => s.querySelector('option[value="cena"]'))!;
-    fireEvent.change(comida, { target: { value: 'cena' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Cena$/ }));
+    expect(screen.getByText('Pollo al horno')).toBeTruthy();
+  });
 
+  it('un toque la añade con el día que esté puesto', () => {
+    render(<RetosPage />);
+    fireEvent.click(screen.getByText('UPGRADE 1.0'));
+    fireEvent.click(screen.getByRole('button', { name: /^Cena$/ }));
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '8' } });
-    fireEvent.click(screen.getByText('Añadir'));
+    fireEvent.click(screen.getByText('Pollo al horno'));
 
     const puestas = useAppStore.getState().retos[0].recetas;
     expect(puestas).toHaveLength(2);
-    expect(puestas[1]).toMatchObject({ recetaId: 'rc1', slot: 'cena', desdeDia: 8 });
+    expect(puestas[1]).toMatchObject({ recetaId: 'rc2', slot: 'cena', desdeDia: 8 });
   });
 
-  it('la que ya está se ve con su día', () => {
+  it('y otro toque la quita', () => {
+    render(<RetosPage />);
+    fireEvent.click(screen.getByText('UPGRADE 1.0'));
+    fireEvent.click(screen.getAllByText('Porridge de avena')[0]);
+    expect(useAppStore.getState().retos[0].recetas).toEqual([]);
+  });
+
+  it('la que ya está dice en qué día se abre', () => {
     render(<RetosPage />);
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     expect(screen.getByText('Día 1')).toBeTruthy();
-    // Sale dos veces: en la lista del reto y en el desplegable de añadir.
-    expect(screen.getAllByText('Porridge de avena').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Abierta el día 1/)).toBeTruthy();
   });
 
   it('una receta borrada del banco no deja el hueco en blanco', () => {
