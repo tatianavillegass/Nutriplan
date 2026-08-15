@@ -46,13 +46,44 @@ import {
 import { comidaCubierta } from "../utils/dailyBudget";
 
 /**
+ * ICONOS DE LÍNEA, NO EMOJIS
+ *
+ * El emoji lo dibuja el sistema, así que cada móvil lo pinta a su manera y con
+ * sus colores: al lado de un texto sobrio cantan como un adorno pegado. Un
+ * trazo fino del mismo color que la letra se lee como parte de la interfaz.
+ */
+function Icono({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+/** Cubiertos, barras y un libro abierto. */
+const ICONOS = {
+  hoy: "M7 3v8a2 2 0 0 0 4 0V3M9 11v10M17 3c-1.5 1.5-2 3.5-2 5.5 0 1.5.5 2.5 2 2.5V3zm0 8v10",
+  resumen: "M5 20V10M12 20V4M19 20v-6",
+  recursos: "M12 7c-1.5-1.3-3.5-2-6-2H4v13h2c2.5 0 4.5.7 6 2m0-13c1.5-1.3 3.5-2 6-2h2v13h-2c-2.5 0-4.5.7-6 2m0-13v13",
+} as const;
+
+/**
  * Las tres pestañas de la clienta. El icono sólo se usa en la barra del móvil,
  * donde el texto solo se lee peor de reojo.
  */
 const PESTANAS = [
-  ["hoy", "Hoy", "🍽️"],
-  ["resumen", "Resumen", "📈"],
-  ["recursos", "Recursos", "📚"],
+  ["hoy", "Hoy", ICONOS.hoy],
+  ["resumen", "Resumen", ICONOS.resumen],
+  ["recursos", "Recursos", ICONOS.recursos],
 ] as const;
 
 /** Lo que ve el cliente: su día, lo pautado y lo que va cumpliendo. */
@@ -840,9 +871,7 @@ export function ClientView() {
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
-              <span aria-hidden className="text-base leading-none">
-                {icono}
-              </span>
+              <Icono d={icono} />
               {label}
             </button>
           ))}
