@@ -193,3 +193,61 @@ alter publication supabase_realtime add table public.registros;
 --    select count(*) from public.nutricionistas;
 --    select count(*) from public.clientes;
 --    select count(*) from public.registros;
+
+
+-- ══════════════════════════════════════════════════════════════
+--  EL ENLACE PÚBLICO DEL RETO
+-- ══════════════════════════════════════════════════════════════
+--  Aquí entra gente sin cuenta: alguien que acaba de pagar en Stripe
+--  y aterriza en el formulario. Dos tablas y dos reglas muy estrechas.
+
+-- Lo mínimo de un reto para poder enseñarlo sin identificar a nadie.
+-- NO lleva participantes ni recetas: eso no lo ve quien se apunta.
+create table if not exists public.retos_publicos (
+  id           text        primary key,
+  nutri_id     uuid        not null references public.nutricionistas on delete cascade,
+  nombre       text        not null default '',
+  descripcion  text,
+  fecha_inicio date,
+  dias         int         not null default 30,
+  actualizado  timestamptz not null default now()
+);
+
+alter table public.retos_publicos enable row level security;
+
+-- Cualquiera puede leerlos: son el escaparate del reto.
+drop policy if exists "retos_publicos_lectura" on public.retos_publicos;
+create policy "retos_publicos_lectura" on public.retos_publicos
+  for select using (true);
+
+-- Escribirlos, sólo su dueña.
+drop policy if exists "retos_publicos_escritura" on public.retos_publicos;
+create policy "retos_publicos_escritura" on public.retos_publicos
+  for all using (auth.uid() = nutri_id) with check (auth.uid() = nutri_id);
+
+
+-- Lo que rellena quien se apunta. Todavía no es una clienta.
+create table if not exists public.solicitudes (
+  id        text        primary key,
+  reto_id   text        not null,
+  email     text,
+  datos     jsonb       not null default '{}'::jsonb,
+  creada    timestamptz not null default now()
+);
+
+alter table public.solicitudes enable row level security;
+
+-- Se puede ESCRIBIR sin cuenta, que es todo el asunto del enlace público.
+drop policy if exists "solicitudes_alta" on public.solicitudes;
+create policy "solicitudes_alta" on public.solicitudes
+  for insert with check (true);
+
+-- Pero NO leer: quien se apunta no puede ver quién más se ha apuntado.
+-- Sólo las lee y borra quien ha entrado con cuenta.
+drop policy if exists "solicitudes_lectura" on public.solicitudes;
+create policy "solicitudes_lectura" on public.solicitudes
+  for select using (auth.uid() is not null);
+
+drop policy if exists "solicitudes_borrado" on public.solicitudes;
+create policy "solicitudes_borrado" on public.solicitudes
+  for delete using (auth.uid() is not null);

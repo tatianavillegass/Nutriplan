@@ -1,31 +1,32 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Route, Routes, Navigate } from 'react-router-dom';
-import { Clients } from './pages/Clients';
-import { ClientDetail } from './pages/ClientDetail';
-import { RecipeBankPage } from './pages/RecipeBankPage';
-import { FoodCatalogPage } from './pages/FoodCatalogPage';
-import { ClientView } from './pages/ClientView';
-import { TemplatesPage } from './pages/TemplatesPage';
-import { RecursosPage } from './pages/RecursosPage';
-import { RetosPage } from './pages/RetosPage';
-import { AuthPage } from './pages/AuthPage';
-import { ClaveNueva } from './components/common/ClaveNueva';
-import { useAuthStore } from './store/useAuthStore';
-import { hayNube } from './utils/supabase';
+import { useEffect, useState } from "react";
+import { NavLink, Route, Routes, Navigate } from "react-router-dom";
+import { Clients } from "./pages/Clients";
+import { ClientDetail } from "./pages/ClientDetail";
+import { RecipeBankPage } from "./pages/RecipeBankPage";
+import { FoodCatalogPage } from "./pages/FoodCatalogPage";
+import { ClientView } from "./pages/ClientView";
+import { TemplatesPage } from "./pages/TemplatesPage";
+import { RecursosPage } from "./pages/RecursosPage";
+import { RetosPage } from "./pages/RetosPage";
+import { ApuntarsePage } from "./pages/ApuntarsePage";
+import { AuthPage } from "./pages/AuthPage";
+import { ClaveNueva } from "./components/common/ClaveNueva";
+import { useAuthStore } from "./store/useAuthStore";
+import { hayNube } from "./utils/supabase";
 import {
   arrancarSincronizacion,
   cargarDesdeNube,
   observarSincronizacion,
   pararSincronizacion,
-} from './utils/sincronizacion';
+} from "./utils/sincronizacion";
 
 const nav = [
-  { to: '/clientes', label: 'Clientes' },
-  { to: '/recetas', label: 'Banco de recetas' },
-  { to: '/alimentos', label: 'Alimentos' },
-  { to: '/plantillas', label: 'Mis plantillas' },
-  { to: '/recursos', label: 'Recursos' },
-  { to: '/retos', label: 'Retos' },
+  { to: "/clientes", label: "Clientes" },
+  { to: "/recetas", label: "Banco de recetas" },
+  { to: "/alimentos", label: "Alimentos" },
+  { to: "/plantillas", label: "Mis plantillas" },
+  { to: "/recursos", label: "Recursos" },
+  { to: "/retos", label: "Retos" },
 ];
 
 export default function App() {
@@ -36,7 +37,9 @@ export default function App() {
   const recuperando = useAuthStore((s) => s.recuperando);
   const arrancar = useAuthStore((s) => s.arrancar);
   const cerrar = useAuthStore((s) => s.salir);
-  const [guardado, setGuardado] = useState<'al-dia' | 'guardando' | 'error'>('al-dia');
+  const [guardado, setGuardado] = useState<"al-dia" | "guardando" | "error">(
+    "al-dia",
+  );
 
   // Al abrir la app se mira si quedaba una sesión abierta en el servidor.
   useEffect(() => {
@@ -58,6 +61,24 @@ export default function App() {
     };
   }, [perfil]);
 
+  /**
+   * EL ENLACE PÚBLICO VA ANTES QUE TODO
+   *
+   * Quien llega de pagar en Stripe no tiene cuenta ni tiene por qué crearse
+   * una. Esta ruta se resuelve antes de mirar la sesión: si esperara al
+   * arranque, vería un momento de «abriendo tu cuenta» y luego una pantalla de
+   * acceso que no le corresponde.
+   */
+  if (window.location.hash.startsWith("#/apuntarse/")) {
+    return (
+      <main className="mx-auto max-w-lg px-0 py-0">
+        <Routes>
+          <Route path="/apuntarse/:retoId" element={<ApuntarsePage />} />
+        </Routes>
+      </main>
+    );
+  }
+
   if (cargando) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center text-sm text-slate-400">
@@ -73,8 +94,8 @@ export default function App() {
   if (!sesion || !cuenta) return <AuthPage />;
 
   /** El cliente entra directo a su plan y no ve nada más. */
-  const esCliente = cuenta.rol === 'cliente';
-  const inicio = esCliente ? `/clientes/${cuenta.clientId}/vista` : '/clientes';
+  const esCliente = cuenta.rol === "cliente";
+  const inicio = esCliente ? `/clientes/${cuenta.clientId}/vista` : "/clientes";
 
   return (
     <div className="min-h-full">
@@ -84,7 +105,9 @@ export default function App() {
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-700 text-sm font-bold text-white">
               N
             </span>
-            <span className="text-sm font-semibold tracking-tight text-brand-900">NutriPlan</span>
+            <span className="text-sm font-semibold tracking-tight text-brand-900">
+              NutriPlan
+            </span>
           </NavLink>
 
           {!esCliente && (
@@ -96,8 +119,8 @@ export default function App() {
                   className={({ isActive }) =>
                     `rounded-lg px-3 py-1.5 text-sm transition ${
                       isActive
-                        ? 'bg-brand-50 font-medium text-brand-800'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? "bg-brand-50 font-medium text-brand-800"
+                        : "text-slate-500 hover:text-slate-800"
                     }`
                   }
                 >
@@ -111,30 +134,30 @@ export default function App() {
             {hayNube && (
               <span
                 className={`text-[11px] ${
-                  guardado === 'error'
-                    ? 'text-amber-600'
-                    : guardado === 'guardando'
-                      ? 'text-slate-400'
-                      : 'text-slate-300'
+                  guardado === "error"
+                    ? "text-amber-600"
+                    : guardado === "guardando"
+                      ? "text-slate-400"
+                      : "text-slate-300"
                 }`}
                 title={
-                  guardado === 'error'
-                    ? 'No se ha podido guardar en el servidor. Se reintenta solo.'
-                    : 'Los cambios se guardan solos.'
+                  guardado === "error"
+                    ? "No se ha podido guardar en el servidor. Se reintenta solo."
+                    : "Los cambios se guardan solos."
                 }
               >
-                {guardado === 'error'
-                  ? 'Sin conexión'
-                  : guardado === 'guardando'
-                    ? 'Guardando…'
-                    : 'Guardado'}
+                {guardado === "error"
+                  ? "Sin conexión"
+                  : guardado === "guardando"
+                    ? "Guardando…"
+                    : "Guardado"}
               </span>
             )}
             <span className="text-xs text-slate-500">
               {cuenta.nombre}
               <span className="ml-1.5 text-slate-300">·</span>
               <span className="ml-1.5 text-[11px] text-slate-400">
-                {esCliente ? 'cliente' : 'nutricionista'}
+                {esCliente ? "cliente" : "nutricionista"}
               </span>
             </span>
             <button

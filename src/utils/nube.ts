@@ -9,6 +9,7 @@ import type { RegistroDia } from '../types/diary';
 import type { PlantillaDespensa, PlantillaDia } from './plantillas';
 import type { Recurso } from '../types/recursos';
 import type { Reto } from '../types/reto';
+import { publicarRetos } from './solicitudes';
 
 /**
  * SUBIR Y BAJAR
@@ -269,6 +270,13 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
       error.message,
     );
   }
+
+  /**
+   * Los retos se publican aparte, con lo mínimo para que el enlace público
+   * funcione: nombre, fecha y días. Ni participantes, ni recetas, ni nada de
+   * nadie.
+   */
+  await publicarRetos(perfil.nutriId, foto.retos);
 
   const filas = aFilas(perfil.nutriId, foto).map((f) => ({
     ...f,

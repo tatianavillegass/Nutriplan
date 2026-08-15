@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { DURACIONES, type RecetaDeReto, type Reto } from "../types/reto";
 import type { MealSlot } from "../types/food";
@@ -21,6 +21,9 @@ import {
   Select,
 } from "../components/common/ui";
 import { uid, nowIso } from "../utils/storage";
+import { avisosDeSolicitud, type Solicitud } from "../types/solicitud";
+import { borrarSolicitud, leerSolicitudes } from "../utils/solicitudes";
+import { clienteDeSolicitud, comidasDelPlan } from "../utils/altaDeSolicitud";
 
 const hoyIso = () => new Date().toISOString().slice(0, 10);
 
@@ -80,6 +83,39 @@ export function RetosPage() {
   const recursos = useAppStore((s) => s.recursos);
   const upsertReto = useAppStore((s) => s.upsertReto);
   const borrarReto = useAppStore((s) => s.borrarReto);
+  const addClient = useAppStore((s) => s.addClient);
+  const ensurePlan = useAppStore((s) => s.ensurePlan);
+  const updateDayType = useAppStore((s) => s.updateDayType);
+
+  /**
+   * LAS SOLICITUDES DEL ENLACE PÚBLICO
+   *
+   * Viven en el servidor, no en el estado de la app: las escribe gente sin
+   * cuenta. Se leen al abrir la pantalla y se vuelven a leer al dar de alta.
+   */
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const refrescarSolicitudes = () =>
+    void leerSolicitudes().then(setSolicitudes);
+  useEffect(refrescarSolicitudes, []);
+
+  /**
+   * DE SOLICITUD A PARTICIPANTE
+   *
+   * Se crea la clienta con sus datos, se le monta el plan con las comidas que
+   * dijo que hace, y se la apunta al reto. A partir de ahí es una clienta más:
+   * entra con su correo y tiene su seguimiento.
+   */
+  const darDeAlta = async (reto: Reto, s: Solicitud) => {
+    const cliente = addClient(clienteDeSolicitud(s));
+    const plan = ensurePlan(cliente.id);
+    const dia = plan.dayTypes[0];
+    if (dia) {
+      updateDayType(plan.id, dia.id, { meals: comidasDelPlan(s.comidasDia) });
+    }
+    editar(reto, { participantes: [...reto.participantes, cliente.id] });
+    await borrarSolicitud(s.id);
+    refrescarSolicitudes();
+  };
 
   const hoy = hoyIso();
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -302,6 +338,107 @@ export function RetosPage() {
                           }
                         />
                       </Field>
+                    </div>
+
+                    {/* ── Solicitudes ───────────────────────── */}
+                    {(() => {
+                      const suyas = solicitudes.filter(
+                        (x) => x.retoId === reto.id,
+                      );
+                      if (!suyas.length) return null;
+                      return (
+                        <div>
+                          <h3 className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wide text-brand-800 uppercase">
+                            Solicitudes
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 normal-case">
+                              {suyas.length} sin dar de alta
+                            </span>
+                          </h3>
+                          <p className="mb-2 text-[11px] leading-snug text-slate-500">
+                            Llegan del enlace público, ya pagadas. Mira los
+                            avisos antes de darlas de alta: es para eso que este
+                            paso lo das tú.
+                          </p>
+
+                          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                            {suyas.map((s) => {
+                              const avisos = avisosDeSolicitud(s);
+                              const para = avisos.some(
+                                (a) => a.gravedad === "para",
+                              );
+                              return (
+                                <li
+                                  key={s.id}
+                                  className="flex flex-wrap items-start gap-3 px-3 py-2.5"
+                                >
+                                  <div className="min-w-48 flex-1">
+                                    <p className="text-sm font-medium text-slate-800">
+                                      {s.nombre}
+                                    </p>
+                                    <p className="text-[11px] text-slate-400">
+                                      {s.email} · {s.creada.slice(0, 10)}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-600">
+                                      {s.peso} kg · {s.altura} cm ·{" "}
+                                      {s.comidasDia} comidas
+                                      {s.cintura
+                                        ? ` · cintura ${s.cintura} cm`
+                                        : ""}
+                                    </p>
+                                    {avisos.map((a, i) => (
+                                      <p
+                                        key={i}
+                                        className={`mt-1.5 rounded-lg px-2.5 py-1.5 text-[11px] leading-snug ${
+                                          a.gravedad === "para"
+                                            ? "bg-rose-50 text-rose-800"
+                                            : "bg-amber-50 text-amber-800"
+                                        }`}
+                                      >
+                                        {a.texto}
+                                      </p>
+                                    ))}
+                                  </div>
+                                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                    <Button
+                                      variant={para ? "outline" : "primary"}
+                                      onClick={() => void darDeAlta(reto, s)}
+                                    >
+                                      {para
+                                        ? "Dar de alta igualmente"
+                                        : "Dar de alta"}
+                                    </Button>
+                                    <button
+                                      onClick={() => {
+                                        void borrarSolicitud(s.id).then(
+                                          refrescarSolicitudes,
+                                        );
+                                      }}
+                                      className="rounded px-2 py-1 text-[11px] text-slate-400 hover:text-rose-600"
+                                    >
+                                      Descartar
+                                    </button>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      );
+                    })()}
+
+                    {/* ── El enlace para compartir ───────────── */}
+                    <div>
+                      <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-brand-800 uppercase">
+                        Enlace para apuntarse
+                      </h3>
+                      <p className="mb-2 text-[11px] leading-snug text-slate-500">
+                        Este es el enlace que va en Stripe como página de
+                        destino después del pago. Quien llegue aquí ya ha
+                        pagado.
+                      </p>
+                      <code className="block overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+                        {`${window.location.origin}/#/apuntarse/${reto.id}`}
+                      </code>
                     </div>
 
                     {/* ── Participantes ─────────────────────── */}
