@@ -1,8 +1,16 @@
-import { useAppStore } from '../store/useAppStore';
-import { storage } from './storage';
-import { hayNube, nube } from './supabase';
-import { bajar, bajarRegistros, subirTodo, subirRegistros, type Foto, type Perfil } from './nube';
-import type { RegistroDia } from '../types/diary';
+import { useAppStore } from "../store/useAppStore";
+import { storage } from "./storage";
+import { hayNube, nube } from "./supabase";
+import {
+  bajar,
+  bajarPlanDelCliente,
+  bajarRegistros,
+  subirTodo,
+  subirRegistros,
+  type Foto,
+  type Perfil,
+} from "./nube";
+import type { RegistroDia } from "../types/diary";
 import {
   guardarPlantillas,
   guardarPlantillasDia,
@@ -10,7 +18,7 @@ import {
   leerPlantillasDia,
   observarPlantillas,
   sinAvisar,
-} from './plantillas';
+} from "./plantillas";
 
 /**
  * MANTENER LOS DOS LADOS IGUALES
@@ -36,7 +44,7 @@ let perfilActivo: Perfil | null = null;
 let pendiente = false;
 
 /** Se avisa a la app de si hay algo por guardar, para poder enseñarlo. */
-type Estado = 'al-dia' | 'guardando' | 'error';
+type Estado = "al-dia" | "guardando" | "error";
 let alCambiarEstado: ((e: Estado) => void) | null = null;
 
 export function observarSincronizacion(fn: ((e: Estado) => void) | null): void {
@@ -69,7 +77,7 @@ export function fotoActual(): Foto {
  * nutricionista que se registrara en el mismo ordenador se llevaría los
  * clientes de la primera a su cuenta.
  */
-const DUENO_KEY = 'nube_dueno';
+const DUENO_KEY = "nube_dueno";
 
 /** Deja el navegador como recién estrenado. Se llama al cerrar sesión. */
 export function olvidarLocal(): void {
@@ -100,15 +108,16 @@ export function olvidarLocal(): void {
  */
 export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
   if (!hayNube) return;
-  avisar('guardando');
+  avisar("guardando");
 
   try {
     const foto = await bajar(perfil);
-    const arribaVacio = !foto.clients.length && !foto.recipes.length && !foto.foods.length;
+    const arribaVacio =
+      !foto.clients.length && !foto.recipes.length && !foto.foods.length;
     const dueno = storage.getSync<string>(DUENO_KEY);
     const heredable = !dueno || dueno === perfil.nutriId;
 
-    if (arribaVacio && perfil.rol === 'nutricionista' && heredable) {
+    if (arribaVacio && perfil.rol === "nutricionista" && heredable) {
       // Primera vez: lo que hay en este navegador pasa a ser lo de la cuenta.
       void storage.set(DUENO_KEY, perfil.nutriId);
       await subirTodo(perfil, fotoActual());
@@ -122,10 +131,10 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
         guardarPlantillasDia(foto.plantillasDia);
       });
     }
-    avisar('al-dia');
+    avisar("al-dia");
   } catch (e) {
-    console.error('[nube] no se pudo cargar', e);
-    avisar('error');
+    console.error("[nube] no se pudo cargar", e);
+    avisar("error");
   }
 }
 
@@ -139,6 +148,7 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
  */
 let canal: { unsubscribe: () => void } | null = null;
 let repaso: ReturnType<typeof setInterval> | null = null;
+let repasoDelPlan: ReturnType<typeof setInterval> | null = null;
 let alLlegarRegistro: ((r: RegistroDia) => void) | null = null;
 /** Lo que llega del servidor no debe disparar una subida de vuelta. */
 let aplicandoRemoto = false;
@@ -146,11 +156,13 @@ let aplicandoRemoto = false;
 /** Cada cuánto se pregunta por si el aviso en directo no llega. */
 const REPASO_MS = 20_000;
 
-export type EstadoVivo = 'conectando' | 'en-directo' | 'preguntando';
-let estadoVivo: EstadoVivo = 'conectando';
+export type EstadoVivo = "conectando" | "en-directo" | "preguntando";
+let estadoVivo: EstadoVivo = "conectando";
 let alCambiarVivo: ((e: EstadoVivo) => void) | null = null;
 
-export function observarRegistrosEnVivo(fn: ((r: RegistroDia) => void) | null): void {
+export function observarRegistrosEnVivo(
+  fn: ((r: RegistroDia) => void) | null,
+): void {
   alLlegarRegistro = fn;
 }
 
@@ -177,9 +189,9 @@ function aplicar(registro: RegistroDia): void {
 }
 
 function escucharRegistros(perfil: Perfil): void {
-  if (!hayNube || perfil.rol !== 'nutricionista') return;
+  if (!hayNube || perfil.rol !== "nutricionista") return;
   const sb = nube();
-  ponerEstadoVivo('conectando');
+  ponerEstadoVivo("conectando");
 
   /**
    * La conexión en directo tiene que ir firmada con la sesión de quien mira.
@@ -192,17 +204,20 @@ function escucharRegistros(perfil: Perfil): void {
     if (token) sb.realtime.setAuth(token);
 
     canal = sb
-      .channel('registros-en-vivo')
+      .channel("registros-en-vivo")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'registros' },
-        (payload: { new?: { datos?: RegistroDia }; old?: { datos?: RegistroDia } }) => {
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registros" },
+        (payload: {
+          new?: { datos?: RegistroDia };
+          old?: { datos?: RegistroDia };
+        }) => {
           const registro = payload.new?.datos ?? payload.old?.datos;
           if (registro) aplicar(registro);
         },
       )
       .subscribe((estado: string) => {
-        ponerEstadoVivo(estado === 'SUBSCRIBED' ? 'en-directo' : 'preguntando');
+        ponerEstadoVivo(estado === "SUBSCRIBED" ? "en-directo" : "preguntando");
       });
   });
 
@@ -215,7 +230,7 @@ function escucharRegistros(perfil: Perfil): void {
   repaso = setInterval(() => {
     void bajarRegistros(perfil)
       .then((rs) => rs.forEach(aplicar))
-      .catch(() => ponerEstadoVivo('preguntando'));
+      .catch(() => ponerEstadoVivo("preguntando"));
   }, REPASO_MS);
 }
 
@@ -227,12 +242,47 @@ export async function refrescarRegistros(): Promise<void> {
   rs.forEach(aplicar);
 }
 
+/**
+ * EL CLIENTE TAMBIÉN TIENE QUE ENTERARSE
+ *
+ * Sus datos se leían UNA sola vez, al abrir sesión. La nutricionista le
+ * cambiaba la fase, se guardaba bien en el servidor, y él seguía viendo lo de
+ * antes hasta que cerraba la app y volvía a entrar — que en un móvil puede ser
+ * nunca, porque la pestaña se queda abierta días.
+ *
+ * Se vuelve a mirar al recuperar el foco (que es cuando desbloquea el móvil) y
+ * cada pocos minutos. **No se tocan los registros**: los del servidor pueden ir
+ * por detrás de lo que acaba de marcar, y traerlos le borraría el día.
+ */
+const REPASO_DEL_PLAN_MS = 5 * 60_000;
+
+async function repasarPlan(): Promise<void> {
+  const perfil = perfilActivo;
+  if (!perfil || perfil.rol !== "cliente") return;
+  try {
+    const suyo = await bajarPlanDelCliente(perfil);
+    if (suyo)
+      useAppStore.getState().aplicarPlanRemoto(suyo.clients, suyo.plans);
+  } catch (e) {
+    console.warn("[nube] no se pudo repasar el plan", e);
+  }
+}
+
+function alVolverAlaApp() {
+  if (document.visibilityState === "visible") void repasarPlan();
+}
+
 /** A partir de aquí, cada cambio se sube solo. */
 export function arrancarSincronizacion(perfil: Perfil): void {
   if (!hayNube) return;
   pararSincronizacion();
   perfilActivo = perfil;
   escucharRegistros(perfil);
+
+  if (perfil.rol === "cliente" && typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", alVolverAlaApp);
+    repasoDelPlan = setInterval(() => void repasarPlan(), REPASO_DEL_PLAN_MS);
+  }
 
   desuscribir = useAppStore.subscribe(() => {
     // Lo que acaba de llegar del servidor ya está arriba: subirlo otra vez
@@ -249,8 +299,8 @@ export function arrancarSincronizacion(perfil: Perfil): void {
   desuscribirPlantillas = observarPlantillas(programarSubida);
 
   // Si se cierra la pestaña con algo a medias, se intenta un último envío.
-  if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', alSalirDeLaPagina);
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", alSalirDeLaPagina);
   }
 }
 
@@ -265,10 +315,15 @@ export function pararSincronizacion(): void {
   canal = null;
   if (repaso) clearInterval(repaso);
   repaso = null;
+  if (repasoDelPlan) clearInterval(repasoDelPlan);
+  repasoDelPlan = null;
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", alVolverAlaApp);
+  }
   perfilActivo = null;
   pendiente = false;
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('beforeunload', alSalirDeLaPagina);
+  if (typeof window !== "undefined") {
+    window.removeEventListener("beforeunload", alSalirDeLaPagina);
   }
 }
 
@@ -279,7 +334,7 @@ function alSalirDeLaPagina() {
 /** Apunta que hay algo que subir y lo manda en cuanto se deje de teclear. */
 function programarSubida(): void {
   pendiente = true;
-  avisar('guardando');
+  avisar("guardando");
   if (temporizador) clearTimeout(temporizador);
   temporizador = setTimeout(() => void empujar(), ESPERA_MS);
 }
@@ -291,7 +346,7 @@ export async function empujar(): Promise<void> {
   pendiente = false;
 
   try {
-    if (perfil.rol === 'cliente') {
+    if (perfil.rol === "cliente") {
       const mios = useAppStore
         .getState()
         .registros.filter((r) => r.clientId === perfil.clientId);
@@ -299,10 +354,10 @@ export async function empujar(): Promise<void> {
     } else {
       await subirTodo(perfil, fotoActual());
     }
-    avisar('al-dia');
+    avisar("al-dia");
   } catch (e) {
-    console.error('[nube] no se pudo guardar', e);
+    console.error("[nube] no se pudo guardar", e);
     pendiente = true;
-    avisar('error');
+    avisar("error");
   }
 }

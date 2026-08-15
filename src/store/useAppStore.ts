@@ -1,20 +1,20 @@
-import { create } from 'zustand';
-import type { Client } from '../types/client';
-import type { Plan, DayType, Meal, Phase } from '../types/plan';
-import { DEFAULT_MEALS } from '../types/plan';
-import type { Receta } from '../types/recipe';
-import type { Alimento } from '../types/food';
-import type { Medicion } from '../types/anthropometry';
-import type { RegistroDia } from '../types/diary';
-import type { Recurso } from '../types/recursos';
-import type { Reto } from '../types/reto';
-import { registroVacio } from '../types/diary';
-import { EXCHANGE_GROUPS, type ExchangeGroupId } from '../data/exchangeGroups';
-import { FOOD_CATALOG } from '../data/foodCatalog';
-import { SEED_RECIPES } from '../data/seedRecipes';
-import { DEMO_CLIENT, DEMO_PLAN } from '../data/demoSeed';
-import { storage, STORAGE_KEYS, uid, nowIso } from '../utils/storage';
-import { snapHalf } from '../utils/macros';
+import { create } from "zustand";
+import type { Client } from "../types/client";
+import type { Plan, DayType, Meal, Phase } from "../types/plan";
+import { DEFAULT_MEALS } from "../types/plan";
+import type { Receta } from "../types/recipe";
+import type { Alimento } from "../types/food";
+import type { Medicion } from "../types/anthropometry";
+import type { RegistroDia } from "../types/diary";
+import type { Recurso } from "../types/recursos";
+import type { Reto } from "../types/reto";
+import { registroVacio } from "../types/diary";
+import { EXCHANGE_GROUPS, type ExchangeGroupId } from "../data/exchangeGroups";
+import { FOOD_CATALOG } from "../data/foodCatalog";
+import { SEED_RECIPES } from "../data/seedRecipes";
+import { DEMO_CLIENT, DEMO_PLAN } from "../data/demoSeed";
+import { storage, STORAGE_KEYS, uid, nowIso } from "../utils/storage";
+import { snapHalf } from "../utils/macros";
 
 interface AppState {
   clients: Client[];
@@ -27,7 +27,7 @@ interface AppState {
   retos: Reto[];
 
   // Clientes
-  addClient: (c: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Client;
+  addClient: (c: Omit<Client, "id" | "createdAt" | "updatedAt">) => Client;
   updateClient: (id: string, patch: Partial<Client>) => void;
   deleteClient: (id: string) => void;
   getClient: (id: string) => Client | undefined;
@@ -46,32 +46,57 @@ interface AppState {
   deletePlan: (planId: string) => void;
   setPhase: (planId: string, fase: Phase) => void;
   addDayType: (planId: string, nombre: string) => void;
-  updateDayType: (planId: string, dayTypeId: string, patch: Partial<DayType>) => void;
+  updateDayType: (
+    planId: string,
+    dayTypeId: string,
+    patch: Partial<DayType>,
+  ) => void;
   deleteDayType: (planId: string, dayTypeId: string) => void;
 
   // Grilla
-  setCell: (planId: string, dayTypeId: string, mealId: string, group: ExchangeGroupId, value: number) => void;
-  bumpCell: (planId: string, dayTypeId: string, mealId: string, group: ExchangeGroupId, delta: number) => void;
+  setCell: (
+    planId: string,
+    dayTypeId: string,
+    mealId: string,
+    group: ExchangeGroupId,
+    value: number,
+  ) => void;
+  bumpCell: (
+    planId: string,
+    dayTypeId: string,
+    mealId: string,
+    group: ExchangeGroupId,
+    delta: number,
+  ) => void;
 
   // Comidas
-  addMeal: (planId: string, dayTypeId: string, meal: Omit<Meal, 'id'>) => void;
-  renameMeal: (planId: string, dayTypeId: string, mealId: string, nombre: string) => void;
+  addMeal: (planId: string, dayTypeId: string, meal: Omit<Meal, "id">) => void;
+  renameMeal: (
+    planId: string,
+    dayTypeId: string,
+    mealId: string,
+    nombre: string,
+  ) => void;
   removeMeal: (planId: string, dayTypeId: string, mealId: string) => void;
 
   // Recetas
-  addRecipe: (r: Omit<Receta, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  addRecipe: (r: Omit<Receta, "id" | "createdAt" | "updatedAt">) => void;
   updateRecipe: (id: string, patch: Partial<Receta>) => void;
   deleteRecipe: (id: string) => void;
 
   // Alimentos
-  addFood: (a: Omit<Alimento, 'id'>) => Alimento;
+  addFood: (a: Omit<Alimento, "id">) => Alimento;
   updateFood: (id: string, patch: Partial<Alimento>) => void;
   deleteFood: (id: string) => void;
 
   // Diario del cliente
   registroDe: (clientId: string, fecha: string) => RegistroDia | undefined;
   /** Crea el registro si no existe y devuelve el resultante. */
-  upsertRegistro: (clientId: string, fecha: string, patch: Partial<RegistroDia>) => RegistroDia;
+  upsertRegistro: (
+    clientId: string,
+    fecha: string,
+    patch: Partial<RegistroDia>,
+  ) => RegistroDia;
   registrosDe: (clientId: string) => RegistroDia[];
   /**
    * Un registro que llega del servidor mientras la app está abierta: lo que
@@ -82,7 +107,7 @@ interface AppState {
 
   // Antropometría
   medicionesDe: (clientId: string) => Medicion[];
-  addMedicion: (m: Omit<Medicion, 'id'>) => Medicion;
+  addMedicion: (m: Omit<Medicion, "id">) => Medicion;
   updateMedicion: (id: string, patch: Partial<Medicion>) => void;
   deleteMedicion: (id: string) => void;
 
@@ -93,6 +118,9 @@ interface AppState {
   // Retos: grupos que empiezan el mismo día
   upsertReto: (r: Reto) => void;
   borrarReto: (id: string) => void;
+
+  /** Trae lo que la nutricionista haya cambiado, sin pisar el día del cliente. */
+  aplicarPlanRemoto: (clients: Client[], plans: Plan[]) => void;
 
   // Recursos: material de consulta que ven todas las clientas
   upsertRecurso: (r: Recurso) => void;
@@ -112,7 +140,7 @@ interface AppState {
 }
 
 function hydrate<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
+  if (typeof window === "undefined") return fallback;
   return storage.getSync<T>(key) ?? fallback;
 }
 
@@ -120,7 +148,7 @@ function hydrate<T>(key: string, fallback: T): T {
  * Migración: antes había dos fases y la 2 era "intercambios abiertos".
  * Ahora esa es la 3, porque en medio entra la de cantidades ya hechas.
  */
-const FASES_MIGRADAS_KEY = 'fases_v2_a_v3';
+const FASES_MIGRADAS_KEY = "fases_v2_a_v3";
 
 /**
  * VERSIÓN DEL CATÁLOGO
@@ -133,20 +161,22 @@ const FASES_MIGRADAS_KEY = 'fases_v2_a_v3';
  * alimentos que haya dado de alta ella (los que no vienen de la app).
  */
 const CATALOGO_VERSION = 2;
-const CATALOGO_VERSION_KEY = 'catalogo_version';
+const CATALOGO_VERSION_KEY = "catalogo_version";
 
 /** Subgrupos que ya no existen y a cuál corresponden ahora. */
 const GRUPOS_RENOMBRADOS: Record<string, ExchangeGroupId> = {
-  lacteos: 'lacteos_semi',
-  proteicos: 'proteicos_magros',
-  cereales: 'almidones',
-  frutas: 'fruta',
+  lacteos: "lacteos_semi",
+  proteicos: "proteicos_magros",
+  cereales: "almidones",
+  frutas: "fruta",
 };
 
 function migrarCatalogo(guardados: Alimento[] | null): Alimento[] {
   if (!guardados?.length) return FOOD_CATALOG;
-  if (typeof window !== 'undefined' &&
-      (storage.getSync<number>(CATALOGO_VERSION_KEY) ?? 1) >= CATALOGO_VERSION) {
+  if (
+    typeof window !== "undefined" &&
+    (storage.getSync<number>(CATALOGO_VERSION_KEY) ?? 1) >= CATALOGO_VERSION
+  ) {
     return sanearGrupos(guardados);
   }
 
@@ -154,11 +184,13 @@ function migrarCatalogo(guardados: Alimento[] | null): Alimento[] {
   const deLaApp = new Set(FOOD_CATALOG.map((f) => f.id));
   const nombresApp = new Set(FOOD_CATALOG.map((f) => f.nombre.toLowerCase()));
   const propios = sanearGrupos(
-    guardados.filter((f) => !deLaApp.has(f.id) && !nombresApp.has(f.nombre.toLowerCase())),
+    guardados.filter(
+      (f) => !deLaApp.has(f.id) && !nombresApp.has(f.nombre.toLowerCase()),
+    ),
   );
 
   const fusionado = [...FOOD_CATALOG, ...propios];
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     storage.set(STORAGE_KEYS.foods, fusionado);
     storage.set(CATALOGO_VERSION_KEY, CATALOGO_VERSION);
   }
@@ -176,16 +208,18 @@ function migrarGruposPlanes(plans: Plan[]): Plan[] {
   const vistos = new Set<string>();
   const migrados = plans.map((p) => ({
     ...p,
-    nombre: p.nombre && p.nombre !== 'Plan' ? p.nombre : 'Planificación 1',
+    nombre: p.nombre && p.nombre !== "Plan" ? p.nombre : "Planificación 1",
     fecha: p.fecha ?? p.createdAt,
-    archivado: p.archivado ?? (vistos.has(p.clientId) ? true : (vistos.add(p.clientId), false)),
+    archivado:
+      p.archivado ??
+      (vistos.has(p.clientId) ? true : (vistos.add(p.clientId), false)),
     dayTypes: p.dayTypes.map((d) => {
       const grid: typeof d.grid = {};
       for (const [mealId, celdas] of Object.entries(d.grid ?? {})) {
         const nuevas: Record<string, number> = {};
         for (const [g, v] of Object.entries(celdas ?? {})) {
           const destino = g in EXCHANGE_GROUPS ? g : GRUPOS_RENOMBRADOS[g];
-          if (!destino || typeof v !== 'number') {
+          if (!destino || typeof v !== "number") {
             cambiado = true;
             continue;
           }
@@ -197,7 +231,8 @@ function migrarGruposPlanes(plans: Plan[]): Plan[] {
       return { ...d, grid };
     }),
   }));
-  if (cambiado && typeof window !== 'undefined') storage.set(STORAGE_KEYS.plans, migrados);
+  if (cambiado && typeof window !== "undefined")
+    storage.set(STORAGE_KEYS.plans, migrados);
   return migrados;
 }
 
@@ -206,23 +241,30 @@ export function sanearGrupos(foods: Alimento[]): Alimento[] {
   return foods.map((f) => {
     if (!f.grupo || f.grupo in EXCHANGE_GROUPS) return f;
     const nuevo = GRUPOS_RENOMBRADOS[f.grupo as string];
-    return { ...f, grupo: nuevo, bucket: nuevo ? EXCHANGE_GROUPS[nuevo].bucket : undefined };
+    return {
+      ...f,
+      grupo: nuevo,
+      bucket: nuevo ? EXCHANGE_GROUPS[nuevo].bucket : undefined,
+    };
   });
 }
 
 function migrarFases(plans: Plan[]): Plan[] {
-  if (typeof window === 'undefined') return plans;
+  if (typeof window === "undefined") return plans;
   if (storage.getSync<boolean>(FASES_MIGRADAS_KEY)) return plans;
   storage.set(FASES_MIGRADAS_KEY, true);
-  const migrados = plans.map((p) => (p.fase === 2 ? { ...p, fase: 3 as const } : p));
-  if (migrados.some((p, i) => p !== plans[i])) storage.set(STORAGE_KEYS.plans, migrados);
+  const migrados = plans.map((p) =>
+    p.fase === 2 ? { ...p, fase: 3 as const } : p,
+  );
+  if (migrados.some((p, i) => p !== plans[i]))
+    storage.set(STORAGE_KEYS.plans, migrados);
   return migrados;
 }
 
 function newDayType(nombre: string): DayType {
   const meals = DEFAULT_MEALS.map((m) => ({ ...m }));
   return {
-    id: uid('dt_'),
+    id: uid("dt_"),
     nombre,
     proteinaGkg: 2,
     hcGkg: 3,
@@ -236,13 +278,20 @@ function newDayType(nombre: string): DayType {
 }
 
 export const useAppStore = create<AppState>((set, get) => {
-  const persistClients = (clients: Client[]) => storage.set(STORAGE_KEYS.clients, clients);
-  const persistPlans = (plans: Plan[]) => storage.set(STORAGE_KEYS.plans, plans);
-  const persistRecipes = (recipes: Receta[]) => storage.set(STORAGE_KEYS.recipes, recipes);
-  const persistFoods = (foods: Alimento[]) => storage.set(STORAGE_KEYS.foods, foods);
-  const persistMediciones = (ms: Medicion[]) => storage.set(STORAGE_KEYS.mediciones, ms);
-  const persistRegistros = (rs: RegistroDia[]) => storage.set(STORAGE_KEYS.registros, rs);
-  const persistRecursos = (rs: Recurso[]) => storage.set(STORAGE_KEYS.recursos, rs);
+  const persistClients = (clients: Client[]) =>
+    storage.set(STORAGE_KEYS.clients, clients);
+  const persistPlans = (plans: Plan[]) =>
+    storage.set(STORAGE_KEYS.plans, plans);
+  const persistRecipes = (recipes: Receta[]) =>
+    storage.set(STORAGE_KEYS.recipes, recipes);
+  const persistFoods = (foods: Alimento[]) =>
+    storage.set(STORAGE_KEYS.foods, foods);
+  const persistMediciones = (ms: Medicion[]) =>
+    storage.set(STORAGE_KEYS.mediciones, ms);
+  const persistRegistros = (rs: RegistroDia[]) =>
+    storage.set(STORAGE_KEYS.registros, rs);
+  const persistRecursos = (rs: Recurso[]) =>
+    storage.set(STORAGE_KEYS.recursos, rs);
   const persistRetos = (rs: Reto[]) => storage.set(STORAGE_KEYS.retos, rs);
 
   const mutatePlans = (fn: (plans: Plan[]) => Plan[]) => {
@@ -255,10 +304,16 @@ export const useAppStore = create<AppState>((set, get) => {
 
   const mutatePlan = (planId: string, fn: (p: Plan) => Plan) =>
     mutatePlans((plans) =>
-      plans.map((p) => (p.id === planId ? { ...fn(p), updatedAt: nowIso() } : p)),
+      plans.map((p) =>
+        p.id === planId ? { ...fn(p), updatedAt: nowIso() } : p,
+      ),
     );
 
-  const mutateDayType = (planId: string, dayTypeId: string, fn: (d: DayType) => DayType) =>
+  const mutateDayType = (
+    planId: string,
+    dayTypeId: string,
+    fn: (d: DayType) => DayType,
+  ) =>
     mutatePlan(planId, (p) => ({
       ...p,
       dayTypes: p.dayTypes.map((d) => (d.id === dayTypeId ? fn(d) : d)),
@@ -268,10 +323,14 @@ export const useAppStore = create<AppState>((set, get) => {
     // La primera vez que se abre la app se carga un cliente de ejemplo para
     // poder ver el flujo completo sin tener que introducir datos.
     clients: hydrate<Client[]>(STORAGE_KEYS.clients, [DEMO_CLIENT]),
-    plans: migrarGruposPlanes(migrarFases(hydrate<Plan[]>(STORAGE_KEYS.plans, [DEMO_PLAN]))),
+    plans: migrarGruposPlanes(
+      migrarFases(hydrate<Plan[]>(STORAGE_KEYS.plans, [DEMO_PLAN])),
+    ),
     recipes: hydrate<Receta[]>(STORAGE_KEYS.recipes, SEED_RECIPES),
     foods: migrarCatalogo(
-      typeof window === 'undefined' ? null : storage.getSync<Alimento[]>(STORAGE_KEYS.foods),
+      typeof window === "undefined"
+        ? null
+        : storage.getSync<Alimento[]>(STORAGE_KEYS.foods),
     ),
     mediciones: hydrate<Medicion[]>(STORAGE_KEYS.mediciones, []),
     registros: hydrate<RegistroDia[]>(STORAGE_KEYS.registros, []),
@@ -279,7 +338,12 @@ export const useAppStore = create<AppState>((set, get) => {
     retos: hydrate<Reto[]>(STORAGE_KEYS.retos, []),
 
     addClient: (c) => {
-      const client: Client = { ...c, id: uid('cl_'), createdAt: nowIso(), updatedAt: nowIso() };
+      const client: Client = {
+        ...c,
+        id: uid("cl_"),
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      };
       set((s) => {
         const clients = [...s.clients, client];
         persistClients(clients);
@@ -338,13 +402,13 @@ export const useAppStore = create<AppState>((set, get) => {
       // La nueva parte de una copia de la actual: la grilla, las recetas y las
       // combinaciones ya están pensadas, sólo hay que retocarlas.
       const plan: Plan = {
-        ...(actual ?? { fase: 1 as Phase, dayTypes: [newDayType('Día base')] }),
-        id: uid('pl_'),
+        ...(actual ?? { fase: 1 as Phase, dayTypes: [newDayType("Día base")] }),
+        id: uid("pl_"),
         clientId,
         nombre: `Planificación ${anteriores.length + 1}`,
-        dayTypes: (actual?.dayTypes ?? [newDayType('Día base')]).map((d) => ({
+        dayTypes: (actual?.dayTypes ?? [newDayType("Día base")]).map((d) => ({
           ...d,
-          id: uid('dt_'),
+          id: uid("dt_"),
         })),
         archivado: false,
         fecha: hoy,
@@ -358,7 +422,11 @@ export const useAppStore = create<AppState>((set, get) => {
         const plans = [
           ...s.plans.map((p) =>
             p.clientId === clientId && !p.archivado
-              ? { ...p, archivado: true, kcalObjetivo: p.kcalObjetivo ?? kcalObjetivo }
+              ? {
+                  ...p,
+                  archivado: true,
+                  kcalObjetivo: p.kcalObjetivo ?? kcalObjetivo,
+                }
               : p,
           ),
           plan,
@@ -374,11 +442,14 @@ export const useAppStore = create<AppState>((set, get) => {
         const objetivo = plans.find((p) => p.id === planId);
         if (!objetivo) return plans;
         return plans.map((p) =>
-          p.clientId === objetivo.clientId ? { ...p, archivado: p.id !== planId } : p,
+          p.clientId === objetivo.clientId
+            ? { ...p, archivado: p.id !== planId }
+            : p,
         );
       }),
 
-    updatePlan: (planId, patch) => mutatePlan(planId, (p) => ({ ...p, ...patch })),
+    updatePlan: (planId, patch) =>
+      mutatePlan(planId, (p) => ({ ...p, ...patch })),
 
     deletePlan: (planId) =>
       mutatePlans((plans) => {
@@ -391,21 +462,25 @@ export const useAppStore = create<AppState>((set, get) => {
             (b.fecha ?? b.createdAt).localeCompare(a.fecha ?? a.createdAt),
           )[0];
           if (siguiente) {
-            return resto.map((p) => (p.id === siguiente.id ? { ...p, archivado: false } : p));
+            return resto.map((p) =>
+              p.id === siguiente.id ? { ...p, archivado: false } : p,
+            );
           }
         }
         return resto;
       }),
 
     ensurePlan: (clientId) => {
-      const existing = get().plans.find((p) => p.clientId === clientId && !p.archivado);
+      const existing = get().plans.find(
+        (p) => p.clientId === clientId && !p.archivado,
+      );
       if (existing) return existing;
       const plan: Plan = {
-        id: uid('pl_'),
+        id: uid("pl_"),
         clientId,
-        nombre: 'Planificación 1',
+        nombre: "Planificación 1",
         fase: 1,
-        dayTypes: [newDayType('Día base')],
+        dayTypes: [newDayType("Día base")],
         fecha: nowIso(),
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -422,7 +497,10 @@ export const useAppStore = create<AppState>((set, get) => {
     setPhase: (planId, fase) => mutatePlan(planId, (p) => ({ ...p, fase })),
 
     addDayType: (planId, nombre) =>
-      mutatePlan(planId, (p) => ({ ...p, dayTypes: [...p.dayTypes, newDayType(nombre)] })),
+      mutatePlan(planId, (p) => ({
+        ...p,
+        dayTypes: [...p.dayTypes, newDayType(nombre)],
+      })),
 
     updateDayType: (planId, dayTypeId, patch) =>
       mutateDayType(planId, dayTypeId, (d) => ({ ...d, ...patch })),
@@ -430,7 +508,10 @@ export const useAppStore = create<AppState>((set, get) => {
     deleteDayType: (planId, dayTypeId) =>
       mutatePlan(planId, (p) => ({
         ...p,
-        dayTypes: p.dayTypes.length > 1 ? p.dayTypes.filter((d) => d.id !== dayTypeId) : p.dayTypes,
+        dayTypes:
+          p.dayTypes.length > 1
+            ? p.dayTypes.filter((d) => d.id !== dayTypeId)
+            : p.dayTypes,
       })),
 
     setCell: (planId, dayTypeId, mealId, group, value) =>
@@ -452,7 +533,9 @@ export const useAppStore = create<AppState>((set, get) => {
     addMeal: (planId, dayTypeId, meal) =>
       mutateDayType(planId, dayTypeId, (d) => ({
         ...d,
-        meals: [...d.meals, { ...meal, id: uid('m_') }].sort((a, b) => a.orden - b.orden),
+        meals: [...d.meals, { ...meal, id: uid("m_") }].sort(
+          (a, b) => a.orden - b.orden,
+        ),
       })),
 
     renameMeal: (planId, dayTypeId, mealId, nombre) =>
@@ -470,7 +553,10 @@ export const useAppStore = create<AppState>((set, get) => {
 
     addRecipe: (r) =>
       set((s) => {
-        const recipes = [...s.recipes, { ...r, id: uid('rc_'), createdAt: nowIso(), updatedAt: nowIso() }];
+        const recipes = [
+          ...s.recipes,
+          { ...r, id: uid("rc_"), createdAt: nowIso(), updatedAt: nowIso() },
+        ];
         persistRecipes(recipes);
         return { recipes };
       }),
@@ -492,7 +578,7 @@ export const useAppStore = create<AppState>((set, get) => {
       }),
 
     addFood: (a) => {
-      const food: Alimento = { ...a, id: uid('f_'), custom: true };
+      const food: Alimento = { ...a, id: uid("f_"), custom: true };
       set((s) => {
         const foods = [...s.foods, food];
         persistFoods(foods);
@@ -503,7 +589,9 @@ export const useAppStore = create<AppState>((set, get) => {
 
     updateFood: (id, patch) =>
       set((s) => {
-        const foods = s.foods.map((f) => (f.id === id ? { ...f, ...patch } : f));
+        const foods = s.foods.map((f) =>
+          f.id === id ? { ...f, ...patch } : f,
+        );
         persistFoods(foods);
         return { foods };
       }),
@@ -524,10 +612,12 @@ export const useAppStore = create<AppState>((set, get) => {
         .sort((a, b) => a.fecha.localeCompare(b.fecha)),
 
     upsertRegistro: (clientId, fecha, patch) => {
-      const existente = get().registros.find((r) => r.clientId === clientId && r.fecha === fecha);
+      const existente = get().registros.find(
+        (r) => r.clientId === clientId && r.fecha === fecha,
+      );
       const actualizado: RegistroDia = existente
         ? { ...existente, ...patch }
-        : { ...registroVacio(clientId, fecha, uid('rg_')), ...patch };
+        : { ...registroVacio(clientId, fecha, uid("rg_")), ...patch };
       set((s) => {
         const registros = existente
           ? s.registros.map((r) => (r.id === existente.id ? actualizado : r))
@@ -557,7 +647,7 @@ export const useAppStore = create<AppState>((set, get) => {
         .sort((a, b) => a.fecha.localeCompare(b.fecha)),
 
     addMedicion: (m) => {
-      const medicion: Medicion = { ...m, id: uid('me_') };
+      const medicion: Medicion = { ...m, id: uid("me_") };
       set((s) => {
         const mediciones = [...s.mediciones, medicion];
         persistMediciones(mediciones);
@@ -568,7 +658,9 @@ export const useAppStore = create<AppState>((set, get) => {
 
     updateMedicion: (id, patch) =>
       set((s) => {
-        const mediciones = s.mediciones.map((m) => (m.id === id ? { ...m, ...patch } : m));
+        const mediciones = s.mediciones.map((m) =>
+          m.id === id ? { ...m, ...patch } : m,
+        );
         persistMediciones(mediciones);
         return { mediciones };
       }),
@@ -624,11 +716,23 @@ export const useAppStore = create<AppState>((set, get) => {
       set({ recursos });
     },
 
+    /**
+     * Lo que la nutricionista ha cambiado, aplicado sin tocar nada de lo que
+     * el cliente lleve marcado hoy. Sólo la ficha y los planes.
+     */
+    aplicarPlanRemoto: (clients, plans) => {
+      persistClients(clients);
+      persistPlans(plans);
+      set({ clients, plans: migrarGruposPlanes(plans) });
+    },
+
     hidratar: (datos) => {
       // El catálogo del servidor puede venir vacío la primera vez (cuenta
       // recién creada): entonces se arranca con el que trae la app, que es
       // justo lo que se subirá a continuación.
-      const foods = datos.foods.length ? sanearGrupos(datos.foods) : FOOD_CATALOG;
+      const foods = datos.foods.length
+        ? sanearGrupos(datos.foods)
+        : FOOD_CATALOG;
       const recipes = datos.recipes.length ? datos.recipes : SEED_RECIPES;
 
       persistClients(datos.clients);

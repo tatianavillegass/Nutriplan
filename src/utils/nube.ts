@@ -1,15 +1,15 @@
-import type { User } from '@supabase/supabase-js';
-import { nube, puedeSerNutricionista } from './supabase';
-import type { Client } from '../types/client';
-import type { Plan } from '../types/plan';
-import type { Receta } from '../types/recipe';
-import type { Alimento } from '../types/food';
-import type { Medicion } from '../types/anthropometry';
-import type { RegistroDia } from '../types/diary';
-import type { PlantillaDespensa, PlantillaDia } from './plantillas';
-import type { Recurso } from '../types/recursos';
-import type { Reto } from '../types/reto';
-import { publicarRetos } from './solicitudes';
+import type { User } from "@supabase/supabase-js";
+import { nube, puedeSerNutricionista } from "./supabase";
+import type { Client } from "../types/client";
+import type { Plan } from "../types/plan";
+import type { Receta } from "../types/recipe";
+import type { Alimento } from "../types/food";
+import type { Medicion } from "../types/anthropometry";
+import type { RegistroDia } from "../types/diary";
+import type { PlantillaDespensa, PlantillaDia } from "./plantillas";
+import type { Recurso } from "../types/recursos";
+import type { Reto } from "../types/reto";
+import { publicarRetos } from "./solicitudes";
 
 /**
  * SUBIR Y BAJAR
@@ -32,7 +32,7 @@ import { publicarRetos } from './solicitudes';
 
 /** Quién eres y de dónde cuelgan tus datos. */
 export interface Perfil {
-  rol: 'nutricionista' | 'cliente';
+  rol: "nutricionista" | "cliente";
   /** Dueña de los datos: la propia nutricionista, o la del cliente. */
   nutriId: string;
   /** Sólo en clientes: qué ficha le toca. */
@@ -87,19 +87,19 @@ interface FilaRegistro {
  * cliente se cree la cuenta antes de que le den de alta.
  */
 export async function resolverPerfil(user: User): Promise<Perfil> {
-  const email = (user.email ?? '').toLowerCase();
+  const email = (user.email ?? "").toLowerCase();
   const sb = nube();
 
   const { data: fichas } = await sb
-    .from('clientes')
-    .select('id, nutri_id, ficha')
-    .eq('email', email)
+    .from("clientes")
+    .select("id, nutri_id, ficha")
+    .eq("email", email)
     .limit(1);
 
   const ficha = fichas?.[0];
   if (ficha) {
     return {
-      rol: 'cliente',
+      rol: "cliente",
       nutriId: ficha.nutri_id,
       clientId: ficha.id,
       nombre: (ficha.ficha as Client)?.nombre ?? email,
@@ -109,23 +109,30 @@ export async function resolverPerfil(user: User): Promise<Perfil> {
 
   // No es cliente de nadie. Sólo queda que sea la dueña de la consulta; si no
   // lo es, se para aquí: nadie abre consulta por su cuenta.
-  if (!puedeSerNutricionista(email)) throw new Error('SIN_ALTA');
+  if (!puedeSerNutricionista(email)) throw new Error("SIN_ALTA");
 
-  const nombre = (user.user_metadata?.nombre as string) || email.split('@')[0];
+  const nombre = (user.user_metadata?.nombre as string) || email.split("@")[0];
 
   const { data: mia } = await sb
-    .from('nutricionistas')
-    .select('id, nombre')
-    .eq('id', user.id)
+    .from("nutricionistas")
+    .select("id, nombre")
+    .eq("id", user.id)
     .maybeSingle();
 
   if (!mia) {
     // Primera vez: se crea el espacio vacío. Si dos pestañas lo intentan a
     // la vez, `upsert` deja una sola fila en lugar de reventar.
-    await sb.from('nutricionistas').upsert({ id: user.id, nombre }, { onConflict: 'id' });
+    await sb
+      .from("nutricionistas")
+      .upsert({ id: user.id, nombre }, { onConflict: "id" });
   }
 
-  return { rol: 'nutricionista', nutriId: user.id, nombre: mia?.nombre || nombre, email };
+  return {
+    rol: "nutricionista",
+    nutriId: user.id,
+    nombre: mia?.nombre || nombre,
+    email,
+  };
 }
 
 // ------------------------------------------------------------------
@@ -146,11 +153,17 @@ export function aFilas(nutriId: string, foto: Foto): FilaCliente[] {
 }
 
 /** Y al revés: de las filas al estado plano que esperan los stores. */
-export function deFilas(filas: FilaCliente[]): Pick<Foto, 'clients' | 'plans' | 'mediciones'> {
+export function deFilas(
+  filas: FilaCliente[],
+): Pick<Foto, "clients" | "plans" | "mediciones"> {
   return {
     // El email manda el de la fila: es el que da acceso, y si se cambió
     // desde otro dispositivo la ficha guardada podría ir atrasada.
-    clients: filas.map((f) => ({ ...f.ficha, id: f.id, email: f.email ?? f.ficha?.email })),
+    clients: filas.map((f) => ({
+      ...f.ficha,
+      id: f.id,
+      email: f.email ?? f.ficha?.email,
+    })),
     plans: filas.flatMap((f) => f.planes ?? []),
     mediciones: filas.flatMap((f) => f.mediciones ?? []),
   };
@@ -176,10 +189,14 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
      *
      * Con `*` viene lo que haya. Lo que falte se queda vacío y la app sigue.
      */
-    sb.from('nutricionistas').select('*').eq('id', perfil.nutriId).maybeSingle(),
-    perfil.rol === 'cliente'
-      ? sb.from('clientes').select('*').eq('id', perfil.clientId!)
-      : sb.from('clientes').select('*').eq('nutri_id', perfil.nutriId),
+    sb
+      .from("nutricionistas")
+      .select("*")
+      .eq("id", perfil.nutriId)
+      .maybeSingle(),
+    perfil.rol === "cliente"
+      ? sb.from("clientes").select("*").eq("id", perfil.clientId!)
+      : sb.from("clientes").select("*").eq("nutri_id", perfil.nutriId),
   ]);
 
   /**
@@ -193,15 +210,22 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
    * Fallar en alto es lo correcto: quien llama se queda con lo que ya tenía en
    * el navegador y enseña que no se ha podido guardar.
    */
-  if (compartido.error) throw new Error(`No se pudo leer la consulta: ${compartido.error.message}`);
-  if (fichas.error) throw new Error(`No se pudieron leer los clientes: ${fichas.error.message}`);
+  if (compartido.error)
+    throw new Error(`No se pudo leer la consulta: ${compartido.error.message}`);
+  if (fichas.error)
+    throw new Error(
+      `No se pudieron leer los clientes: ${fichas.error.message}`,
+    );
 
   const filas = (fichas.data ?? []) as FilaCliente[];
   const ids = filas.map((f) => f.id);
 
   const registros: RegistroDia[] = [];
   if (ids.length) {
-    const { data } = await sb.from('registros').select('*').in('cliente_id', ids);
+    const { data } = await sb
+      .from("registros")
+      .select("*")
+      .in("cliente_id", ids);
     for (const r of (data ?? []) as FilaRegistro[]) registros.push(r.datos);
   }
 
@@ -232,7 +256,7 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
  * red deje mitad de un plan arriba y mitad abajo.
  */
 export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
-  if (perfil.rol !== 'nutricionista') return;
+  if (perfil.rol !== "nutricionista") return;
   const sb = nube();
 
   const suyo = {
@@ -256,13 +280,15 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
    * puede impedir que se guarde un plan.
    */
   const extras: [string, unknown][] = [
-    ['recursos', foto.recursos],
-    ['retos', foto.retos],
+    ["recursos", foto.recursos],
+    ["retos", foto.retos],
   ];
 
   for (let cuantos = extras.length; cuantos >= 0; cuantos--) {
     const fila = { ...suyo, ...Object.fromEntries(extras.slice(0, cuantos)) };
-    const { error } = await sb.from('nutricionistas').upsert(fila, { onConflict: 'id' });
+    const { error } = await sb
+      .from("nutricionistas")
+      .upsert(fila, { onConflict: "id" });
     if (!error) break;
     if (cuantos === 0) throw new Error(`No se pudo guardar: ${error.message}`);
     console.warn(
@@ -283,13 +309,16 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
     actualizado: new Date().toISOString(),
   }));
 
-  if (filas.length) await sb.from('clientes').upsert(filas, { onConflict: 'id' });
+  if (filas.length)
+    await sb.from("clientes").upsert(filas, { onConflict: "id" });
 
   // Lo que ya no está en la app se va también del servidor: si no, un
   // cliente borrado seguiría entrando en su plan desde su móvil.
   const vivos = foto.clients.map((c) => c.id);
-  const sobran = sb.from('clientes').delete().eq('nutri_id', perfil.nutriId);
-  await (vivos.length ? sobran.not('id', 'in', `(${vivos.map(comillas).join(',')})`) : sobran);
+  const sobran = sb.from("clientes").delete().eq("nutri_id", perfil.nutriId);
+  await (vivos.length
+    ? sobran.not("id", "in", `(${vivos.map(comillas).join(",")})`)
+    : sobran);
 
   /**
    * LOS REGISTROS NO SE SUBEN DESDE AQUÍ
@@ -304,6 +333,30 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
 }
 
 /**
+ * SÓLO SU FICHA Y SUS PLANES
+ *
+ * Lo que el cliente vuelve a leer cada poco para enterarse de que la
+ * nutricionista le ha cambiado algo. **No trae los registros**: los del
+ * servidor pueden ir por detrás de lo que acaba de marcar en el móvil, y
+ * traerlos aquí le borraría el día.
+ */
+export async function bajarPlanDelCliente(
+  perfil: Perfil,
+): Promise<Pick<Foto, "clients" | "plans"> | undefined> {
+  if (perfil.rol !== "cliente" || !perfil.clientId) return undefined;
+
+  const { data, error } = await nube()
+    .from("clientes")
+    .select("*")
+    .eq("id", perfil.clientId)
+    .maybeSingle();
+
+  if (error || !data) return undefined;
+  const { clients, plans } = deFilas([data as FilaCliente]);
+  return { clients, plans };
+}
+
+/**
  * Sólo los registros, sin traerse el resto. Es la consulta del seguimiento en
  * vivo: se repite cada poco, así que tiene que ser barata.
  */
@@ -311,14 +364,17 @@ export async function bajarRegistros(perfil: Perfil): Promise<RegistroDia[]> {
   const sb = nube();
 
   const { data: fichas } =
-    perfil.rol === 'cliente'
-      ? await sb.from('clientes').select('id').eq('id', perfil.clientId!)
-      : await sb.from('clientes').select('id').eq('nutri_id', perfil.nutriId);
+    perfil.rol === "cliente"
+      ? await sb.from("clientes").select("id").eq("id", perfil.clientId!)
+      : await sb.from("clientes").select("id").eq("nutri_id", perfil.nutriId);
 
   const ids = (fichas ?? []).map((f) => (f as { id: string }).id);
   if (!ids.length) return [];
 
-  const { data } = await sb.from('registros').select('datos').in('cliente_id', ids);
+  const { data } = await sb
+    .from("registros")
+    .select("datos")
+    .in("cliente_id", ids);
   return (data ?? []).map((r) => (r as { datos: RegistroDia }).datos);
 }
 
@@ -326,7 +382,7 @@ export async function bajarRegistros(perfil: Perfil): Promise<RegistroDia[]> {
 export async function subirRegistros(registros: RegistroDia[]): Promise<void> {
   if (!registros.length) return;
   await nube()
-    .from('registros')
+    .from("registros")
     .upsert(
       registros.map((r) => ({
         id: r.id,
@@ -335,11 +391,11 @@ export async function subirRegistros(registros: RegistroDia[]): Promise<void> {
         datos: r,
         actualizado: new Date().toISOString(),
       })),
-      { onConflict: 'cliente_id,fecha' },
+      { onConflict: "cliente_id,fecha" },
     );
 }
 
 /** Los ids son nuestros (cl_xxxx), pero se citan igual por costumbre. */
 function comillas(id: string): string {
-  return `"${id.replace(/"/g, '')}"`;
+  return `"${id.replace(/"/g, "")}"`;
 }
