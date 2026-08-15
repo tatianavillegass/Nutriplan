@@ -819,30 +819,35 @@ export function ClientView() {
         busca por costumbre de otras aplicaciones. En pantalla ancha no: ahí el
         ojo va arriba y una barra pegada al borde inferior queda perdida.
       */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white/95 backdrop-blur no-print sm:hidden">
-        {PESTANAS.map(([id, label, icono]) => (
-          <button
-            key={id}
-            onClick={() => {
-              setTab(id);
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            aria-current={tab === id}
-            className={`flex flex-1 flex-col items-center gap-0.5 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[11px] font-medium transition ${
-              tab === id ? "text-brand-800" : "text-slate-400"
-            }`}
-          >
-            <span aria-hidden className="text-base leading-none">
-              {icono}
-            </span>
-            {label}
-            <span
-              aria-hidden
-              className={`mt-0.5 h-0.5 w-6 rounded-full ${tab === id ? "bg-brand-600" : "bg-transparent"}`}
-            />
-          </button>
-        ))}
-      </nav>
+      <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] no-print sm:hidden">
+        {/*
+          Pastilla flotante, no una barra pegada al borde: separada del fondo
+          se lee como algo que está por encima del contenido, y el contenido se
+          ve pasar por debajo en vez de quedar cortado en seco.
+        */}
+        <nav className="flex w-full max-w-sm items-stretch gap-1 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-lg shadow-slate-900/10 backdrop-blur">
+          {PESTANAS.map(([id, label, icono]) => (
+            <button
+              key={id}
+              onClick={() => {
+                setTab(id);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              aria-current={tab === id}
+              className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition ${
+                tab === id
+                  ? "bg-brand-50 text-brand-800"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <span aria-hidden className="text-base leading-none">
+                {icono}
+              </span>
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {/* Documento que sale al imprimir / exportar a PDF */}
       <PlanDocument
