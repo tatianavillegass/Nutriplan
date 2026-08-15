@@ -35,7 +35,11 @@ import { MealPantryEditor } from "../components/planning/MealPantryEditor";
 import { DayTemplateBar } from "../components/planning/DayTemplateBar";
 import { ComboEditor } from "../components/phase2/ComboEditor";
 import { catalogoPermitido, evaluarAlimento } from "../utils/restrictions";
-import { RECETAS_POR_COMIDA, recetasDeComida } from "../types/plan";
+import {
+  RECETAS_POR_COMIDA,
+  recetasDeComida,
+  fotoDelPlan,
+} from "../types/plan";
 import { gridMacros } from "../utils/exchanges";
 import { planTargets } from "../utils/macros";
 import { Button, Card, EmptyState, Input, fmt } from "../components/common/ui";
@@ -704,13 +708,17 @@ export function ClientDetail() {
             client={client}
             onEnviar={(mensaje) =>
               updatePlan(plan.id, {
+                // La foto de lo que se manda: es lo único que verá ella.
+                publicado: fotoDelPlan(plan),
                 envio: {
                   fecha: new Date().toISOString(),
                   mensaje: mensaje || undefined,
                 },
               })
             }
-            onRetirar={() => updatePlan(plan.id, { envio: undefined })}
+            onRetirar={() =>
+              updatePlan(plan.id, { publicado: undefined, envio: undefined })
+            }
           />
         </div>
       )}

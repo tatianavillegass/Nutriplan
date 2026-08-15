@@ -136,68 +136,89 @@ describe('Ficha del cliente', () => {
   });
 });
 
+/**
+ * BORRADOR Y ENVÍO
+ *
+ * Lo que la nutricionista toca es un borrador; la clienta ve lo último
+ * enviado. Así se puede cambiar la fase un martes por la tarde sin que a nadie
+ * le cambie la app mientras cena.
+ *
+ * El precio es olvidarse de enviar, y por eso el panel avisa en ámbar.
+ */
 describe('Enviar el plan al cliente', () => {
-  it('sin enviar lo dice y ofrece el botón', () => {
+  const enviado = (p = PLAN) => ({
+    ...p,
+    publicado: { fase: p.fase, dayTypes: p.dayTypes, fecha: '2026-08-09T09:30:00' },
+    envio: { fecha: '2026-08-09T09:30:00', mensaje: 'Ahí lo tienes' },
+  });
+
+  it('sin enviar nada, la clienta no ve el plan', () => {
     render(
       <SendPlanPanel plan={PLAN} client={CLIENTE} onEnviar={() => {}} onRetirar={() => {}} />,
     );
-    expect(screen.getByText('Sin enviar')).toBeTruthy();
-    expect(screen.getByText(/todavía no ve este plan/)).toBeTruthy();
+    expect(screen.getByText(/todavía no ve nada/i)).toBeTruthy();
+    expect(screen.getByText('Enviar el plan')).toBeTruthy();
   });
 
-  it('al enviar se puede escribir un mensaje, con uno propuesto', () => {
+  it('al enviar se escribe un mensaje, con uno propuesto', () => {
     const onEnviar = vi.fn();
     render(
       <SendPlanPanel plan={PLAN} client={CLIENTE} onEnviar={onEnviar} onRetirar={() => {}} />,
     );
-    fireEvent.click(screen.getByText(/Enviar al cliente/));
+    fireEvent.click(screen.getByText('Enviar el plan'));
     const caja = screen.getByRole('textbox') as HTMLTextAreaElement;
     expect(caja.value).toContain('Vanessa');
     fireEvent.change(caja, { target: { value: 'Sube la proteína del desayuno' } });
-    fireEvent.click(screen.getByText('Enviar'));
+    fireEvent.click(screen.getAllByText('Enviar el plan')[0]);
     expect(onEnviar).toHaveBeenCalledWith('Sube la proteína del desayuno');
   });
 
-  it('una vez enviado enseña la fecha y el mensaje', () => {
+  it('con todo mandado, dice qué está viendo ella', () => {
     render(
-      <SendPlanPanel
-        plan={{ ...PLAN, envio: { fecha: '2026-08-09T09:30:00', mensaje: 'Ahí lo tienes' } }}
-        client={CLIENTE}
-        onEnviar={() => {}}
-        onRetirar={() => {}}
-      />,
+      <SendPlanPanel plan={enviado()} client={CLIENTE} onEnviar={() => {}} onRetirar={() => {}} />,
     );
-    expect(screen.getByText(/Enviado el 9 de agosto/)).toBeTruthy();
+    expect(screen.getByText(/está viendo lo que le enviaste el 9 de agosto/i)).toBeTruthy();
     expect(screen.getByText(/Ahí lo tienes/)).toBeTruthy();
+  });
+
+  /** Lo que hace que un olvido se vea en vez de quedarse callado. */
+  it('si se toca algo después, avisa de que está sin enviar', () => {
+    const tocado = { ...enviado(), fase: 1 as const };
+    render(
+      <SendPlanPanel plan={tocado} client={CLIENTE} onEnviar={() => {}} onRetirar={() => {}} />,
+    );
+    expect(screen.getByText('Tienes cambios sin enviar')).toBeTruthy();
+    expect(screen.getByText(/sigue viendo lo del 9 de agosto/i)).toBeTruthy();
+    expect(screen.getByText('Enviar los cambios')).toBeTruthy();
+  });
+
+  it('y dice qué cambió, para no mandar a ciegas', () => {
+    const tocado = { ...enviado(), fase: 1 as const };
+    render(
+      <SendPlanPanel plan={tocado} client={CLIENTE} onEnviar={() => {}} onRetirar={() => {}} />,
+    );
+    expect(screen.getByText(/La fase pasa de 3 a 1/)).toBeTruthy();
   });
 
   it('se puede retirar', () => {
     const onRetirar = vi.fn();
     render(
-      <SendPlanPanel
-        plan={{ ...PLAN, envio: { fecha: '2026-08-09T09:30:00' } }}
-        client={CLIENTE}
-        onEnviar={() => {}}
-        onRetirar={onRetirar}
-      />,
+      <SendPlanPanel plan={enviado()} client={CLIENTE} onEnviar={() => {}} onRetirar={onRetirar} />,
     );
     fireEvent.click(screen.getByText('Retirar'));
     expect(onRetirar).toHaveBeenCalled();
   });
 
-  it('y reenviarse con otro mensaje', () => {
+  it('y volver a enviarlo con otro mensaje', () => {
     const onEnviar = vi.fn();
     render(
-      <SendPlanPanel
-        plan={{ ...PLAN, envio: { fecha: '2026-08-09T09:30:00', mensaje: 'Antiguo' } }}
-        client={CLIENTE}
-        onEnviar={onEnviar}
-        onRetirar={() => {}}
-      />,
+      <SendPlanPanel plan={enviado()} client={CLIENTE} onEnviar={onEnviar} onRetirar={() => {}} />,
     );
-    fireEvent.click(screen.getByText(/Reenviar con otro mensaje/));
+    fireEvent.click(screen.getByText('Volver a enviar'));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Nuevo mensaje' } });
-    fireEvent.click(screen.getByText('Reenviar'));
+    // El texto sale dos veces: en el título del formulario y en el botón.
+    fireEvent.click(screen.getAllByText('Enviar los cambios')[1]);
     expect(onEnviar).toHaveBeenCalledWith('Nuevo mensaje');
   });
 });
+

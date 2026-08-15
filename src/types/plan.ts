@@ -1,6 +1,6 @@
-import type { ExchangeGroupId } from '../data/exchangeGroups';
-import type { MacroBucket } from '../data/exchangeGroups';
-import type { MealSlot } from './food';
+import type { ExchangeGroupId } from "../data/exchangeGroups";
+import type { MacroBucket } from "../data/exchangeGroups";
+import type { MealSlot } from "./food";
 
 export type Phase = 1 | 2 | 3;
 
@@ -22,44 +22,48 @@ export interface FaseInfo {
 export const FASES: FaseInfo[] = [
   {
     fase: 1,
-    titulo: 'Recetas cerradas',
-    resumen: 'Recetas concretas con los gramajes ya multiplicados',
-    recibe: 'Tres recetas por comida entre las que elegir, con los gramos hechos',
-    paraQuien: 'Cliente nuevo, poca autonomía, quiere que le digan qué comer',
-    autonomia: 'Baja',
+    titulo: "Recetas cerradas",
+    resumen: "Recetas concretas con los gramajes ya multiplicados",
+    recibe:
+      "Tres recetas por comida entre las que elegir, con los gramos hechos",
+    paraQuien: "Cliente nuevo, poca autonomía, quiere que le digan qué comer",
+    autonomia: "Baja",
   },
   {
     fase: 2,
-    titulo: 'Alimentos con cantidades hechas',
-    resumen: 'Listas de alimentos con los gramos ya calculados para esa comida',
-    recibe: 'Opciones completas: "2 huevos (120 g) + 2 lonchas de jamón (40 g)"',
-    paraQuien: 'Ya sabe combinar, pero prefiere no contar porciones',
-    autonomia: 'Media',
+    titulo: "Alimentos con cantidades hechas",
+    resumen: "Listas de alimentos con los gramos ya calculados para esa comida",
+    recibe:
+      'Opciones completas: "2 huevos (120 g) + 2 lonchas de jamón (40 g)"',
+    paraQuien: "Ya sabe combinar, pero prefiere no contar porciones",
+    autonomia: "Media",
   },
   {
     fase: 3,
-    titulo: 'Intercambios abiertos',
-    resumen: 'Sus porciones por comida y el menú de opciones para armarlas',
+    titulo: "Intercambios abiertos",
+    resumen: "Sus porciones por comida y el menú de opciones para armarlas",
     recibe: '"Proteína: escoge 3" y la lista de la que escoger',
-    paraQuien: 'Cliente con experiencia, come fuera, quiere flexibilidad',
-    autonomia: 'Alta',
+    paraQuien: "Cliente con experiencia, come fuera, quiere flexibilidad",
+    autonomia: "Alta",
   },
 ];
 
-export const FASE_POR_NUMERO = Object.fromEntries(FASES.map((f) => [f.fase, f])) as Record<
-  Phase,
-  FaseInfo
->;
+export const FASE_POR_NUMERO = Object.fromEntries(
+  FASES.map((f) => [f.fase, f]),
+) as Record<Phase, FaseInfo>;
 
 export interface Meal {
   id: string;
-  nombre: string;      // "Desayuno", "Post-entreno"…
-  slot: MealSlot;      // para filtrar el catálogo de opciones
+  nombre: string; // "Desayuno", "Post-entreno"…
+  slot: MealSlot; // para filtrar el catálogo de opciones
   orden: number;
 }
 
 /** Reparto de intercambios: mealId → grupo → cantidad (múltiplos de 0.5). */
-export type ExchangeGrid = Record<string, Partial<Record<ExchangeGroupId, number>>>;
+export type ExchangeGrid = Record<
+  string,
+  Partial<Record<ExchangeGroupId, number>>
+>;
 
 /**
  * DESPENSA DE UNA COMIDA
@@ -92,14 +96,14 @@ export interface CombinacionGuardada {
 }
 
 /** Alimento por defecto para el aceite de cocción. */
-export const FOOD_ACEITE = 'a-aceite-de-oliva-virgen-extra';
+export const FOOD_ACEITE = "a-aceite-de-oliva-virgen-extra";
 
 /** Comidas que llevan aceite de cocción por defecto. */
-export const SLOTS_CON_COCCION: MealSlot[] = ['comida', 'cena'];
+export const SLOTS_CON_COCCION: MealSlot[] = ["comida", "cena"];
 
 export interface DayType {
   id: string;
-  nombre: string;                 // "Día descanso", "Día entreno CrossFit"
+  nombre: string; // "Día descanso", "Día entreno CrossFit"
   /** Si se define, sobreescribe las calorías objetivo del cliente. */
   caloriasOverride?: number;
   /** Objetivos introducidos por la nutricionista en g/kg. */
@@ -159,18 +163,18 @@ export function ajustesDeReceta(
 }
 
 export const TIPOS_ACOMPANAMIENTO = [
-  'acompanamiento',
-  'postre',
-  'cafe',
-  'suplemento',
+  "acompanamiento",
+  "postre",
+  "cafe",
+  "suplemento",
 ] as const;
 export type TipoAcompanamiento = (typeof TIPOS_ACOMPANAMIENTO)[number];
 
 export const LABEL_ACOMPANAMIENTO: Record<TipoAcompanamiento, string> = {
-  acompanamiento: 'Acompañamiento',
-  postre: 'Postre',
-  cafe: 'Café',
-  suplemento: 'Suplemento',
+  acompanamiento: "Acompañamiento",
+  postre: "Postre",
+  cafe: "Café",
+  suplemento: "Suplemento",
 };
 
 /**
@@ -229,8 +233,27 @@ export interface Plan {
     /** El cliente ya lo ha abierto. */
     visto?: boolean;
   };
+  /**
+   * LO QUE EL CLIENTE VE DE VERDAD
+   *
+   * El plan de arriba es el borrador: lo que la nutricionista está tocando
+   * ahora mismo. Esta copia es lo último que le envió, y es lo único que
+   * llega a su pantalla.
+   *
+   * Sin esto, cambiar la fase a media tarde le cambiaba la app mientras
+   * cenaba, y un plan a medio montar se veía en el móvil de alguien. Ahora se
+   * trabaja con calma y se manda cuando está.
+   */
+  publicado?: PlanPublicado;
   createdAt: string;
   updatedAt: string;
+}
+
+/** La foto del plan tal y como se envió. Sólo lo que el cliente usa. */
+export interface PlanPublicado {
+  fase: Phase;
+  dayTypes: DayType[];
+  fecha: string;
 }
 
 /** Cuántas recetas se ofrecen por comida en Fase 1. */
@@ -265,9 +288,95 @@ export function comidasConPauta(dayType: DayType): Meal[] {
 }
 
 export const DEFAULT_MEALS: Meal[] = [
-  { id: 'desayuno', nombre: 'Desayuno', slot: 'desayuno', orden: 1 },
-  { id: 'almuerzo', nombre: 'Almuerzo', slot: 'almuerzo', orden: 2 },
-  { id: 'comida', nombre: 'Comida', slot: 'comida', orden: 3 },
-  { id: 'merienda', nombre: 'Merienda', slot: 'merienda', orden: 4 },
-  { id: 'cena', nombre: 'Cena', slot: 'cena', orden: 5 },
+  { id: "desayuno", nombre: "Desayuno", slot: "desayuno", orden: 1 },
+  { id: "almuerzo", nombre: "Almuerzo", slot: "almuerzo", orden: 2 },
+  { id: "comida", nombre: "Comida", slot: "comida", orden: 3 },
+  { id: "merienda", nombre: "Merienda", slot: "merienda", orden: 4 },
+  { id: "cena", nombre: "Cena", slot: "cena", orden: 5 },
 ];
+
+// ── Borrador y envío ────────────────────────────────────────
+
+/**
+ * EL PLAN QUE VE EL CLIENTE
+ *
+ * Lo último enviado. Si no se ha enviado nada todavía, no hay plan que
+ * enseñar — y eso es lo correcto: un plan a medio montar no es un plan.
+ */
+export function planParaCliente(plan: Plan): Plan | undefined {
+  if (plan.publicado) {
+    return {
+      ...plan,
+      fase: plan.publicado.fase,
+      dayTypes: plan.publicado.dayTypes,
+    };
+  }
+
+  /**
+   * LOS PLANES DE ANTES DE QUE HUBIERA BORRADOR
+   *
+   * Se enviaron cuando enviar era sólo abrir la puerta, así que no tienen foto
+   * guardada. Sin esto, el día que esto se publique todas las clientas se
+   * quedarían sin plan hasta que la nutricionista fuera una por una dándole a
+   * enviar — y se enterarían ellas antes que ella.
+   *
+   * Se les enseña el plan tal cual está. En cuanto se envíe una vez, ese plan
+   * ya tiene su foto y pasa a funcionar como los demás.
+   */
+  return plan.envio ? plan : undefined;
+}
+
+/** La foto que se guarda al enviar. */
+export function fotoDelPlan(plan: Plan): PlanPublicado {
+  return {
+    fase: plan.fase,
+    dayTypes: plan.dayTypes,
+    fecha: new Date().toISOString(),
+  };
+}
+
+/**
+ * ¿HAY ALGO TOCADO SIN ENVIAR?
+ *
+ * Se comparan las dos cosas que el cliente usa: la fase y los días. El resto
+ * —el nombre del plan, las notas de la nutricionista— no le llega, así que
+ * cambiarlo no es un cambio que haya que enviar.
+ *
+ * Trabajar en borrador tiene un precio: si se olvida de enviar, el cliente
+ * come el plan de antes. Por eso esto existe y se enseña bien visible.
+ */
+export function hayCambiosSinEnviar(plan: Plan): boolean {
+  if (!plan.publicado) return true;
+  const ahora = JSON.stringify({ fase: plan.fase, dayTypes: plan.dayTypes });
+  const enviado = JSON.stringify({
+    fase: plan.publicado.fase,
+    dayTypes: plan.publicado.dayTypes,
+  });
+  return ahora !== enviado;
+}
+
+/** Qué cambió respecto a lo enviado, en castellano y para la nutricionista. */
+export function queCambio(plan: Plan): string[] {
+  if (!plan.publicado) return ["Todavía no le has enviado nada."];
+  const cambios: string[] = [];
+
+  if (plan.fase !== plan.publicado.fase) {
+    cambios.push(`La fase pasa de ${plan.publicado.fase} a ${plan.fase}.`);
+  }
+
+  const antes = new Map(plan.publicado.dayTypes.map((d) => [d.id, d]));
+  for (const d of plan.dayTypes) {
+    const viejo = antes.get(d.id);
+    if (!viejo) {
+      cambios.push(`«${d.nombre}» es nuevo.`);
+      continue;
+    }
+    if (JSON.stringify(viejo) !== JSON.stringify(d)) {
+      cambios.push(`«${d.nombre}» ha cambiado.`);
+    }
+    antes.delete(d.id);
+  }
+  for (const [, viejo] of antes) cambios.push(`«${viejo.nombre}» ya no está.`);
+
+  return cambios;
+}

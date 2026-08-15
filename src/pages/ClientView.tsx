@@ -26,6 +26,7 @@ import {
   ajustesDeReceta,
   acompanamientosDeReceta,
   FASE_POR_NUMERO,
+  planParaCliente,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
 import { LABEL_MODO_CITA, metasActivas } from "../types/client";
@@ -93,8 +94,17 @@ export function ClientView() {
   const { id = "" } = useParams();
   const client = useAppStore((s) => s.clients.find((c) => c.id === id));
   // El cliente sólo ve la planificación en uso, nunca las archivadas.
-  const plan = useAppStore((s) =>
+  /**
+   * Lo que la nutricionista está tocando es un borrador. Aquí se enseña lo
+   * ÚLTIMO ENVIADO: así no le cambia el plan mientras cena, ni llega a ver un
+   * plan a medio montar.
+   */
+  const borrador = useAppStore((s) =>
     s.plans.find((p) => p.clientId === id && !p.archivado),
+  );
+  const plan = useMemo(
+    () => (borrador ? planParaCliente(borrador) : undefined),
+    [borrador],
   );
   const catalogo = useAppStore((s) => s.foods);
   const recipes = useAppStore((s) => s.recipes);
