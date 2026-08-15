@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { MealOptionsBoard } from "../components/phase2/MealOptionsBoard";
@@ -40,8 +40,20 @@ import {
   elegirOpcion,
   fijarAlimento,
   marcarAlimento,
+  seleccionPorBucket,
   seleccionPorGrupo,
 } from "../utils/marcado";
+import { comidaCubierta } from "../utils/dailyBudget";
+
+/**
+ * Las tres pestañas de la clienta. El icono sólo se usa en la barra del móvil,
+ * donde el texto solo se lee peor de reojo.
+ */
+const PESTANAS = [
+  ["hoy", "Hoy", "🍽️"],
+  ["resumen", "Resumen", "📈"],
+  ["recursos", "Recursos", "📚"],
+] as const;
 
 /** Lo que ve el cliente: su día, lo pautado y lo que va cumpliendo. */
 export function ClientView() {
@@ -176,6 +188,45 @@ export function ClientView() {
   const cumplida = (mealId: string) =>
     (registro?.cumplidas ?? []).includes(mealId);
 
+  /**
+   * LA COMIDA SE MARCA SOLA AL COMPLETARLA
+   *
+   * En fases 2 y 3, marcar las porciones YA es decir lo que se ha comido.
+   * Pedir después un «marcar hecha» es hacer repetir lo mismo con otro botón,
+   * y lo que pasaba de verdad es que se quedaba sin pulsar: el día salía a
+   * medias con el plato entero registrado.
+   *
+   * Se marca sólo al pasar de incompleta a completa. Si después ella lo
+   * deshace a mano, no se vuelve a marcar: no hay otro cruce que lo dispare,
+   * así que la app no le lleva la contraria.
+   *
+   * En fase 1 no aplica: ahí no se elige nada, se sigue la receta, y lo único
+   * que dice que se la ha comido es el botón.
+   */
+  const completasAntes = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!plan || plan.fase === 1 || !dayType) return;
+
+    const seleccion = seleccionPorBucket(porciones, foods);
+    const yaHechas = registro?.cumplidas ?? [];
+    const nuevas: string[] = [];
+
+    for (const m of comidasConPauta(dayType)) {
+      const clave = `${fecha}:${m.id}`;
+      const completa = comidaCubierta(dayType, m, seleccion);
+      const antes = completasAntes.current[clave] ?? false;
+      completasAntes.current[clave] = completa;
+
+      if (completa && !antes && !yaHechas.includes(m.id) && !libres[m.id]) {
+        nuevas.push(m.id);
+      }
+    }
+
+    if (nuevas.length) guardar({ cumplidas: [...yaHechas, ...nuevas] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [porciones, dayType, fecha, plan?.fase, foods]);
+
   /** Cambiar de día en blanco es directo; con cosas marcadas hay que preguntar. */
   const pedirCambioDeDia = (dayTypeId: string) => {
     if (dayTypeId === dayType.id) return;
@@ -293,7 +344,7 @@ export function ClientView() {
 
   return (
     <>
-      <div className="screen-only space-y-5">
+      <div className="screen-only space-y-5 pb-24 sm:pb-0">
         <div className="flex flex-wrap items-end justify-between gap-3 no-print">
           <div>
             <Link
@@ -340,14 +391,12 @@ export function ClientView() {
           «Hoy» es la app: lo que se abre y lo que se usa. Las otras dos se
           miran de vez en cuando, así que van al lado y no encima.
         */}
-        <div className="flex gap-1 border-b border-slate-200 no-print">
-          {(
-            [
-              ["hoy", "Hoy"],
-              ["resumen", "Resumen"],
-              ["recursos", "Recursos"],
-            ] as const
-          ).map(([id, label]) => (
+        {/*
+          En pantalla ancha van arriba, junto al título, que es donde el ojo
+          las busca.
+        */}
+        <div className="hidden gap-1 border-b border-slate-200 no-print sm:flex">
+          {PESTANAS.map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -758,6 +807,42 @@ export function ClientView() {
           </div>
         )}
       </div>
+
+      {/*
+        Y EN EL MÓVIL, ABAJO
+        ==============================================================
+        La app se usa de pie en la cocina, con una mano y el móvil en la otra.
+        Arriba del todo no llega el pulgar sin recolocar el teléfono, y encima
+        la barra se va con el scroll justo cuando hace falta.
+
+        Abajo está siempre, se alcanza sin mirar y es donde la gente ya la
+        busca por costumbre de otras aplicaciones. En pantalla ancha no: ahí el
+        ojo va arriba y una barra pegada al borde inferior queda perdida.
+      */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white/95 backdrop-blur no-print sm:hidden">
+        {PESTANAS.map(([id, label, icono]) => (
+          <button
+            key={id}
+            onClick={() => {
+              setTab(id);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            aria-current={tab === id}
+            className={`flex flex-1 flex-col items-center gap-0.5 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[11px] font-medium transition ${
+              tab === id ? "text-brand-800" : "text-slate-400"
+            }`}
+          >
+            <span aria-hidden className="text-base leading-none">
+              {icono}
+            </span>
+            {label}
+            <span
+              aria-hidden
+              className={`mt-0.5 h-0.5 w-6 rounded-full ${tab === id ? "bg-brand-600" : "bg-transparent"}`}
+            />
+          </button>
+        ))}
+      </nav>
 
       {/* Documento que sale al imprimir / exportar a PDF */}
       <PlanDocument

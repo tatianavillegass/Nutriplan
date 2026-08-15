@@ -3,10 +3,10 @@ import {
   bucketsDeGrupo,
   type ExchangeGroupId,
   type MacroBucket,
-} from '../data/exchangeGroups';
-import type { DayType, Meal } from '../types/plan';
-import { bucketExchanges, gridTotals } from './exchanges';
-import { reservaAceite } from './pantry';
+} from "../data/exchangeGroups";
+import type { DayType, Meal } from "../types/plan";
+import { bucketExchanges, gridTotals } from "./exchanges";
+import { repartoElegible, reservaAceite } from "./pantry";
 
 /**
  * PRESUPUESTO DIARIO (Fase 3)
@@ -19,7 +19,7 @@ import { reservaAceite } from './pantry';
 /** Lo escogido: mealId → bucket → número de porciones. */
 export type Seleccion = Record<string, Partial<Record<MacroBucket, number>>>;
 
-export type EstadoBucket = 'pendiente' | 'completo' | 'excedido' | 'sin_margen';
+export type EstadoBucket = "pendiente" | "completo" | "excedido" | "sin_margen";
 
 export interface BalanceBucket {
   bucket: MacroBucket;
@@ -40,15 +40,19 @@ export interface BalanceBucket {
 }
 
 const LABEL: Record<MacroBucket, string> = {
-  proteina: 'proteína',
-  carbohidrato: 'carbohidrato',
-  grasa: 'grasa',
+  proteina: "proteína",
+  carbohidrato: "carbohidrato",
+  grasa: "grasa",
 };
 
-const plural = (n: number, singular: string, plural_: string) => (n === 1 ? singular : plural_);
+const plural = (n: number, singular: string, plural_: string) =>
+  n === 1 ? singular : plural_;
 
 /** Pautado por bucket en una comida concreta. */
-export function pautadoDeComida(dayType: DayType, mealId: string): Record<MacroBucket, number> {
+export function pautadoDeComida(
+  dayType: DayType,
+  mealId: string,
+): Record<MacroBucket, number> {
   return bucketExchanges(dayType.grid[mealId] ?? {});
 }
 
@@ -84,36 +88,36 @@ export function balanceBucket(
     0,
   );
 
-  let estado: EstadoBucket = 'pendiente';
+  let estado: EstadoBucket = "pendiente";
   let mensaje: string | undefined;
 
   const nombre = LABEL[bucket];
 
   if (elegidoComida === 0) {
-    estado = 'pendiente';
+    estado = "pendiente";
   } else if (elegidoComida === pautadoComida) {
-    estado = 'completo';
+    estado = "completo";
   } else if (elegidoComida < pautadoComida) {
-    estado = 'pendiente';
-  } else if (bucket === 'proteina') {
+    estado = "pendiente";
+  } else if (bucket === "proteina") {
     // Comer más proteína no descuadra el plan: la proteína magra apenas suma
     // calorías. Lo que hay que vigilar es la grasa, y de eso avisa
     // `balanceGrasa`. Aquí sólo se cuenta, sin regañar.
-    estado = 'completo';
+    estado = "completo";
   } else {
     // Se ha pasado de lo pautado en esta comida.
-    estado = restanteDia >= 0 ? 'excedido' : 'sin_margen';
+    estado = restanteDia >= 0 ? "excedido" : "sin_margen";
     const sobra = elegidoComida - pautadoComida;
 
     if (restanteDia >= 0) {
       mensaje =
-        `Tienes ${pautadoComida} ${plural(pautadoComida, 'porción', 'porciones')} de ${nombre} ` +
+        `Tienes ${pautadoComida} ${plural(pautadoComida, "porción", "porciones")} de ${nombre} ` +
         `pautadas en esta comida y ${pautadoDia} al día. Si consumes ${elegidoComida}, ` +
-        `te ${plural(restanteDia, 'queda', 'quedan')} ${restanteDia} para el resto del día ` +
+        `te ${plural(restanteDia, "queda", "quedan")} ${restanteDia} para el resto del día ` +
         `(estaban previstas ${pautadoRestoDelDia}).`;
     } else {
       mensaje =
-        `Te has pasado ${Math.abs(restanteDia)} ${plural(Math.abs(restanteDia), 'porción', 'porciones')} ` +
+        `Te has pasado ${Math.abs(restanteDia)} ${plural(Math.abs(restanteDia), "porción", "porciones")} ` +
         `de ${nombre} sobre el total del día (${pautadoDia}). ` +
         `Puedes compensar quitando ${sobra} aquí o en otra comida.`;
     }
@@ -139,7 +143,7 @@ export function balanceComida(
   seleccion: Seleccion,
 ): BalanceBucket[] {
   const pautado = pautadoDeComida(dayType, meal.id);
-  return (['proteina', 'carbohidrato', 'grasa'] as MacroBucket[])
+  return (["proteina", "carbohidrato", "grasa"] as MacroBucket[])
     .filter((b) => (pautado[b] ?? 0) > 0 || (seleccion[meal.id]?.[b] ?? 0) > 0)
     .map((b) => balanceBucket(dayType, meal, b, seleccion));
 }
@@ -147,14 +151,17 @@ export function balanceComida(
 // ── Nivel de subgrupo ───────────────────────────────────────
 
 /** Lo elegido por subgrupo: mealId → grupo → porciones. */
-export type SeleccionGrupos = Record<string, Partial<Record<ExchangeGroupId, number>>>;
+export type SeleccionGrupos = Record<
+  string,
+  Partial<Record<ExchangeGroupId, number>>
+>;
 
 /**
  * Familias donde manda la grasa: proteicos y grasas. Coincide con la regla
  * de las combinaciones, para que la nutricionista y el cliente vean lo mismo.
  */
 function limitadaPorGrasa(familia: string): boolean {
-  return familia === 'proteicos' || familia === 'grasas';
+  return familia === "proteicos" || familia === "grasas";
 }
 
 /** Grasa por porción por debajo de la cual pasarse da igual. */
@@ -183,13 +190,19 @@ function kcalDeUnaPorcion(g: ExchangeGroupId): number {
  * Se compara contra lo más barato que se le pautó ese día en esa familia:
  * si su elección no cuesta más que eso, es libre.
  */
-export function esCambioALaBaja(dayType: DayType, grupo: ExchangeGroupId): boolean {
+export function esCambioALaBaja(
+  dayType: DayType,
+  grupo: ExchangeGroupId,
+): boolean {
   const info = EXCHANGE_GROUPS[grupo];
   if (!info) return false;
 
   let masBarato = Infinity;
   for (const m of dayType.meals) {
-    for (const [g, n] of Object.entries(dayType.grid[m.id] ?? {}) as [ExchangeGroupId, number][]) {
+    for (const [g, n] of Object.entries(dayType.grid[m.id] ?? {}) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
       if (n > 0 && EXCHANGE_GROUPS[g]?.familia === info.familia) {
         masBarato = Math.min(masBarato, kcalDeUnaPorcion(g));
       }
@@ -224,19 +237,27 @@ export function balanceGrasa(
   familia: string,
   seleccion: SeleccionGrupos,
 ): BalanceGrasa {
-  const deFamilia = (g: ExchangeGroupId) => EXCHANGE_GROUPS[g]?.familia === familia;
+  const deFamilia = (g: ExchangeGroupId) =>
+    EXCHANGE_GROUPS[g]?.familia === familia;
 
   let pautadaDia = 0;
   for (const m of dayType.meals) {
-    for (const [g, n] of Object.entries(dayType.grid[m.id] ?? {}) as [ExchangeGroupId, number][]) {
+    for (const [g, n] of Object.entries(dayType.grid[m.id] ?? {}) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
       if (deFamilia(g)) pautadaDia += (EXCHANGE_GROUPS[g]?.grasa ?? 0) * n;
     }
   }
 
   let elegidaDia = 0;
   for (const m of dayType.meals) {
-    for (const [g, n] of Object.entries(seleccion[m.id] ?? {}) as [ExchangeGroupId, number][]) {
-      if (deFamilia(g)) elegidaDia += (EXCHANGE_GROUPS[g]?.grasa ?? 0) * (n ?? 0);
+    for (const [g, n] of Object.entries(seleccion[m.id] ?? {}) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
+      if (deFamilia(g))
+        elegidaDia += (EXCHANGE_GROUPS[g]?.grasa ?? 0) * (n ?? 0);
     }
   }
 
@@ -277,7 +298,10 @@ export function balanceSubgrupo(
 ): BalanceSubgrupo {
   const info = EXCHANGE_GROUPS[grupo];
   const pautadoComida = dayType.grid[meal.id]?.[grupo] ?? 0;
-  const pautadoDia = dayType.meals.reduce((s, m) => s + (dayType.grid[m.id]?.[grupo] ?? 0), 0);
+  const pautadoDia = dayType.meals.reduce(
+    (s, m) => s + (dayType.grid[m.id]?.[grupo] ?? 0),
+    0,
+  );
   const elegidoComida = seleccion[meal.id]?.[grupo] ?? 0;
   const elegidoOtras = dayType.meals
     .filter((m) => m.id !== meal.id)
@@ -286,7 +310,7 @@ export function balanceSubgrupo(
   const restanteDia = pautadoDia - elegidoComida - elegidoOtras;
   const nombre = info?.nombre.toLowerCase() ?? grupo;
 
-  let estado: EstadoBucket = 'pendiente';
+  let estado: EstadoBucket = "pendiente";
   let mensaje: string | undefined;
 
   /**
@@ -310,15 +334,20 @@ export function balanceSubgrupo(
       elegidoComida,
       elegidoOtras,
       restanteDia,
-      estado: elegidoComida === 0 ? 'pendiente' : elegidoComida < pautadoComida ? 'pendiente' : 'completo',
+      estado:
+        elegidoComida === 0
+          ? "pendiente"
+          : elegidoComida < pautadoComida
+            ? "pendiente"
+            : "completo",
     };
   }
 
-  if (elegidoComida === 0) estado = 'pendiente';
-  else if (elegidoComida === pautadoComida) estado = 'completo';
-  else if (elegidoComida < pautadoComida) estado = 'pendiente';
+  if (elegidoComida === 0) estado = "pendiente";
+  else if (elegidoComida === pautadoComida) estado = "completo";
+  else if (elegidoComida < pautadoComida) estado = "pendiente";
   else {
-    estado = restanteDia >= 0 ? 'excedido' : 'sin_margen';
+    estado = restanteDia >= 0 ? "excedido" : "sin_margen";
     if (pautadoComida === 0) {
       /**
        * UN SUBGRUPO QUE NO PAUTASTE NO ES UN AVISO
@@ -337,7 +366,7 @@ export function balanceSubgrupo(
       mensaje =
         pautadoDia > 0
           ? `En esta comida no había ${nombre} pautados, pero tienes ${pautadoDia} en el día. ` +
-            `Con ${elegidoComida} aquí, te ${plural(restanteDia, 'queda', 'quedan')} ${Math.max(
+            `Con ${elegidoComida} aquí, te ${plural(restanteDia, "queda", "quedan")} ${Math.max(
               0,
               restanteDia,
             )} para el resto.`
@@ -347,11 +376,11 @@ export function balanceSubgrupo(
     } else if (restanteDia >= 0) {
       mensaje =
         `Tienes ${pautadoComida} de ${nombre} en esta comida y ${pautadoDia} al día. ` +
-        `Con ${elegidoComida}, te ${plural(restanteDia, 'queda', 'quedan')} ${restanteDia} para el resto del día.`;
+        `Con ${elegidoComida}, te ${plural(restanteDia, "queda", "quedan")} ${restanteDia} para el resto del día.`;
     } else {
       // El macro que toque: decía «otro grupo de proteína» aunque fueran
       // grasas o hidratos, que es de cuando esto sólo miraba los proteicos.
-      const macro = info ? LABEL[info.bucket] : 'ese macro';
+      const macro = info ? LABEL[info.bucket] : "ese macro";
       mensaje =
         `Te has pasado ${Math.abs(restanteDia)} de ${nombre} sobre el total del día (${pautadoDia}). ` +
         `Cambia ${elegidoComida - pautadoComida} por otro grupo de ${macro} o compénsalo luego.`;
@@ -382,13 +411,27 @@ export function balanceSubgruposDeBucket(
   seleccion: SeleccionGrupos,
 ): BalanceSubgrupo[] {
   const grupos = new Set<ExchangeGroupId>();
-  for (const [g, n] of Object.entries(dayType.grid[meal.id] ?? {}) as [ExchangeGroupId, number][]) {
-    if (n > 0 && bucketsDeGrupo(g).includes(bucket) && !EXCHANGE_GROUPS[g]?.ilimitado) {
+  for (const [g, n] of Object.entries(dayType.grid[meal.id] ?? {}) as [
+    ExchangeGroupId,
+    number,
+  ][]) {
+    if (
+      n > 0 &&
+      bucketsDeGrupo(g).includes(bucket) &&
+      !EXCHANGE_GROUPS[g]?.ilimitado
+    ) {
       grupos.add(g);
     }
   }
-  for (const [g, n] of Object.entries(seleccion[meal.id] ?? {}) as [ExchangeGroupId, number][]) {
-    if ((n ?? 0) > 0 && bucketsDeGrupo(g).includes(bucket) && !EXCHANGE_GROUPS[g]?.ilimitado) {
+  for (const [g, n] of Object.entries(seleccion[meal.id] ?? {}) as [
+    ExchangeGroupId,
+    number,
+  ][]) {
+    if (
+      (n ?? 0) > 0 &&
+      bucketsDeGrupo(g).includes(bucket) &&
+      !EXCHANGE_GROUPS[g]?.ilimitado
+    ) {
       grupos.add(g);
     }
   }
@@ -458,17 +501,26 @@ export function presupuestoDelDia(
 
   const elegidoPorGrupo: Partial<Record<ExchangeGroupId, number>> = {};
   for (const m of dayType.meals) {
-    for (const [g, n] of Object.entries(seleccion[m.id] ?? {}) as [ExchangeGroupId, number][]) {
+    for (const [g, n] of Object.entries(seleccion[m.id] ?? {}) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
       if (n) elegidoPorGrupo[g] = (elegidoPorGrupo[g] ?? 0) + n;
     }
   }
 
   // Los grupos que salen: los pautados más los que haya escogido de su cuenta.
   const ids = new Set<ExchangeGroupId>();
-  for (const [g, n] of Object.entries(pautadoPorGrupo) as [ExchangeGroupId, number][]) {
+  for (const [g, n] of Object.entries(pautadoPorGrupo) as [
+    ExchangeGroupId,
+    number,
+  ][]) {
     if (n > 0 && !EXCHANGE_GROUPS[g]?.ilimitado) ids.add(g);
   }
-  for (const [g, n] of Object.entries(elegidoPorGrupo) as [ExchangeGroupId, number][]) {
+  for (const [g, n] of Object.entries(elegidoPorGrupo) as [
+    ExchangeGroupId,
+    number,
+  ][]) {
     if (n > 0 && !EXCHANGE_GROUPS[g]?.ilimitado) ids.add(g);
   }
 
@@ -486,25 +538,41 @@ export function presupuestoDelDia(
       };
     });
 
-  return (['proteina', 'carbohidrato', 'grasa'] as MacroBucket[])
+  return (["proteina", "carbohidrato", "grasa"] as MacroBucket[])
     .map((bucket) => {
       // Las legumbres salen en carbohidrato y en proteína: gastan de las dos.
-      const grupos = lineas.filter((l) => bucketsDeGrupo(l.grupo).includes(bucket));
-      const suma = (k: 'pautado' | 'elegido') => grupos.reduce((s, l) => s + l[k], 0);
-      const pautado = suma('pautado');
-      const elegido = suma('elegido');
+      const grupos = lineas.filter((l) =>
+        bucketsDeGrupo(l.grupo).includes(bucket),
+      );
+      const suma = (k: "pautado" | "elegido") =>
+        grupos.reduce((s, l) => s + l[k], 0);
+      const pautado = suma("pautado");
+      const elegido = suma("elegido");
       return { bucket, pautado, elegido, restante: pautado - elegido, grupos };
     })
     .filter((m) => m.grupos.length > 0);
 }
 
 /** Cómo va el día completo, para la barra de resumen. */
-export function resumenDia(dayType: DayType, seleccion: Seleccion): ResumenDia[] {
+export function resumenDia(
+  dayType: DayType,
+  seleccion: Seleccion,
+): ResumenDia[] {
   const pautado = pautadoDelDia(dayType);
-  return (['proteina', 'carbohidrato', 'grasa'] as MacroBucket[]).map((bucket) => {
-    const elegido = dayType.meals.reduce((s, m) => s + (seleccion[m.id]?.[bucket] ?? 0), 0);
-    return { bucket, pautado: pautado[bucket] ?? 0, elegido, restante: (pautado[bucket] ?? 0) - elegido };
-  });
+  return (["proteina", "carbohidrato", "grasa"] as MacroBucket[]).map(
+    (bucket) => {
+      const elegido = dayType.meals.reduce(
+        (s, m) => s + (seleccion[m.id]?.[bucket] ?? 0),
+        0,
+      );
+      return {
+        bucket,
+        pautado: pautado[bucket] ?? 0,
+        elegido,
+        restante: (pautado[bucket] ?? 0) - elegido,
+      };
+    },
+  );
 }
 
 /** Etiqueta del grupo para los mensajes. */
@@ -513,9 +581,56 @@ export function nombreBucket(b: MacroBucket): string {
 }
 
 /** Subgrupos que componen un bucket, con lo pautado en la comida. */
-export function subgruposDeComida(dayType: DayType, mealId: string, bucket: MacroBucket) {
+export function subgruposDeComida(
+  dayType: DayType,
+  mealId: string,
+  bucket: MacroBucket,
+) {
   const counts = dayType.grid[mealId] ?? {};
   return Object.entries(counts)
-    .filter(([g, n]) => EXCHANGE_GROUPS[g as keyof typeof EXCHANGE_GROUPS]?.bucket === bucket && (n ?? 0) > 0)
+    .filter(
+      ([g, n]) =>
+        EXCHANGE_GROUPS[g as keyof typeof EXCHANGE_GROUPS]?.bucket === bucket &&
+        (n ?? 0) > 0,
+    )
     .map(([g, n]) => [g, n] as [string, number]);
+}
+
+/**
+ * ¿ESTÁ LA COMIDA COMPLETA?
+ *
+ * Todos los macros que se pautaron para esa comida, cubiertos. Es lo que
+ * permite dar la comida por hecha sin pedir otro toque: quien acaba de marcar
+ * su proteína, su hidrato y su grasa ya ha dicho lo que ha comido — pedirle
+ * después que pulse «hecha» es hacerle repetir lo que acaba de decir.
+ *
+ * El aceite de cocinar se descuenta igual que en la pantalla: no se elige, así
+ * que no puede impedir que la comida se dé por completa.
+ *
+ * Una comida sin nada pautado no cuenta: no hay nada que completar.
+ */
+export function comidaCubierta(
+  dayType: DayType,
+  meal: Meal,
+  seleccion: Seleccion,
+  tolerancia = 0.01,
+): boolean {
+  const { reserva } = repartoElegible(dayType, meal);
+
+  let elegible = dayType;
+  if (reserva > 0) {
+    const grid = { ...dayType.grid };
+    const comida = { ...(grid[meal.id] ?? {}) };
+    const resto = (comida.grasas ?? 0) - reserva;
+    if (resto > 0) comida.grasas = resto;
+    else delete comida.grasas;
+    grid[meal.id] = comida;
+    elegible = { ...dayType, grid };
+  }
+
+  const pautados = balanceComida(elegible, meal, seleccion).filter(
+    (b) => b.pautadoComida > 0,
+  );
+  if (!pautados.length) return false;
+  return pautados.every((b) => b.elegidoComida >= b.pautadoComida - tolerancia);
 }

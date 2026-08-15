@@ -23,6 +23,13 @@ beforeEach(() => {
   });
 });
 
+/**
+ * Hay dos juegos de pestañas: el de arriba para pantalla ancha y el de abajo
+ * para el móvil. Sólo se ve uno cada vez —lo decide el CSS— pero en las
+ * pruebas están los dos, así que se busca por posición.
+ */
+const pestana = (nombre: string) => screen.getAllByRole('button', { name: nombre })[0];
+
 const abrir = () =>
   render(
     <MemoryRouter initialEntries={[`/clientes/${DEMO_CLIENT.id}/vista`]}>
@@ -49,28 +56,28 @@ describe('El día de la clienta se abre', () => {
 
   it('y empieza en «Hoy»', () => {
     abrir();
-    expect(screen.getByRole('button', { name: 'Hoy' }).getAttribute('aria-current')).toBe('true');
+    expect(pestana('Hoy').getAttribute('aria-current')).toBe('true');
   });
 });
 
 describe('Las tres pestañas', () => {
   it('el resumen enseña constancia y comidas fuera', () => {
     abrir();
-    fireEvent.click(screen.getByRole('button', { name: 'Resumen' }));
+    fireEvent.click(pestana('Resumen'));
     expect(screen.getByText('Tu constancia')).toBeTruthy();
     expect(screen.getByText(/Comidas fuera este mes/i)).toBeTruthy();
   });
 
   it('los recursos dicen que todavía no hay nada', () => {
     abrir();
-    fireEvent.click(screen.getByRole('button', { name: 'Recursos' }));
+    fireEvent.click(pestana('Recursos'));
     expect(screen.getByText(/todavía no ha dejado nada/i)).toBeTruthy();
   });
 
   it('y se vuelve al día sin perder nada', () => {
     abrir();
-    fireEvent.click(screen.getByRole('button', { name: 'Resumen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Hoy' }));
+    fireEvent.click(pestana('Resumen'));
+    fireEvent.click(pestana('Hoy'));
     expect(screen.queryByText('Tu constancia')).toBeNull();
     expect(screen.getByText(/Hola,/)).toBeTruthy();
   });

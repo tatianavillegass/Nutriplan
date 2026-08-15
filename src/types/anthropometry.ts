@@ -35,6 +35,24 @@ export interface Diametros {
   tobillo?: number;
 }
 
+/**
+ * LO QUE DA LA BÁSCULA DE BIOIMPEDANCIA
+ *
+ * Se copia tal cual, sin recalcular nada: su número sale de una fórmula suya
+ * que no conocemos, así que mezclarlo con el de los pliegues sería inventar.
+ * Se enseñan por separado y cada uno se compara consigo mismo.
+ */
+export interface Bioimpedancia {
+  /** % de grasa que marca el aparato. */
+  grasaPct?: number;
+  /** % de masa muscular. */
+  musculoPct?: number;
+  /** % de agua corporal. */
+  aguaPct?: number;
+  /** Índice de grasa visceral (sin unidad: la escala del aparato). */
+  visceral?: number;
+}
+
 export interface Medicion {
   id: string;
   clientId: string;
@@ -46,6 +64,8 @@ export interface Medicion {
   pliegues: Pliegues; // mm
   perimetros: Perimetros; // cm
   diametros: Diametros; // cm
+  /** Lo que dio la báscula ese día, si se usó. */
+  bioimpedancia?: Bioimpedancia;
   notas?: string;
 }
 

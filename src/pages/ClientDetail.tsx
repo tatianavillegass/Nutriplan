@@ -13,6 +13,7 @@ import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
 import { RecipeRecommender } from "../components/phase1/RecipeRecommender";
 import { AnthroTab } from "../components/anthro/AnthroTab";
 import { AdherenceTab } from "../components/client/AdherenceTab";
+import { SeguimientoResumen } from "../components/client/SeguimientoResumen";
 import { CitaPanel, PagosPanel } from "../components/client/AgendaPanel";
 import {
   RecursosDeCliente,
@@ -110,6 +111,7 @@ export function ClientDetail() {
     return b.bloqueado ? b.motivos.join(" · ") : undefined;
   };
   const registrosCliente = registros.filter((r) => r.clientId === client.id);
+  const medicionesCliente = mediciones.filter((m) => m.clientId === client.id);
   const planeado = planTargets(
     kcalDia,
     client.peso,
@@ -274,12 +276,25 @@ export function ClientDetail() {
       )}
 
       {tab === "seguimiento" && (
-        <AdherenceTab
-          client={client}
-          plan={plan}
-          registros={registrosCliente}
-          foods={foods}
-        />
+        <div className="space-y-5">
+          {/*
+            Lo primero, lo que hace falta antes de una consulta: si aparece, si
+            cumple sus metas, cuántas veces ha comido fuera y cómo va su cuerpo.
+            El día a día detallado va debajo, para cuando hay que mirar fino.
+          */}
+          <SeguimientoResumen
+            client={client}
+            dayTypes={plan.dayTypes}
+            registros={registrosCliente}
+            mediciones={medicionesCliente}
+          />
+          <AdherenceTab
+            client={client}
+            plan={plan}
+            registros={registrosCliente}
+            foods={foods}
+          />
+        </div>
       )}
 
       {tab === "antropometria" && (
