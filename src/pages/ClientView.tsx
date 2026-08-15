@@ -7,6 +7,7 @@ import { FoodPortionPicker } from "../components/phase3/FoodPortionPicker";
 import { PresupuestoDia } from "../components/phase3/PresupuestoDia";
 import { ContadorDia } from "../components/phase4/ContadorDia";
 import { RecetasDeConsulta } from "../components/phase4/RecetasDeConsulta";
+import { MisComidas } from "../components/client/MisComidas";
 import { CalculadoraPorciones } from "../components/phase3/CalculadoraPorciones";
 import { ScaledRecipeView } from "../components/phase1/ScaledRecipeView";
 import { MealCard } from "../components/client/MealCard";
@@ -48,6 +49,16 @@ import {
   seleccionPorGrupo,
 } from "../utils/marcado";
 import { comidaCubierta } from "../utils/dailyBudget";
+import {
+  alimentosQueFaltan,
+  comidaGuardadaDe,
+  copiarBocados,
+  deCuandoEs,
+  misComidas,
+  ultimaVezQueComio,
+} from "../utils/misComidas";
+import type { Bocado } from "../types/diary";
+import type { Alimento } from "../types/food";
 
 /**
  * ICONOS DE LÍNEA, NO EMOJIS
@@ -249,6 +260,102 @@ export function ClientView() {
 
   const cumplida = (mealId: string) =>
     (registro?.cumplidas ?? []).includes(mealId);
+
+  /**
+   * LO DE SIEMPRE
+   *
+   * Quien desayuna lo mismo todos los días estaba volviendo a apuntar cinco
+   * alimentos con sus gramos cada mañana. Aquí se le ofrece repetir lo de la
+   * última vez y usar las comidas que ella misma haya guardado con nombre.
+   *
+   * Sus alimentos calculados con la etiqueta viven en el registro de un día
+   * concreto, así que al traer una comida vieja hay que traérselos también: si
+   * no, la comida repetida apunta a algo que hoy ya no existe.
+   */
+  const atajosDeComida = (m: { id: string; nombre: string }) => {
+    const enFase4 = plan.fase === 4;
+    const ultima = ultimaVezQueComio(mios, fecha, m.id);
+    const guardadas = misComidas(mios, m.id);
+
+    const traer = (
+      contenido: { bocados?: Bocado[]; porciones?: Record<string, number> },
+      alimentos: Alimento[] | undefined,
+    ) => {
+      const nuevos = alimentosQueFaltan(alimentos, registro?.alimentosPropios ?? []);
+      const patch: Parameters<typeof guardar>[0] = nuevos.length
+        ? { alimentosPropios: [...(registro?.alimentosPropios ?? []), ...nuevos] }
+        : {};
+
+      if (enFase4) {
+        patch.bocados = [
+          ...(registro?.bocados ?? []),
+          ...copiarBocados(contenido.bocados ?? [], m.id),
+        ];
+      } else {
+        let out = porciones;
+        for (const [foodId, n] of Object.entries(contenido.porciones ?? {}))
+          out = fijarAlimento(out, m.id, foodId, n);
+        patch.porciones = out;
+      }
+      guardar(patch);
+    };
+
+    /** Sólo se ofrece lo que sirve en esta fase: gramos en la 4, porciones en la 3. */
+    const hayQueRepetir =
+      ultima && (enFase4 ? ultima.bocados.length > 0 : Object.keys(ultima.porciones).length > 0);
+
+    const deHoy = enFase4
+      ? { bocados: (registro?.bocados ?? []).filter((b) => b.momento === m.id) }
+      : {
+          porciones: Object.fromEntries(
+            Object.entries(porciones[m.id] ?? {}).filter(([, n]) => (n ?? 0) > 0),
+          ),
+        };
+    const hayAlgoHoy = enFase4
+      ? !!deHoy.bocados?.length
+      : Object.keys(deHoy.porciones ?? {}).length > 0;
+
+    return (
+      <MisComidas
+        mealNombre={m.nombre}
+        repetir={
+          hayQueRepetir && ultima
+            ? {
+                deCuando: deCuandoEs(ultima.fecha, fecha),
+                onUsar: () => traer(ultima, ultima.alimentos),
+              }
+            : undefined
+        }
+        guardadas={guardadas
+          .filter((c) => (enFase4 ? !!c.bocados?.length : !!c.porciones))
+          .map((c) => ({
+            id: c.id,
+            nombre: c.nombre,
+            onUsar: () => traer(c, c.alimentos),
+            onBorrar: () =>
+              guardar({
+                comidasBorradas: [...(registro?.comidasBorradas ?? []), c.id],
+              }),
+          }))}
+        onGuardar={
+          hayAlgoHoy
+            ? (nombre) =>
+                guardar({
+                  comidasGuardadas: [
+                    ...(registro?.comidasGuardadas ?? []),
+                    comidaGuardadaDe(
+                      nombre,
+                      m.id,
+                      deHoy,
+                      registro?.alimentosPropios ?? [],
+                    ),
+                  ],
+                })
+            : undefined
+        }
+      />
+    );
+  };
 
   /**
    * LA COMIDA SE MARCA SOLA AL COMPLETARLA
@@ -657,6 +764,10 @@ export function ClientView() {
                     ),
                   })
                 }
+                atajosDe={(mealId) => {
+                  const m = dayType.meals.find((x) => x.id === mealId);
+                  return m ? atajosDeComida(m) : null;
+                }}
               />
             )}
 
@@ -857,6 +968,8 @@ export function ClientView() {
                         onMarcar={marcarPorcion}
                         acciones={accionesDe(m.id, m.nombre)}
                       />
+                      {/* Lo de siempre: repetir esta comida o usar una guardada. */}
+                      {atajosDeComida(m)}
                       <RecipeShortcuts
                         dayType={dayType}
                         meal={m}

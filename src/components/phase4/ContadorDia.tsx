@@ -23,6 +23,12 @@ interface Props {
   foods: Alimento[];
   onAnadir: (bocado: Bocado, alimentoNuevo?: Alimento) => void;
   onQuitar: (id: string) => void;
+  /**
+   * Los atajos de cada comida —repetir lo de siempre, sus comidas guardadas—.
+   * Se pinta desde fuera porque quien sabe de sus otros días es la pantalla,
+   * no el contador.
+   */
+  atajosDe?: (mealId: string) => React.ReactNode;
   /** En la pantalla de la nutricionista sólo se mira. */
   soloLectura?: boolean;
 }
@@ -94,6 +100,7 @@ export function ContadorDia({
   foods,
   onAnadir,
   onQuitar,
+  atajosDe,
   soloLectura = false,
 }: Props) {
   const objetivo = useMemo(() => objetivoDelDia(dayType), [dayType]);
@@ -158,6 +165,8 @@ export function ContadorDia({
                 </button>
               )}
             </div>
+
+            {!soloLectura && atajosDe?.(meal.id)}
 
             {suyos.length > 0 && (
               <ul className="mt-0.5 divide-y divide-slate-50">

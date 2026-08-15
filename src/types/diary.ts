@@ -57,6 +57,34 @@ export interface Bocado {
   hora?: string;
 }
 
+/**
+ * UNA COMIDA QUE SE REPITE
+ *
+ * «Mis pancakes de avena». Quien come casi siempre lo mismo estaba apuntando
+ * cinco alimentos con sus gramos cada mañana; con esto son dos toques y, si un
+ * día cambia la cantidad, la retoca.
+ *
+ * Guarda las dos formas de decir lo mismo porque las dos fases apuntan
+ * distinto: en fase 4 son gramos (`bocados`) y en fase 3 son porciones
+ * marcadas (`porciones`). Se ofrece sólo en la fase en la que se guardó, que
+ * es donde significa algo.
+ *
+ * Se lleva también los alimentos que ella se calculó con la etiqueta: viven en
+ * el registro de un día concreto, así que sin esta copia la comida guardada
+ * apuntaría a algo que mañana ya no existe.
+ */
+export interface ComidaGuardada {
+  id: string;
+  nombre: string;
+  /** La comida en la que se guardó: es donde se vuelve a ofrecer. */
+  mealId: string;
+  bocados?: Bocado[];
+  /** foodId → porciones marcadas. */
+  porciones?: Record<string, number>;
+  alimentos?: Alimento[];
+  creada: string;
+}
+
 export interface RegistroDia {
   id: string;
   clientId: string;
@@ -103,6 +131,17 @@ export interface RegistroDia {
    * marcar, así que esta lista es el día entero.
    */
   bocados?: Bocado[];
+  /**
+   * SUS COMIDAS HABITUALES
+   *
+   * Van en el registro del día en que las guardó porque el registro es lo
+   * único que sube el cliente: metidas en su ficha, la nutricionista se las
+   * pisaría al guardar cualquier otra cosa. La lista se junta leyendo todos
+   * sus días, y borrar una se apunta como tal —`comidasBorradas`— porque el
+   * día que la creó no se puede reescribir desde hoy.
+   */
+  comidasGuardadas?: ComidaGuardada[];
+  comidasBorradas?: string[];
   notas?: string;
 }
 
