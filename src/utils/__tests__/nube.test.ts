@@ -60,6 +60,7 @@ const foto = (): Foto => ({
   plantillas: [],
   plantillasDia: [],
   recursos: [],
+  retos: [],
 });
 
 describe('Repartir el estado en filas', () => {

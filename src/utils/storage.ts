@@ -50,6 +50,7 @@ export const STORAGE_KEYS = {
   mediciones: 'mediciones',
   registros: 'registros',
   recursos: 'recursos',
+  retos: 'retos',
 } as const;
 
 export function uid(prefix = ''): string {

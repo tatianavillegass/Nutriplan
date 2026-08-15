@@ -7,6 +7,7 @@ import type { Alimento } from '../types/food';
 import type { Medicion } from '../types/anthropometry';
 import type { RegistroDia } from '../types/diary';
 import type { Recurso } from '../types/recursos';
+import type { Reto } from '../types/reto';
 import { registroVacio } from '../types/diary';
 import { EXCHANGE_GROUPS, type ExchangeGroupId } from '../data/exchangeGroups';
 import { FOOD_CATALOG } from '../data/foodCatalog';
@@ -23,6 +24,7 @@ interface AppState {
   mediciones: Medicion[];
   registros: RegistroDia[];
   recursos: Recurso[];
+  retos: Reto[];
 
   // Clientes
   addClient: (c: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Client;
@@ -88,6 +90,10 @@ interface AppState {
    * Sustituye el estado por el que viene del servidor. Se usa al entrar,
    * cuando lo que manda es la nube y no lo que hubiera en este navegador.
    */
+  // Retos: grupos que empiezan el mismo día
+  upsertReto: (r: Reto) => void;
+  borrarReto: (id: string) => void;
+
   // Recursos: material de consulta que ven todas las clientas
   upsertRecurso: (r: Recurso) => void;
   borrarRecurso: (id: string) => void;
@@ -101,6 +107,7 @@ interface AppState {
     mediciones: Medicion[];
     registros: RegistroDia[];
     recursos?: Recurso[];
+    retos?: Reto[];
   }) => void;
 }
 
@@ -236,6 +243,7 @@ export const useAppStore = create<AppState>((set, get) => {
   const persistMediciones = (ms: Medicion[]) => storage.set(STORAGE_KEYS.mediciones, ms);
   const persistRegistros = (rs: RegistroDia[]) => storage.set(STORAGE_KEYS.registros, rs);
   const persistRecursos = (rs: Recurso[]) => storage.set(STORAGE_KEYS.recursos, rs);
+  const persistRetos = (rs: Reto[]) => storage.set(STORAGE_KEYS.retos, rs);
 
   const mutatePlans = (fn: (plans: Plan[]) => Plan[]) => {
     set((s) => {
@@ -268,6 +276,7 @@ export const useAppStore = create<AppState>((set, get) => {
     mediciones: hydrate<Medicion[]>(STORAGE_KEYS.mediciones, []),
     registros: hydrate<RegistroDia[]>(STORAGE_KEYS.registros, []),
     recursos: hydrate<Recurso[]>(STORAGE_KEYS.recursos, []),
+    retos: hydrate<Reto[]>(STORAGE_KEYS.retos, []),
 
     addClient: (c) => {
       const client: Client = { ...c, id: uid('cl_'), createdAt: nowIso(), updatedAt: nowIso() };
@@ -571,6 +580,20 @@ export const useAppStore = create<AppState>((set, get) => {
         return { mediciones };
       }),
 
+    upsertReto: (r) => {
+      const retos = get().retos.some((x) => x.id === r.id)
+        ? get().retos.map((x) => (x.id === r.id ? r : x))
+        : [...get().retos, r];
+      persistRetos(retos);
+      set({ retos });
+    },
+
+    borrarReto: (id) => {
+      const retos = get().retos.filter((r) => r.id !== id);
+      persistRetos(retos);
+      set({ retos });
+    },
+
     /**
      * Crea o reemplaza un recurso. Se ordenan a mano porque el orden es del
      * criterio de la nutricionista: primero lo que quiere que se lea antes.
@@ -615,6 +638,7 @@ export const useAppStore = create<AppState>((set, get) => {
       persistMediciones(datos.mediciones);
       persistRegistros(datos.registros);
       persistRecursos(datos.recursos ?? []);
+      persistRetos(datos.retos ?? []);
 
       set({
         clients: datos.clients,
@@ -624,6 +648,7 @@ export const useAppStore = create<AppState>((set, get) => {
         mediciones: datos.mediciones,
         registros: datos.registros,
         recursos: datos.recursos ?? [],
+        retos: datos.retos ?? [],
       });
     },
   };

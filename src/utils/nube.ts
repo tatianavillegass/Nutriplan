@@ -8,6 +8,7 @@ import type { Medicion } from '../types/anthropometry';
 import type { RegistroDia } from '../types/diary';
 import type { PlantillaDespensa, PlantillaDia } from './plantillas';
 import type { Recurso } from '../types/recursos';
+import type { Reto } from '../types/reto';
 
 /**
  * SUBIR Y BAJAR
@@ -51,6 +52,8 @@ export interface Foto {
   plantillasDia: PlantillaDia[];
   /** Material de consulta: lo mismo para todas las clientas. */
   recursos: Recurso[];
+  /** Grupos que empiezan el mismo día. */
+  retos: Reto[];
 }
 
 export interface FilaCliente {
@@ -214,6 +217,7 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
     plantillas: plantillas.comidas ?? [],
     plantillasDia: plantillas.dias ?? [],
     recursos: (compartido.data?.recursos ?? []) as Recurso[],
+    retos: (compartido.data?.retos ?? []) as Reto[],
   };
 }
 
@@ -240,17 +244,30 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
   };
 
   /**
-   * Los recursos son lo último que se añadió y puede que la base de datos
-   * todavía no tenga su columna. Si no la tiene, se sube todo lo demás igual:
-   * que falte la guía de raciones no puede impedir que se guarde un plan.
+   * COLUMNAS QUE PUEDE QUE NO EXISTAN TODAVÍA
+   *
+   * Cada cosa nueva que se guarda —los recursos, los retos— necesita una
+   * columna que hay que crear a mano en Supabase. Mientras no esté, el envío
+   * entero fallaba y no se guardaba NADA: ni las recetas, ni los planes.
+   *
+   * Se intenta con todo y, si el servidor se queja, se van quitando de la más
+   * nueva a la más vieja hasta que entre. Que falte la guía de raciones no
+   * puede impedir que se guarde un plan.
    */
-  const { error } = await sb
-    .from('nutricionistas')
-    .upsert({ ...suyo, recursos: foto.recursos }, { onConflict: 'id' });
+  const extras: [string, unknown][] = [
+    ['recursos', foto.recursos],
+    ['retos', foto.retos],
+  ];
 
-  if (error) {
-    console.warn('[nube] falta la columna «recursos»; se sube el resto', error.message);
-    await sb.from('nutricionistas').upsert(suyo, { onConflict: 'id' });
+  for (let cuantos = extras.length; cuantos >= 0; cuantos--) {
+    const fila = { ...suyo, ...Object.fromEntries(extras.slice(0, cuantos)) };
+    const { error } = await sb.from('nutricionistas').upsert(fila, { onConflict: 'id' });
+    if (!error) break;
+    if (cuantos === 0) throw new Error(`No se pudo guardar: ${error.message}`);
+    console.warn(
+      `[nube] falta la columna «${extras[cuantos - 1][0]}»; se reintenta sin ella`,
+      error.message,
+    );
   }
 
   const filas = aFilas(perfil.nutriId, foto).map((f) => ({

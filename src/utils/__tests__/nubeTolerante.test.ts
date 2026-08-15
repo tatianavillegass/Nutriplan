@@ -46,7 +46,12 @@ vi.mock('../supabase', () => ({
         const fila = Array.isArray(datos) ? datos[0] : datos;
         upserts.push({ tabla, datos: fila });
         // Postgres se queja de la columna que no existe.
-        if (tabla === 'nutricionistas' && falloDeRecursos && 'recursos' in fila) {
+        // Se queja de cualquiera de las dos columnas nuevas.
+        if (
+          tabla === 'nutricionistas' &&
+          falloDeRecursos &&
+          ('recursos' in fila || 'retos' in fila)
+        ) {
           return Promise.resolve({
             error: { message: "column nutricionistas.recursos does not exist" },
           });
@@ -77,6 +82,7 @@ const FOTO = {
   plantillas: [{ id: 'pt1' }] as never,
   plantillasDia: [],
   recursos: [{ id: 'rc1' }] as never,
+  retos: [] as never,
 };
 
 beforeEach(() => {
@@ -136,18 +142,31 @@ describe('Guardar lo compartido', () => {
   /**
    * Que falte la guía de raciones no puede impedir que se guarde un plan: la
    * clienta se queda sin comer, no sin material de consulta.
+   *
+   * Se quitan de la más nueva a la más vieja, no todas de golpe: si el
+   * servidor ya tiene «recursos» y le falta «retos», sería absurdo dejar de
+   * guardar los recursos por eso.
    */
   it('y si la columna no existe, sube el resto igual', async () => {
     await subirTodo(PERFIL, FOTO);
-    const segundo = upserts.filter((u) => u.tabla === 'nutricionistas')[1];
-    expect(segundo).toBeDefined();
-    expect(segundo.datos.recursos).toBeUndefined();
-    expect(segundo.datos.recetas).toHaveLength(1);
-    expect(segundo.datos.alimentos).toHaveLength(1);
-    expect(segundo.datos.plantillas).toBeDefined();
+    const intentos = upserts.filter((u) => u.tabla === 'nutricionistas');
+    const ultimo = intentos[intentos.length - 1];
+    expect(ultimo.datos.recursos).toBeUndefined();
+    expect(ultimo.datos.recetas).toHaveLength(1);
+    expect(ultimo.datos.alimentos).toHaveLength(1);
+    expect(ultimo.datos.plantillas).toBeDefined();
   });
 
-  it('con la columna puesta, se sube una sola vez', async () => {
+  it('quita primero la columna más nueva, no todas de golpe', async () => {
+    await subirTodo(PERFIL, FOTO);
+    const intentos = upserts.filter((u) => u.tabla === 'nutricionistas');
+    // 1º con todo, 2º sin «retos» pero con «recursos», 3º sin ninguna.
+    expect(intentos[0].datos.retos).toBeDefined();
+    expect(intentos[1].datos.retos).toBeUndefined();
+    expect(intentos[1].datos.recursos).toBeDefined();
+  });
+
+  it('con las columnas puestas, se sube una sola vez', async () => {
     falloDeRecursos = false;
     await subirTodo(PERFIL, FOTO);
     expect(upserts.filter((u) => u.tabla === 'nutricionistas')).toHaveLength(1);

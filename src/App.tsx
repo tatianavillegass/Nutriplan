@@ -7,6 +7,7 @@ import { FoodCatalogPage } from './pages/FoodCatalogPage';
 import { ClientView } from './pages/ClientView';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { RecursosPage } from './pages/RecursosPage';
+import { RetosPage } from './pages/RetosPage';
 import { AuthPage } from './pages/AuthPage';
 import { ClaveNueva } from './components/common/ClaveNueva';
 import { useAuthStore } from './store/useAuthStore';
@@ -24,6 +25,7 @@ const nav = [
   { to: '/alimentos', label: 'Alimentos' },
   { to: '/plantillas', label: 'Mis plantillas' },
   { to: '/recursos', label: 'Recursos' },
+  { to: '/retos', label: 'Retos' },
 ];
 
 export default function App() {
@@ -157,6 +159,7 @@ export default function App() {
               <Route path="/alimentos" element={<FoodCatalogPage />} />
               <Route path="/plantillas" element={<TemplatesPage />} />
               <Route path="/recursos" element={<RecursosPage />} />
+              <Route path="/retos" element={<RetosPage />} />
             </>
           )}
           {/* Cualquier otra ruta devuelve a lo suyo: el cliente no husmea. */}

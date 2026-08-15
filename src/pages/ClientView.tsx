@@ -30,6 +30,7 @@ import {
 import { claveFecha, fechaLegible } from "../types/diary";
 import { LABEL_MODO_CITA, metasActivas } from "../types/client";
 import { citaLegible, citaPasada } from "../utils/agenda";
+import { estadoDelReto, retoDe, textoDelDia } from "../utils/retos";
 import {
   balanceDelDia,
   extrasDeComida,
@@ -73,7 +74,8 @@ function Icono({ d }: { d: string }) {
 const ICONOS = {
   hoy: "M7 3v8a2 2 0 0 0 4 0V3M9 11v10M17 3c-1.5 1.5-2 3.5-2 5.5 0 1.5.5 2.5 2 2.5V3zm0 8v10",
   resumen: "M5 20V10M12 20V4M19 20v-6",
-  recursos: "M12 7c-1.5-1.3-3.5-2-6-2H4v13h2c2.5 0 4.5.7 6 2m0-13c1.5-1.3 3.5-2 6-2h2v13h-2c-2.5 0-4.5.7-6 2m0-13v13",
+  recursos:
+    "M12 7c-1.5-1.3-3.5-2-6-2H4v13h2c2.5 0 4.5.7 6 2m0-13c1.5-1.3 3.5-2 6-2h2v13h-2c-2.5 0-4.5.7-6 2m0-13v13",
 } as const;
 
 /**
@@ -99,6 +101,7 @@ export function ClientView() {
   const registros = useAppStore((s) => s.registros);
   const todasMediciones = useAppStore((s) => s.mediciones);
   const recursos = useAppStore((s) => s.recursos);
+  const retos = useAppStore((s) => s.retos);
   const upsertRegistro = useAppStore((s) => s.upsertRegistro);
 
   const [fecha, setFecha] = useState(claveFecha(new Date()));
@@ -115,10 +118,26 @@ export function ClientView() {
 
   /** Las costumbres de hoy y los recursos que su nutricionista le ha abierto. */
   const metas = useMemo(() => (client ? metasActivas(client) : []), [client]);
+  /**
+   * EL RETO EN EL QUE ESTÁ, SI ESTÁ EN ALGUNO
+   *
+   * Una participante es una clienta más: sigue teniendo su plan y sus
+   * porciones. Lo que le añade el reto es un calendario compartido y unos
+   * recursos comunes.
+   */
+  const reto = useMemo(
+    () => (client ? retoDe(retos, client.id, fecha) : undefined),
+    [retos, client, fecha],
+  );
+
+  /** Los suyos más los del reto, sin repetir. */
   const susRecursos = useMemo(() => {
-    const dados = new Set(client?.recursos ?? []);
+    const dados = new Set([
+      ...(client?.recursos ?? []),
+      ...(reto?.recursos ?? []),
+    ]);
     return recursos.filter((r) => dados.has(r.id));
-  }, [recursos, client]);
+  }, [recursos, client, reto]);
 
   const imprimir = usePrintDocument(
     `Plan ${client?.nombre ?? ""} — Fase ${plan?.fase ?? ""}`.trim(),
@@ -457,6 +476,29 @@ export function ClientView() {
 
         {tab === "hoy" && (
           <div className="space-y-5">
+            {/*
+              EL RETO, LO PRIMERO
+              ==========================================================
+              Quien está en un reto lo está viviendo como un reto: el día en el
+              que va es la mitad de la motivación. Va arriba del todo y en una
+              línea, sin robarle sitio a la comida.
+            */}
+            {reto && estadoDelReto(reto, fecha) !== "terminado" && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-brand-300 bg-brand-600 px-4 py-2.5 no-print">
+                <span className="text-sm font-semibold text-white">
+                  {reto.nombre}
+                </span>
+                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
+                  {textoDelDia(reto, fecha)}
+                </span>
+                {reto.descripcion && (
+                  <span className="min-w-0 flex-1 truncate text-xs text-white/80">
+                    {reto.descripcion}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/*
               La cita va arriba y en una línea: es lo único de la app que pasa
               fuera de la app, y enterarse el día después no sirve de nada.
