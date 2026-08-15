@@ -73,10 +73,11 @@ describe('El día de quien cuenta macros', () => {
     abrir();
   };
 
-  it('lo que se abre es el contador del día', () => {
+  it('lo que se abre es el contador del día, por comidas', () => {
     enFase4();
     expect(screen.getByText('Lo que llevas hoy')).toBeTruthy();
-    expect(screen.getByPlaceholderText(/Qué has comido/i)).toBeTruthy();
+    // Cada comida del plan con su propio botón de añadir.
+    expect(screen.getAllByText(/Añadir a /i).length).toBeGreaterThan(1);
   });
 
   it('sin comidas que marcar ni extras que apuntar aparte', () => {

@@ -3,6 +3,7 @@ import type { Alimento, Nutrientes100 } from '../../types/food';
 import type { Bocado } from '../../types/diary';
 import type { DayType } from '../../types/plan';
 import {
+  bocadosPorComida,
   comoVaElDia,
   estadoDeConteo,
   macrosDeCantidad,
@@ -99,6 +100,14 @@ export function ContadorDia({
   const total = useMemo(() => totalContado(bocados), [bocados]);
   const hayAlgo = bocados.length > 0;
 
+  /** Qué comida tiene el formulario abierto. Sólo una a la vez. */
+  const [anadiendo, setAnadiendo] = useState<string | null>(null);
+
+  const porComida = useMemo(
+    () => bocadosPorComida(dayType.meals, bocados),
+    [dayType.meals, bocados],
+  );
+
   return (
     <section className="rounded-2xl border border-brand-200 bg-white p-4 no-print sm:p-5">
       <h2 className="text-sm font-bold tracking-wide text-brand-800 uppercase">Lo que llevas hoy</h2>
@@ -117,38 +126,84 @@ export function ContadorDia({
         {comoVaElDia(total, objetivo, hayAlgo)}
       </p>
 
-      {!soloLectura && <AnadirBocado foods={foods} onAnadir={onAnadir} />}
+      {/*
+        LO APUNTADO, POR COMIDAS
+        ==============================================================
+        El día se juzga entero —lo que manda es el total de arriba— pero la
+        lista va por comidas: en una lista corrida hay que acordarse de qué has
+        metido ya, y por comidas se ve de un vistazo que falta la cena.
 
-      {/* ── Lo apuntado ────────────────────────────────── */}
-      {hayAlgo ? (
-        <ul className="mt-3 divide-y divide-slate-100">
-          {bocados.map((b) => (
-            <li key={b.id} className="flex items-baseline gap-2 py-1.5 text-xs">
-              <span className="min-w-0 flex-1 text-slate-700">
-                {b.nombre}
-                <span className="tnum ml-1 text-slate-400">
-                  {fmt(b.cantidad)} {b.unidad ?? 'g'}
-                </span>
-              </span>
-              <span className="tnum shrink-0 text-slate-500">
-                P {fmt(b.macros.proteina)} · HC {fmt(b.macros.hc)} · G {fmt(b.macros.grasa)}
-              </span>
-              <span className="tnum w-16 shrink-0 text-right text-slate-700">
-                {fmt(b.kcal)} kcal
+        Cada comida tiene su propio «añadir», así que no hay que decir en un
+        desplegable dónde va lo que acabas de comer: se apunta donde se mira.
+      */}
+      <div className="mt-4 space-y-1">
+        {porComida.map(({ meal, bocados: suyos, total: suTotal }) => (
+          <div key={meal.id} className="border-t border-slate-100 pt-2">
+            <div className="flex items-baseline gap-2">
+              <span className="flex-1 text-xs font-semibold text-brand-800">{meal.nombre}</span>
+              <span className="tnum text-[11px] text-slate-500">
+                {suyos.length ? `${fmt(suTotal.kcal)} kcal` : ''}
               </span>
               {!soloLectura && (
                 <button
-                  onClick={() => onQuitar(b.id)}
-                  className="text-slate-300 transition hover:text-rose-600"
-                  aria-label={`Quitar ${b.nombre}`}
+                  onClick={() => setAnadiendo(anadiendo === meal.id ? null : meal.id)}
+                  aria-expanded={anadiendo === meal.id}
+                  className={`rounded-lg border px-2 py-1 text-[11px] font-medium transition ${
+                    anadiendo === meal.id
+                      ? 'border-brand-400 bg-brand-50 text-brand-900'
+                      : 'border-slate-200 text-slate-600 hover:border-brand-300 hover:text-brand-700'
+                  }`}
                 >
-                  ×
+                  {anadiendo === meal.id ? 'Cerrar' : `Añadir a ${meal.nombre.toLowerCase()}`}
                 </button>
               )}
-            </li>
-          ))}
-        </ul>
-      ) : (
+            </div>
+
+            {suyos.length > 0 && (
+              <ul className="mt-0.5 divide-y divide-slate-50">
+                {suyos.map((b) => (
+                  <li key={b.id} className="flex items-baseline gap-2 py-1 text-xs">
+                    <span className="min-w-0 flex-1 text-slate-700">
+                      {b.nombre}
+                      <span className="tnum ml-1 text-slate-400">
+                        {fmt(b.cantidad)} {b.unidad ?? 'g'}
+                      </span>
+                    </span>
+                    <span className="tnum hidden shrink-0 text-slate-500 sm:inline">
+                      P {fmt(b.macros.proteina)} · HC {fmt(b.macros.hc)} · G {fmt(b.macros.grasa)}
+                    </span>
+                    <span className="tnum w-16 shrink-0 text-right text-slate-700">
+                      {fmt(b.kcal)} kcal
+                    </span>
+                    {!soloLectura && (
+                      <button
+                        onClick={() => onQuitar(b.id)}
+                        className="text-slate-300 transition hover:text-rose-600"
+                        aria-label={`Quitar ${b.nombre}`}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {anadiendo === meal.id && (
+              <AnadirBocado
+                foods={foods}
+                momento={meal.id}
+                onAnadir={(bocado, nuevo) => {
+                  onAnadir(bocado, nuevo);
+                  setAnadiendo(null);
+                }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {!hayAlgo && (
         <p className="mt-3 text-xs text-slate-400">
           {soloLectura ? 'No ha apuntado nada todavía.' : 'Lo que vayas apuntando sale aquí.'}
         </p>
@@ -170,9 +225,12 @@ export function ContadorDia({
  */
 function AnadirBocado({
   foods,
+  momento,
   onAnadir,
 }: {
   foods: Alimento[];
+  /** La comida desde la que se ha abierto: se apunta ahí sin preguntar. */
+  momento: string;
   onAnadir: (bocado: Bocado, alimentoNuevo?: Alimento) => void;
 }) {
   const [foodId, setFoodId] = useState<string | undefined>();
@@ -234,6 +292,7 @@ function AnadirBocado({
         unidad: food?.unidad ?? 'g',
         macros: calculado.macros,
         kcal: calculado.kcal,
+        momento,
         hora: new Date().toISOString().slice(11, 16),
       },
       nuevo,
@@ -242,14 +301,14 @@ function AnadirBocado({
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
       {!porEtiqueta ? (
         <FoodPicker
           foods={foods}
           value={foodId}
           nombreLibre={nombre}
           placeholder="Qué has comido: pollo, avena, yogur…"
-          autoFocus={false}
+          autoFocus
           onSelect={(f) => {
             setFoodId(f.id);
             setNombre(f.nombre);

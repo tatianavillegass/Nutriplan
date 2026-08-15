@@ -15,7 +15,11 @@ const DIA: DayType = {
   nombre: 'Día base',
   proteinaGkg: 2,
   hcGkg: 3,
-  meals: [{ id: 'comida', nombre: 'Comida', slot: 'comida', orden: 1 }],
+  meals: [
+    { id: 'desayuno', nombre: 'Desayuno', slot: 'desayuno', orden: 1 },
+    { id: 'comida', nombre: 'Comida', slot: 'comida', orden: 2 },
+    { id: 'cena', nombre: 'Cena', slot: 'cena', orden: 3 },
+  ],
   grid: { comida: { proteicos_magros: 4, almidones: 3, grasas: 2 } },
   notas: {},
 };
@@ -41,7 +45,12 @@ const BOCADO: Bocado = {
   unidad: 'g',
   macros: { proteina: 34.5, hc: 0, grasa: 3 },
   kcal: 165,
+  momento: 'comida',
 };
+
+/** Abre el formulario de una comida: cada una tiene el suyo. */
+const abrirEn = (comida: string) =>
+  fireEvent.click(screen.getByText(new RegExp(`Añadir a ${comida}`, 'i')));
 
 /**
  * EL CONTADOR DE LA FASE 4
@@ -78,6 +87,40 @@ describe('Lo que ve quien cuenta macros', () => {
     expect(screen.getByText('Lo que llevas hoy')).toBeTruthy();
   });
 
+  /**
+   * En una lista corrida hay que acordarse de qué has metido ya; por comidas se
+   * ve de un vistazo que falta la cena.
+   */
+  it('lo apuntado se reparte por comidas', () => {
+    pintar([BOCADO]);
+    expect(screen.getByText('Desayuno')).toBeTruthy();
+    expect(screen.getByText('Comida')).toBeTruthy();
+    expect(screen.getByText('Cena')).toBeTruthy();
+    // Y cada comida lleva su propia cuenta, aparte de la línea del alimento.
+    expect(screen.getAllByText('165 kcal').length).toBe(2);
+  });
+
+  it('cada comida tiene su propio botón de añadir', () => {
+    const onAnadir = vi.fn();
+    pintar([], onAnadir);
+    abrirEn('cena');
+
+    fireEvent.change(screen.getByPlaceholderText(/Qué has comido/i), {
+      target: { value: 'pollo' },
+    });
+    fireEvent.click(screen.getByText(/Pechuga de pollo/));
+    fireEvent.click(screen.getByText('Añadir'));
+
+    const [bocado] = onAnadir.mock.calls[0];
+    expect(bocado.momento).toBe('cena');
+  });
+
+  /** Lo de antes de que hubiera comidas no se pierde: cae en la última. */
+  it('lo apuntado sin comida no desaparece', () => {
+    pintar([{ ...BOCADO, momento: undefined }]);
+    expect(screen.getByText(/Pechuga de pollo/)).toBeTruthy();
+  });
+
   it('con el día vacío no se le juzga', () => {
     pintar();
     expect(screen.getByText(/Todavía no has apuntado nada/i)).toBeTruthy();
@@ -101,6 +144,7 @@ describe('Lo que ve quien cuenta macros', () => {
   it('se busca el alimento, se ponen los gramos y se añade', () => {
     const onAnadir = vi.fn();
     pintar([], onAnadir);
+    abrirEn('comida');
 
     fireEvent.change(screen.getByPlaceholderText(/Qué has comido/i), {
       target: { value: 'pollo' },
@@ -120,6 +164,7 @@ describe('Lo que ve quien cuenta macros', () => {
   it('lo que no está en la lista se apunta con su etiqueta', () => {
     const onAnadir = vi.fn();
     pintar([], onAnadir);
+    abrirEn('desayuno');
 
     fireEvent.click(screen.getByText(/Copia su etiqueta/i));
     expect(screen.getByText(/Por 100 g, según la etiqueta/i)).toBeTruthy();

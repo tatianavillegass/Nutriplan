@@ -74,6 +74,38 @@ export function totalContado(bocados: Bocado[] | undefined): ObjetivoDia {
 }
 
 /**
+ * LO APUNTADO, POR COMIDAS
+ *
+ * El día se juzga entero —lo que manda es el total—, pero la lista se lee por
+ * comidas: así se ve de un vistazo que falta la cena sin tener que acordarse
+ * de qué se ha metido ya. Lo que se apuntó antes de que existieran las comidas
+ * no se pierde: cae en el último cajón.
+ */
+export interface ComidaContada<M extends { id: string; nombre: string }> {
+  meal: M;
+  bocados: Bocado[];
+  total: ObjetivoDia;
+}
+
+export function bocadosPorComida<M extends { id: string; nombre: string }>(
+  comidas: M[],
+  bocados: Bocado[] | undefined,
+): ComidaContada<M>[] {
+  const todos = bocados ?? [];
+  const conocidas = new Set(comidas.map((m) => m.id));
+
+  return comidas.map((meal, i) => {
+    const suyos = todos.filter(
+      (b) =>
+        b.momento === meal.id ||
+        // Sin comida —o de una que ya no existe— va al último cajón, no se tira.
+        (i === comidas.length - 1 && (!b.momento || !conocidas.has(b.momento))),
+    );
+    return { meal, bocados: suyos, total: totalContado(suyos) };
+  });
+}
+
+/**
  * DE QUÉ COLOR VA CADA MACRO
  *
  * El mismo lenguaje que en los anillos: ámbar te queda, verde está, rojo te

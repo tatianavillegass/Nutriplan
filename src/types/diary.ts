@@ -47,6 +47,12 @@ export interface Bocado {
   /** Macros de esa cantidad, no por 100 g. */
   macros: MacroGrams;
   kcal: number;
+  /**
+   * En qué comida se lo comió. El día se sigue juzgando entero —lo que manda
+   * es el total—, pero apuntar «a secas» obliga a recordar qué has metido ya:
+   * por comidas se lee de un vistazo si falta la cena.
+   */
+  momento?: string;
   /** Hora a la que se apuntó, sólo para ordenarlo. */
   hora?: string;
 }

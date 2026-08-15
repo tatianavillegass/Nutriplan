@@ -7,7 +7,7 @@ import type { Alimento } from '../../types/food';
 import type { RegistroDia } from '../../types/diary';
 import { claveFecha, fechaLegible } from '../../types/diary';
 import { balanceDelDia, extrasDeComida, gramosMarcados } from '../../utils/diary';
-import { objetivoDelDia, totalContado } from '../../utils/conteo';
+import { bocadosPorComida, objetivoDelDia, totalContado } from '../../utils/conteo';
 import {
   observarRegistrosEnVivo,
   observarEstadoVivo,
@@ -88,6 +88,7 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
   const bocados = registro?.bocados ?? [];
   const contado = totalContado(bocados);
   const objetivo = objetivoDelDia(dayType);
+  const porComida = bocadosPorComida(dayType.meals, bocados);
 
   return (
     <Card
@@ -158,26 +159,36 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
               {fmt(objetivo.proteina)} · HC {fmt(contado.hc)}/{fmt(objetivo.hc)} · G{' '}
               {fmt(contado.grasa)}/{fmt(objetivo.grasa)} g
             </p>
+            {/* Por comidas, igual que lo ve ella: así se compara sin traducir. */}
             <ul className="space-y-1">
-              {bocados.map((b) => (
-                <li
-                  key={b.id}
-                  className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
-                >
-                  {b.hora && (
-                    <span className="tnum w-10 shrink-0 text-[10px] text-slate-400">{b.hora}</span>
-                  )}
-                  <span className="flex-1 text-slate-700">
-                    {b.nombre}
-                    <span className="tnum ml-1 text-slate-400">
-                      {fmt(b.cantidad)} {b.unidad ?? 'g'}
-                    </span>
-                  </span>
-                  <span className="tnum shrink-0 text-[11px] text-slate-500">
-                    {fmt(b.kcal)} kcal
-                  </span>
-                </li>
-              ))}
+              {porComida
+                .filter((c) => c.bocados.length > 0)
+                .map(({ meal, bocados: suyos, total }) => (
+                  <li key={meal.id} className="rounded-lg border border-slate-200 px-2.5 py-1.5">
+                    <p className="flex items-baseline gap-2 text-[10px] tracking-wide text-slate-400 uppercase">
+                      <span className="flex-1">{meal.nombre}</span>
+                      <span className="tnum">{fmt(total.kcal)} kcal</span>
+                    </p>
+                    {suyos.map((b) => (
+                      <p key={b.id} className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                        {b.hora && (
+                          <span className="tnum w-10 shrink-0 text-[10px] text-slate-400">
+                            {b.hora}
+                          </span>
+                        )}
+                        <span className="flex-1 text-slate-700">
+                          {b.nombre}
+                          <span className="tnum ml-1 text-slate-400">
+                            {fmt(b.cantidad)} {b.unidad ?? 'g'}
+                          </span>
+                        </span>
+                        <span className="tnum shrink-0 text-[11px] text-slate-500">
+                          {fmt(b.kcal)} kcal
+                        </span>
+                      </p>
+                    ))}
+                  </li>
+                ))}
             </ul>
           </>
         )
