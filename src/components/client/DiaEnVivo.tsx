@@ -7,6 +7,7 @@ import type { Alimento } from '../../types/food';
 import type { RegistroDia } from '../../types/diary';
 import { claveFecha, fechaLegible } from '../../types/diary';
 import { balanceDelDia, extrasDeComida, gramosMarcados } from '../../utils/diary';
+import { objetivoDelDia, totalContado } from '../../utils/conteo';
 import {
   observarRegistrosEnVivo,
   observarEstadoVivo,
@@ -83,6 +84,11 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
   const hechas = comidas.filter((m) => (registro?.cumplidas ?? []).includes(m.id)).length;
   const extras = registro?.extras ?? [];
 
+  /** Fase 4: lo que ha apuntado hoy, con el objetivo del día para compararlo. */
+  const bocados = registro?.bocados ?? [];
+  const contado = totalContado(bocados);
+  const objetivo = objetivoDelDia(dayType);
+
   return (
     <Card
       title="Hoy, en directo"
@@ -129,11 +135,53 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
         {fechaLegible(hoy)} · <strong className="font-medium text-slate-700">{dayType.nombre}</strong>{' '}
         · Fase {plan.fase} ·{' '}
         <strong className="font-medium text-slate-700">
-          {hechas} de {comidas.length} comidas hechas
+          {plan.fase === 4
+            ? `${bocados.length} ${bocados.length === 1 ? 'cosa apuntada' : 'cosas apuntadas'}`
+            : `${hechas} de ${comidas.length} comidas hechas`}
         </strong>
       </p>
 
-      {!registro ? (
+      {/*
+        En fase 4 no hay comidas que marcar: lo que hay es una lista de lo que
+        ha comido y sus gramos. Leyendo comidas, esta tarjeta se quedaba en
+        blanco justo con las clientas que más al día están.
+      */}
+      {plan.fase === 4 ? (
+        !bocados.length ? (
+          <p className="text-xs text-slate-500">
+            {client.nombre.split(' ')[0]} todavía no ha apuntado nada hoy.
+          </p>
+        ) : (
+          <>
+            <p className="tnum mb-2 text-xs text-slate-700">
+              {fmt(contado.kcal)} kcal de {fmt(objetivo.kcal)} · P {fmt(contado.proteina)}/
+              {fmt(objetivo.proteina)} · HC {fmt(contado.hc)}/{fmt(objetivo.hc)} · G{' '}
+              {fmt(contado.grasa)}/{fmt(objetivo.grasa)} g
+            </p>
+            <ul className="space-y-1">
+              {bocados.map((b) => (
+                <li
+                  key={b.id}
+                  className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
+                >
+                  {b.hora && (
+                    <span className="tnum w-10 shrink-0 text-[10px] text-slate-400">{b.hora}</span>
+                  )}
+                  <span className="flex-1 text-slate-700">
+                    {b.nombre}
+                    <span className="tnum ml-1 text-slate-400">
+                      {fmt(b.cantidad)} {b.unidad ?? 'g'}
+                    </span>
+                  </span>
+                  <span className="tnum shrink-0 text-[11px] text-slate-500">
+                    {fmt(b.kcal)} kcal
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      ) : !registro ? (
         <p className="text-xs text-slate-500">
           {client.nombre.split(' ')[0]} todavía no ha abierto su plan hoy.
         </p>

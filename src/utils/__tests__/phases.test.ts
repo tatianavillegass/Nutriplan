@@ -285,18 +285,24 @@ describe('Fase 3 — presupuesto del día', () => {
   });
 });
 
-// ─────────────────────────── LAS TRES FASES
+// ─────────────────────────── LAS FASES
 
-describe('Las tres fases de entrega', () => {
+describe('Las fases de entrega', () => {
   it('están definidas en orden de autonomía creciente', () => {
-    expect(FASES.map((f) => f.fase)).toEqual([1, 2, 3]);
-    expect(FASES.map((f) => f.autonomia)).toEqual(['Baja', 'Media', 'Alta']);
+    expect(FASES.map((f) => f.fase)).toEqual([1, 2, 3, 4]);
+    expect(FASES.map((f) => f.autonomia)).toEqual(['Baja', 'Media', 'Alta', 'Total']);
   });
 
   it('cada una describe qué recibe el cliente', () => {
     expect(FASE_POR_NUMERO[1].titulo).toMatch(/recetas/i);
     expect(FASE_POR_NUMERO[2].titulo).toMatch(/cantidades/i);
     expect(FASE_POR_NUMERO[3].titulo).toMatch(/intercambios/i);
+    expect(FASE_POR_NUMERO[4].titulo).toMatch(/macros/i);
+  });
+
+  /** La 4 es el alta, no el principio: quien entra nuevo no cuenta gramos. */
+  it('la última es para quien ya se maneja sola', () => {
+    expect(FASE_POR_NUMERO[4].paraQuien).toMatch(/domina|sola/i);
   });
 
   it('las tres presentan los mismos intercambios pautados', () => {

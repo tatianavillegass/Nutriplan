@@ -5,6 +5,8 @@ import { MealOptionsBoard } from "../components/phase2/MealOptionsBoard";
 import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
 import { FoodPortionPicker } from "../components/phase3/FoodPortionPicker";
 import { PresupuestoDia } from "../components/phase3/PresupuestoDia";
+import { ContadorDia } from "../components/phase4/ContadorDia";
+import { RecetasDeConsulta } from "../components/phase4/RecetasDeConsulta";
 import { CalculadoraPorciones } from "../components/phase3/CalculadoraPorciones";
 import { ScaledRecipeView } from "../components/phase1/ScaledRecipeView";
 import { MealCard } from "../components/client/MealCard";
@@ -266,7 +268,7 @@ export function ClientView() {
   const completasAntes = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!plan || plan.fase === 1 || !dayType) return;
+    if (!plan || plan.fase === 1 || plan.fase === 4 || !dayType) return;
 
     const seleccion = seleccionPorBucket(porciones, foods);
     const yaHechas = registro?.cumplidas ?? [];
@@ -625,8 +627,49 @@ export function ClientView() {
               <PresupuestoDia dayType={dayType} seleccion={porGrupo} />
             )}
 
+            {/*
+          FASE 4: el día entero es esta pantalla. No hay comidas que marcar ni
+          porciones que elegir, así que todo lo de abajo sobra: se apunta lo
+          que se come y se ve cómo va.
+        */}
+            {plan.fase === 4 && (
+              <ContadorDia
+                dayType={dayType}
+                bocados={registro?.bocados ?? []}
+                foods={foods}
+                onAnadir={(bocado, alimentoNuevo) =>
+                  guardar({
+                    bocados: [...(registro?.bocados ?? []), bocado],
+                    ...(alimentoNuevo
+                      ? {
+                          alimentosPropios: [
+                            ...(registro?.alimentosPropios ?? []),
+                            alimentoNuevo,
+                          ],
+                        }
+                      : {}),
+                  })
+                }
+                onQuitar={(id) =>
+                  guardar({
+                    bocados: (registro?.bocados ?? []).filter(
+                      (b) => b.id !== id,
+                    ),
+                  })
+                }
+              />
+            )}
+
+            {plan.fase === 4 && (
+              <RecetasDeConsulta
+                dayType={dayType}
+                recipes={recipes}
+                foods={foods}
+              />
+            )}
+
             {/* Las comidas del día, que se van llenando */}
-            {plan.fase !== 3 && (
+            {plan.fase !== 3 && plan.fase !== 4 && (
               <DayProgressBar
                 dayType={dayType}
                 porciones={porciones}
@@ -640,8 +683,12 @@ export function ClientView() {
               />
             )}
 
-            {/* Cómo va el día */}
-            <div className="tnum flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl bg-slate-50 px-4 py-2.5 text-xs no-print">
+            {/* Cómo va el día. En fase 4 esto ya está arriba, en gramos. */}
+            <div
+              className={`tnum flex-wrap items-center gap-x-5 gap-y-1 rounded-xl bg-slate-50 px-4 py-2.5 text-xs no-print ${
+                plan.fase === 4 ? "hidden" : "flex"
+              }`}
+            >
               <span className="font-medium text-slate-700">
                 {fmt(balance.kcalTotal)} kcal
                 <span className="ml-1 font-normal text-slate-400">
@@ -885,13 +932,21 @@ export function ClientView() {
                 </div>
               ))}
 
-            <ExtrasPanel
-              extras={extras}
-              foods={foods}
-              balance={balance}
-              nombreMomento={nombreMomento}
-              onChange={(nuevos) => guardar({ extras: nuevos })}
-            />
+            {/*
+          Los extras son «lo que me he comido de más sobre el plan», y en fase
+          4 no hay plan que superar: todo lo que come se apunta arriba. Dejarlo
+          aquí sería pedirle que apunte la misma comida dos veces con dos
+          nombres distintos.
+        */}
+            {plan.fase !== 4 && (
+              <ExtrasPanel
+                extras={extras}
+                foods={foods}
+                balance={balance}
+                nombreMomento={nombreMomento}
+                onChange={(nuevos) => guardar({ extras: nuevos })}
+              />
+            )}
           </div>
         )}
       </div>

@@ -26,6 +26,31 @@ export interface Extra {
 /** mealId → foodId → número de porciones marcadas. */
 export type PorcionesMarcadas = Record<string, Record<string, number>>;
 
+/**
+ * UN BOCADO (FASE 4)
+ *
+ * Lo que se apunta cuando ya no hay porciones: un alimento y sus gramos, con
+ * los macros que salen de ahí. Tiene la misma forma que un extra, pero vive
+ * aparte a propósito: un extra es lo que te has comido **de más** sobre el
+ * plan, y en fase 4 no hay plan que superar — todo lo que come es el día.
+ * Mezclarlos haría que el resumen del desvío contara como exceso la comida
+ * entera.
+ */
+export interface Bocado {
+  id: string;
+  nombre: string;
+  /** Si viene del catálogo, para poder recalcularlo. */
+  foodId?: string;
+  /** Gramos o mililitros de lo que se ha comido. */
+  cantidad: number;
+  unidad?: string;
+  /** Macros de esa cantidad, no por 100 g. */
+  macros: MacroGrams;
+  kcal: number;
+  /** Hora a la que se apuntó, sólo para ordenarlo. */
+  hora?: string;
+}
+
 export interface RegistroDia {
   id: string;
   clientId: string;
@@ -67,6 +92,11 @@ export interface RegistroDia {
    * cualquier otro alimento sin tocar ni una cuenta.
    */
   alimentosPropios?: Alimento[];
+  /**
+   * Fase 4: lo que ha comido hoy, en gramos. No hay comidas ni porciones que
+   * marcar, así que esta lista es el día entero.
+   */
+  bocados?: Bocado[];
   notas?: string;
 }
 

@@ -2,7 +2,7 @@ import type { ExchangeGroupId } from "../data/exchangeGroups";
 import type { MacroBucket } from "../data/exchangeGroups";
 import type { MealSlot } from "./food";
 
-export type Phase = 1 | 2 | 3;
+export type Phase = 1 | 2 | 3 | 4;
 
 export interface FaseInfo {
   fase: Phase;
@@ -14,10 +14,11 @@ export interface FaseInfo {
 }
 
 /**
- * LAS TRES FASES DE ENTREGA
+ * LAS FASES DE ENTREGA
  *
  * Progresión natural: el cliente entra en la 1 y va ganando autonomía.
  * Cambiar de fase nunca toca los intercambios pautados, sólo la presentación.
+ * La 4 es la salida: los mismos macros del plan, contados en gramos.
  */
 export const FASES: FaseInfo[] = [
   {
@@ -45,6 +46,15 @@ export const FASES: FaseInfo[] = [
     recibe: '"Proteína: escoge 3" y la lista de la que escoger',
     paraQuien: "Cliente con experiencia, come fuera, quiere flexibilidad",
     autonomia: "Alta",
+  },
+  {
+    fase: 4,
+    titulo: "Conteo de macros",
+    resumen: "Los macros del día en gramos, sin porciones de por medio",
+    recibe: '"1.900 kcal · P 140 · HC 190 · G 60" y lo que va apuntando',
+    paraQuien:
+      "Quien ya domina el sistema y va a seguir sola: es el alta, no el principio",
+    autonomia: "Total",
   },
 ];
 

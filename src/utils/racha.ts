@@ -25,6 +25,13 @@ export function diaCerrado(
 ): boolean {
   if (!registro || !dayType) return false;
 
+  /**
+   * En fase 4 no hay comidas que marcar: el día se cierra apuntando lo que se
+   * ha comido. Sin esto, quien cuenta macros perdía la racha todos los días
+   * haciéndolo bien.
+   */
+  if ((registro.bocados?.length ?? 0) > 0) return true;
+
   const comidas = comidasConPauta(dayType);
   if (!comidas.length) return false;
 

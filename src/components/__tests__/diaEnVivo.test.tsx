@@ -41,10 +41,10 @@ const RECETA: Receta = {
   updatedAt: '',
 };
 
-const plan = (fase: 1 | 2 | 3): Plan =>
+const plan = (fase: 1 | 2 | 3 | 4): Plan =>
   ({ id: 'p1', clientId: 'cl_1', fase, dayTypes: [DIA_BASE], envio: { fecha: HOY } }) as unknown as Plan;
 
-const pintar = (fase: 1 | 2 | 3, registro: RegistroDia) =>
+const pintar = (fase: 1 | 2 | 3 | 4, registro: RegistroDia) =>
   render(
     <DiaEnVivo
       client={CLIENTE}
@@ -89,6 +89,36 @@ describe('El directo entiende las tres fases', () => {
   it('si no ha marcado nada en fase 2 lo dice como tal', () => {
     pintar(2, { ...registroVacio('cl_1', HOY, 'rg1'), dayTypeId: 'dt_base', cumplidas: ['comida'] });
     expect(screen.getByText('sin marcar')).toBeTruthy();
+  });
+
+  /**
+   * En fase 4 no hay comidas que marcar: leyendo comidas, esta tarjeta se
+   * quedaba en blanco justo con las clientas que más al día están.
+   */
+  it('en fase 4 enseña lo que ha apuntado, con sus gramos', () => {
+    pintar(4, {
+      ...registroVacio('cl_1', HOY, 'rg1'),
+      dayTypeId: 'dt_base',
+      bocados: [
+        {
+          id: 'b1',
+          nombre: 'Pechuga de pollo',
+          cantidad: 150,
+          unidad: 'g',
+          macros: { proteina: 34.5, hc: 0, grasa: 3 },
+          kcal: 165,
+          hora: '14:20',
+        },
+      ],
+    });
+    expect(screen.getByText(/Pechuga de pollo/)).toBeTruthy();
+    expect(document.body.textContent).toContain('150 g');
+    expect(screen.getByText(/1 cosa apuntada/)).toBeTruthy();
+  });
+
+  it('y si no ha apuntado nada en fase 4, lo dice', () => {
+    pintar(4, { ...registroVacio('cl_1', HOY, 'rg1'), dayTypeId: 'dt_base' });
+    expect(screen.getByText(/todavía no ha apuntado nada/i)).toBeTruthy();
   });
 
   it('enseña de qué tipo de día va el registro', () => {

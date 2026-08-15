@@ -2,8 +2,10 @@ import type { Phase } from '../../types/plan';
 import { FASES } from '../../types/plan';
 
 /**
- * Selector de fase de entrega. Las tres son una progresión de autonomía:
- * el cliente empieza en la 1 y va subiendo cuando ya sabe manejarse.
+ * Selector de fase de entrega. Son una progresión de autonomía: el cliente
+ * empieza en la 1 y va subiendo cuando ya sabe manejarse. La 4 es la salida y
+ * por eso se avisa de lo que implica: quien cuenta macros deja de tener
+ * porciones que marcar, y eso no le sirve a cualquiera.
  */
 export function PhaseSelector({ value, onChange }: { value: Phase; onChange: (p: Phase) => void }) {
   return (
@@ -55,6 +57,15 @@ export function PhaseSelector({ value, onChange }: { value: Phase; onChange: (p:
         Cambiar de fase <strong>no modifica los intercambios pautados</strong>: solo cambia cómo se le
         presenta el plan al cliente.
       </p>
+
+      {value === 4 && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-900 lg:col-span-3">
+          En fase 4 cuenta gramos: se le van los platos, las porciones y las comidas, y se queda con
+          el objetivo del día y lo que apunta. Es para cerrar el proceso con quien ya se maneja
+          sola. Con quien lleva mal la relación con la comida, contar puede hacer más daño que
+          bien; si dudas, la fase 3 hace lo mismo sin números.
+        </p>
+      )}
     </div>
   );
 }

@@ -60,6 +60,38 @@ describe('El día de la clienta se abre', () => {
   });
 });
 
+/**
+ * FASE 4: LA MISMA APP, CONTANDO GRAMOS
+ *
+ * Se le van las comidas, las porciones y los extras, y se queda el contador
+ * del día. Las recetas siguen ahí, plegadas: terminar el proceso no es perder
+ * el material que ya conocía.
+ */
+describe('El día de quien cuenta macros', () => {
+  const enFase4 = () => {
+    useAppStore.setState({ plans: [{ ...DEMO_PLAN, fase: 4 }] });
+    abrir();
+  };
+
+  it('lo que se abre es el contador del día', () => {
+    enFase4();
+    expect(screen.getByText('Lo que llevas hoy')).toBeTruthy();
+    expect(screen.getByPlaceholderText(/Qué has comido/i)).toBeTruthy();
+  });
+
+  it('sin comidas que marcar ni extras que apuntar aparte', () => {
+    enFase4();
+    expect(screen.queryByText('Marcar hecha')).toBeNull();
+    expect(screen.queryByText(/Añadir extra/i)).toBeNull();
+  });
+
+  /** Sin recetas asignadas no se enseña una sección vacía. */
+  it('y sin recetas asignadas no aparece el apartado', () => {
+    enFase4();
+    expect(screen.queryByText('Tus recetas')).toBeNull();
+  });
+});
+
 describe('Las tres pestañas', () => {
   it('el resumen enseña constancia y comidas fuera', () => {
     abrir();
