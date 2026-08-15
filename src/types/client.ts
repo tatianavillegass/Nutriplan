@@ -41,6 +41,15 @@ export interface Client {
   preferencias: string[];   // tags que alimentan el matcher de recetas
   /** Fórmula de % graso elegida para los informes de antropometría. */
   formulaGrasa?: 'faulkner' | 'yuhasz' | 'durnin_womersley';
+  /**
+   * Sobre qué peso se calculan los gramos por kilo: el total, el ajustado o la
+   * masa libre de grasa. Ver `utils/pesoReferencia.ts` — pautar 2 g/kg sobre
+   * el peso total sobreestima en cuanto hay mucha grasa.
+   *
+   * Sólo afecta a los g/kg. Las calorías salen del gasto, y el gasto se
+   * calcula con el peso real: mover un cuerpo pesa lo que pesa.
+   */
+  basePeso?: 'total' | 'ajustado' | 'magra';
   notas?: string;
   /**
    * RECURSOS HABILITADOS

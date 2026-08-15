@@ -7,6 +7,7 @@ import { CalorieCalculator } from "../components/common/CalorieCalculator";
 import { PhaseSelector } from "../components/common/PhaseSelector";
 import { ValidationPanel } from "../components/common/ValidationPanel";
 import { MacroTargets } from "../components/planning/MacroTargets";
+import { pesoDeReferencia } from "../utils/pesoReferencia";
 import { ExchangeGrid } from "../components/planning/ExchangeGrid";
 import { PlanSchemaTable } from "../components/phase2/PlanSchemaTable";
 import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
@@ -112,9 +113,13 @@ export function ClientDetail() {
   };
   const registrosCliente = registros.filter((r) => r.clientId === client.id);
   const medicionesCliente = mediciones.filter((m) => m.clientId === client.id);
+  /**
+   * Los g/kg se multiplican por el peso de referencia, no siempre por el total:
+   * pautar sobre 110 kg da 220 g de proteína, que no necesita nadie.
+   */
   const planeado = planTargets(
     kcalDia,
-    client.peso,
+    pesoDeReferencia(client, medicionesCliente).kg,
     dayType.proteinaGkg,
     dayType.hcGkg,
   );
@@ -378,9 +383,11 @@ export function ClientDetail() {
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)]">
             <MacroTargets
               dayType={dayType}
-              peso={client.peso}
+              client={client}
+              mediciones={medicionesCliente}
               caloriasBase={caloriasBase}
               onChange={(patch) => updateDayType(plan.id, dayType.id, patch)}
+              onCliente={(patch) => updateClient(client.id, patch)}
             />
             <ValidationPanel planeado={planeado} pautado={pautado} />
           </div>
