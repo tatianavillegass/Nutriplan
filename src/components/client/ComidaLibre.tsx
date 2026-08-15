@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Input } from '../common/ui';
 
 interface Props {
@@ -49,6 +49,25 @@ export function ComidaLibre({
     onCerrar?.();
   };
 
+  /**
+   * BAJAR HASTA LO QUE SE ACABA DE ABRIR
+   *
+   * El botón «Libre» está en la cabecera de la comida y el formulario sale al
+   * final del bloque, que en un móvil queda fuera de pantalla: se pulsaba, no
+   * se movía nada, y parecía que el botón no hacía nada — o peor, que la
+   * comida ya estaba marcada. Con esto la pantalla va sola hasta el
+   * formulario.
+   *
+   * No se le pone el foco al campo a propósito: abriría el teclado y taparía
+   * medio formulario justo cuando hay que leerlo. La nota es opcional.
+   */
+  const caja = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!abierto) return;
+    caja.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  }, [abierto]);
+
   if (libre) {
     return (
       <div className="mt-1.5 rounded-lg border border-violet-200 bg-violet-50/60 px-3 py-2 no-print">
@@ -87,7 +106,7 @@ export function ComidaLibre({
           </button>
         </div>
       ) : (
-        <div className="rounded-lg border border-violet-200 bg-violet-50/60 p-3">
+        <div ref={caja} className="rounded-lg border border-violet-200 bg-violet-50/60 p-3">
           <p className="text-xs font-medium text-violet-900">
             Marcar {mealNombre.toLowerCase()} como comida libre
           </p>

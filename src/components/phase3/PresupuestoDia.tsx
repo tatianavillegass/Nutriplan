@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { DayType } from '../../types/plan';
-import type { MacroBucket } from '../../data/exchangeGroups';
 import {
   presupuestoDelDia,
   reservaAceiteDelDia,
@@ -13,18 +12,40 @@ interface Props {
   seleccion: SeleccionGrupos;
 }
 
-const TONO: Record<MacroBucket, { arco: string; pista: string; texto: string }> = {
-  proteina: { arco: 'stroke-brand-600', pista: 'stroke-brand-100', texto: 'text-brand-800' },
-  carbohidrato: { arco: 'stroke-amber-500', pista: 'stroke-amber-100', texto: 'text-amber-800' },
-  grasa: { arco: 'stroke-rose-400', pista: 'stroke-rose-100', texto: 'text-rose-800' },
-};
-
 /** «3», «3½». Las medias porciones son parte del sistema. */
 const porciones = (n: number): string => {
   const entero = Math.floor(n);
   const media = n - entero >= 0.5;
   if (!media) return String(entero);
   return entero === 0 ? '½' : `${entero}½`;
+};
+
+/**
+ * DE QUÉ COLOR VA CADA ANILLO
+ *
+ * Un color, una cosa: ámbar es «te queda por completar», verde es «ya está» y
+ * rojo es «te has pasado». Antes cada macro tenía su color y el de la grasa era
+ * rosa, así que un día a medias se veía igual de rojo que uno pasado.
+ *
+ * El margen es media porción, arriba y abajo. Nadie come un cuarto de porción:
+ * quedarse a 0,1 de la cuenta es haberla hecho, y pasarse 0,1 no es pasarse.
+ * Sin ese margen, la calculadora de etiquetas —que da decimales— pintaba de
+ * rojo días perfectamente bien comidos.
+ */
+const MEDIA_PORCION = 0.5;
+
+export type EstadoMacro = 'falta' | 'completo' | 'pasado';
+
+export function estadoDelMacro(restante: number): EstadoMacro {
+  if (restante >= MEDIA_PORCION) return 'falta';
+  if (restante <= -MEDIA_PORCION) return 'pasado';
+  return 'completo';
+}
+
+const COLOR: Record<EstadoMacro, { arco: string; texto: string }> = {
+  falta: { arco: 'stroke-amber-500', texto: 'text-amber-700' },
+  completo: { arco: 'stroke-emerald-500', texto: 'text-emerald-700' },
+  pasado: { arco: 'stroke-rose-500', texto: 'text-rose-700' },
 };
 
 /**
@@ -71,10 +92,9 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
       */}
       <div className="flex items-start justify-around gap-2">
         {macros.map((m) => {
-          const t = TONO[m.bucket];
+          const estado = estadoDelMacro(m.restante);
+          const c = COLOR[estado];
           const pct = m.pautado > 0 ? Math.min(1, m.elegido / m.pautado) : 0;
-          const pasado = m.restante < -0.01;
-          const completo = !pasado && m.restante < 0.01;
           const r = 18;
           const circunferencia = 2 * Math.PI * r;
 
@@ -82,41 +102,40 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
             <div key={m.bucket} className="min-w-0 text-center">
               <div className="relative inline-flex items-center justify-center">
                 <svg viewBox="0 0 44 44" className="h-20 w-20" aria-hidden>
-                  <circle cx="22" cy="22" r={r} fill="none" className={t.pista} strokeWidth="5" />
                   <circle
                     cx="22"
                     cy="22"
                     r={r}
                     fill="none"
-                    className={pasado ? 'stroke-rose-500' : t.arco}
+                    className="stroke-slate-100"
+                    strokeWidth="5"
+                  />
+                  <circle
+                    cx="22"
+                    cy="22"
+                    r={r}
+                    fill="none"
+                    className={c.arco}
                     strokeWidth="5"
                     strokeLinecap="round"
-                    strokeDasharray={`${circunferencia * (pasado ? 1 : pct)} ${circunferencia}`}
+                    strokeDasharray={`${circunferencia * (estado === 'pasado' ? 1 : pct)} ${circunferencia}`}
                     transform="rotate(-90 22 22)"
                   />
                 </svg>
-                <span
-                  className={`tnum absolute text-base font-bold ${
-                    pasado ? 'text-rose-700' : completo ? 'text-emerald-700' : t.texto
-                  }`}
-                >
+                <span className={`tnum absolute text-base font-bold ${c.texto}`}>
                   {porciones(m.elegido)}
                   <span className="font-normal text-slate-300">/</span>
                   {porciones(m.pautado)}
                 </span>
               </div>
 
-              <p className={`mt-0.5 truncate text-[11px] font-medium ${t.texto}`}>
+              <p className="mt-0.5 truncate text-[11px] font-medium text-slate-700">
                 {BUCKET_LABEL[m.bucket]}
               </p>
-              <p
-                className={`text-[10px] ${
-                  pasado ? 'text-rose-700' : completo ? 'text-emerald-700' : 'text-slate-500'
-                }`}
-              >
-                {pasado
+              <p className={`text-[10px] ${c.texto}`}>
+                {estado === 'pasado'
                   ? `${porciones(Math.abs(m.restante))} de más`
-                  : completo
+                  : estado === 'completo'
                     ? 'completo ✓'
                     : `te quedan ${porciones(m.restante)}`}
               </p>
@@ -137,7 +156,7 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
         <div className="mt-2 space-y-2.5">
           {macros.map((m) => (
             <div key={m.bucket}>
-              <p className={`text-[10px] font-medium tracking-wide uppercase ${TONO[m.bucket].texto}`}>
+              <p className="text-[10px] font-medium tracking-wide text-slate-500 uppercase">
                 {BUCKET_LABEL[m.bucket]}
               </p>
               <ul className="mt-0.5 space-y-0.5">
@@ -145,13 +164,7 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
                   <li key={g.grupo} className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-xs text-slate-600">{g.nombre}</span>
                     <span
-                      className={`tnum shrink-0 text-xs ${
-                        g.restante < -0.01
-                          ? 'text-rose-700'
-                          : g.restante < 0.01
-                            ? 'text-emerald-700'
-                            : 'text-slate-700'
-                      }`}
+                      className={`tnum shrink-0 text-xs ${COLOR[estadoDelMacro(g.restante)].texto}`}
                     >
                       {porciones(g.elegido)} de {porciones(g.pautado)}
                     </span>

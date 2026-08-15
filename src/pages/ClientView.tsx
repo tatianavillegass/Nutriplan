@@ -372,7 +372,12 @@ export function ClientView() {
       {!libres[mealId] && (
         <button
           onClick={() => setPidiendoLibre(mealId)}
-          className="rounded-lg border border-violet-200 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:bg-violet-50"
+          aria-pressed={pidiendoLibre === mealId}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+            pidiendoLibre === mealId
+              ? "border-violet-400 bg-violet-100 text-violet-900"
+              : "border-violet-200 text-violet-700 hover:bg-violet-50"
+          }`}
           title={`Marcar ${nombre.toLowerCase()} como comida libre`}
         >
           Libre

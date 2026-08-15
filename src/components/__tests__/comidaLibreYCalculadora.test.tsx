@@ -66,6 +66,27 @@ describe('Marcar una comida como libre', () => {
     expect(screen.getByText(/No hace falta contar nada/i)).toBeTruthy();
   });
 
+  /**
+   * El botón está arriba, en la cabecera, y el formulario sale al final del
+   * bloque: en un móvil eso queda fuera de pantalla. Se pulsaba, no se movía
+   * nada, y parecía que no se había marcado nada.
+   */
+  it('al abrirlo, la pantalla baja hasta el formulario', () => {
+    const bajar = vi.fn();
+    // jsdom no mueve la pantalla, así que se le pone el método para mirarlo.
+    Element.prototype.scrollIntoView = bajar;
+
+    const { rerender } = render(
+      <ComidaLibre mealNombre="Cena" sinBoton onMarcar={() => {}} onQuitar={() => {}} />,
+    );
+    expect(bajar).not.toHaveBeenCalled();
+
+    rerender(
+      <ComidaLibre mealNombre="Cena" sinBoton abierto onMarcar={() => {}} onQuitar={() => {}} />,
+    );
+    expect(bajar).toHaveBeenCalled();
+  });
+
   it('pero si ya está marcada se ve siempre, con el nombre de su comida', () => {
     render(
       <ComidaLibre

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { PresupuestoDia } from '../phase3/PresupuestoDia';
+import { PresupuestoDia, estadoDelMacro } from '../phase3/PresupuestoDia';
 import type { DayType } from '../../types/plan';
 
 afterEach(cleanup);
@@ -67,6 +67,44 @@ describe('Lo que lee la clienta de un vistazo', () => {
     render(<PresupuestoDia dayType={DIA} seleccion={{ comida: { grasas: 0.5 } }} />);
     expect(fraccion('½/1')).toBeTruthy();
     expect(screen.getByText('te quedan ½')).toBeTruthy();
+  });
+});
+
+/**
+ * ROJO SÓLO SI SE HA PASADO
+ *
+ * Un color, una cosa: ámbar es «te queda», verde es «ya está» y rojo es «te has
+ * pasado». Antes cada macro llevaba su color y el de la grasa era rosa, así que
+ * un día a medias se veía igual de alarmante que uno pasado.
+ *
+ * Y el margen es media porción: nadie come un cuarto de porción, así que los
+ * decimales que salen de la calculadora de etiquetas no pueden pintar de rojo
+ * un día bien comido.
+ */
+describe('De qué color va cada anillo', () => {
+  it('mientras falta, ámbar', () => {
+    expect(estadoDelMacro(4)).toBe('falta');
+    expect(estadoDelMacro(0.5)).toBe('falta');
+  });
+
+  it('en la cuenta, verde', () => {
+    expect(estadoDelMacro(0)).toBe('completo');
+  });
+
+  it('pasarse una décima no es pasarse', () => {
+    expect(estadoDelMacro(-0.1)).toBe('completo');
+    expect(estadoDelMacro(0.4)).toBe('completo');
+  });
+
+  it('media porción de más ya sí', () => {
+    expect(estadoDelMacro(-0.5)).toBe('pasado');
+    expect(estadoDelMacro(-2)).toBe('pasado');
+  });
+
+  it('y el anillo de un día a medias no se pinta de rojo', () => {
+    const { container } = render(<PresupuestoDia dayType={DIA} seleccion={{}} />);
+    expect(container.querySelectorAll('.stroke-rose-500')).toHaveLength(0);
+    expect(container.querySelectorAll('.stroke-amber-500').length).toBeGreaterThan(0);
   });
 });
 

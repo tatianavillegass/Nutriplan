@@ -36,9 +36,18 @@ describe('¿Está la comida completa?', () => {
     expect(comidaCubierta(DIA, COMIDA, s)).toBe(false);
   });
 
-  it('a medio macro tampoco', () => {
-    // De las 2 grasas de la comida, 1 se va en el aceite: hay que elegir 1.
+  /**
+   * Quedarse corta no la descompleta. En fase 3 lo que manda es el total del
+   * día: la media grasa que falta aquí se come en la merienda. Pidiendo la
+   * cuenta exacta, la comida se quedaba sin marcar aunque estuviera comida.
+   */
+  it('quedarse corta de un macro la deja completa igual', () => {
     const s = { comida: { proteina: 4, carbohidrato: 3, grasa: 0.5 } };
+    expect(comidaCubierta(DIA, COMIDA, s)).toBe(true);
+  });
+
+  it('pero de ese macro tiene que haber algo', () => {
+    const s = { comida: { proteina: 4, carbohidrato: 3, grasa: 0 } };
     expect(comidaCubierta(DIA, COMIDA, s)).toBe(false);
   });
 
@@ -67,16 +76,17 @@ describe('¿Está la comida completa?', () => {
    * se dé por completa: si contara, ninguna comida con aceite se cerraría
    * jamás y el botón se quedaría siempre a medias.
    */
-  it('la grasa reservada para cocinar no la bloquea', () => {
-    // La comida pauta 2 grasas y 1 se va en el aceite, que no se elige. Con
-    // 1 elegida la comida está entera: si el aceite contara, ninguna comida
-    // cocinada se cerraría jamás.
-    const s = { comida: { proteina: 4, carbohidrato: 3, grasa: 1 } };
-    expect(comidaCubierta(DIA, COMIDA, s)).toBe(true);
-
-    // Y si se le dice que no hay aceite, entonces sí faltan las dos.
-    const sinAceite = { ...DIA, aceiteCoccion: { comida: 0 } } as unknown as DayType;
-    expect(comidaCubierta(sinAceite, COMIDA, s)).toBe(false);
+  /**
+   * Si toda la grasa de la comida es la del aceite, no queda grasa que elegir:
+   * exigirla dejaría esa comida sin cerrar para siempre.
+   */
+  it('una comida cuya única grasa es el aceite se cierra sin marcar grasa', () => {
+    const soloAceite: DayType = {
+      ...DIA,
+      grid: { ...DIA.grid, comida: { proteicos_magros: 4, almidones: 3, grasas: 1 } },
+    };
+    const s = { comida: { proteina: 4, carbohidrato: 3 } };
+    expect(comidaCubierta(soloAceite, COMIDA, s)).toBe(true);
   });
 
   it('las verduras no hacen falta: son libres', () => {

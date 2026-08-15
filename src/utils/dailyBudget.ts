@@ -599,10 +599,16 @@ export function subgruposDeComida(
 /**
  * ¿ESTÁ LA COMIDA COMPLETA?
  *
- * Todos los macros que se pautaron para esa comida, cubiertos. Es lo que
- * permite dar la comida por hecha sin pedir otro toque: quien acaba de marcar
- * su proteína, su hidrato y su grasa ya ha dicho lo que ha comido — pedirle
- * después que pulse «hecha» es hacerle repetir lo que acaba de decir.
+ * Algo de cada macro que se pautó para esa comida. Es lo que permite dar la
+ * comida por hecha sin pedir otro toque: quien acaba de marcar su proteína, su
+ * hidrato y su grasa ya ha dicho lo que ha comido — pedirle después que pulse
+ * «hecha» es hacerle repetir lo que acaba de decir.
+ *
+ * No hace falta cubrirlo del todo, y esto es a propósito: en fase 3 lo que
+ * manda es el total del día, así que quedarse corta de una grasa en la comida
+ * es normal — se completa en la merienda. Pidiendo la cuenta exacta, la comida
+ * se quedaba sin marcar aunque estuviera comida y bien comida, que es
+ * justamente lo que este automatismo venía a evitar.
  *
  * El aceite de cocinar se descuenta igual que en la pantalla: no se elige, así
  * que no puede impedir que la comida se dé por completa.
@@ -632,5 +638,5 @@ export function comidaCubierta(
     (b) => b.pautadoComida > 0,
   );
   if (!pautados.length) return false;
-  return pautados.every((b) => b.elegidoComida >= b.pautadoComida - tolerancia);
+  return pautados.every((b) => b.elegidoComida > tolerancia);
 }

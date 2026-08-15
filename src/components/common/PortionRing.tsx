@@ -7,23 +7,38 @@ import { fmt } from './ui';
  * progreso. Es la misma información, pero se ve desde el otro lado de la
  * cocina.
  *
- * Colores de marca: el verde de NutriPlan mientras va bien, ámbar cuando se
- * pasa. El anillo nunca se dibuja más allá de la vuelta completa — lo que
- * sobra se cuenta aparte, en el texto.
+ * Un color, una cosa, aquí y en el presupuesto del día: ámbar es «te queda por
+ * completar», verde es «ya está» y rojo es «te has pasado». El anillo nunca se
+ * dibuja más allá de la vuelta completa — lo que sobra se cuenta en el texto.
+ *
+ * El margen es media porción, arriba y abajo: nadie come un cuarto de porción,
+ * así que quedarse a 0,1 de la cuenta es haberla hecho y pasarse 0,1 no es
+ * pasarse. Sin él, los decimales de la calculadora de etiquetas pintaban de
+ * rojo comidas perfectamente bien puestas.
  */
 
 const VERDE = '#34674e';
-const VERDE_CLARO = '#669d80';
 const AMBAR = '#d97706';
+const ROJO = '#e11d48';
+const GRIS = '#94a3b8';
 const PISTA = '#e2e8f0';
+
+const MEDIA_PORCION = 0.5;
 
 export type EstadoAnillo = 'pendiente' | 'completo' | 'excedido';
 
 export function estadoDePorciones(elegido: number, pautado: number): EstadoAnillo {
-  if (pautado > 0 && elegido > pautado + 0.01) return 'excedido';
-  if (pautado > 0 && Math.abs(elegido - pautado) < 0.01) return 'completo';
+  if (pautado <= 0) return 'pendiente';
+  if (elegido >= pautado + MEDIA_PORCION) return 'excedido';
+  if (elegido > pautado - MEDIA_PORCION) return 'completo';
   return 'pendiente';
 }
+
+const COLOR: Record<EstadoAnillo, string> = {
+  pendiente: AMBAR,
+  completo: VERDE,
+  excedido: ROJO,
+};
 
 interface Props {
   titulo: string;
@@ -38,7 +53,7 @@ interface Props {
 export function PortionRing({ titulo, elegido, pautado, detalle, compacto = false }: Props) {
   const estado = estadoDePorciones(elegido, pautado);
   const proporcion = pautado > 0 ? Math.min(1, elegido / pautado) : 0;
-  const color = estado === 'excedido' ? AMBAR : estado === 'completo' ? VERDE : VERDE_CLARO;
+  const color = pautado > 0 ? COLOR[estado] : GRIS;
 
   // Circunferencia 100 para que el dasharray sea directamente el porcentaje.
   const r = 15.9155;
@@ -70,7 +85,7 @@ export function PortionRing({ titulo, elegido, pautado, detalle, compacto = fals
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className={`tnum font-semibold ${compacto ? 'text-base' : 'text-xl'}`}
-            style={{ color: estado === 'excedido' ? AMBAR : VERDE }}
+            style={{ color: pautado > 0 ? COLOR[estado] : GRIS }}
           >
             {fmt(elegido, elegido % 1 ? 1 : 0)}
             <span className="text-slate-300"> / </span>
@@ -97,13 +112,13 @@ export function SubgrupoBarra({
 }) {
   const estado = estadoDePorciones(elegido, pautado);
   const proporcion = pautado > 0 ? Math.min(1, elegido / pautado) : elegido > 0 ? 1 : 0;
-  const color = estado === 'excedido' ? AMBAR : estado === 'completo' ? VERDE : VERDE_CLARO;
+  const color = pautado > 0 ? COLOR[estado] : GRIS;
 
   return (
     <div>
       <p className="flex items-baseline justify-between gap-2 text-[10px]">
         <span className="truncate text-slate-500">{nombre}</span>
-        <span className="tnum shrink-0" style={{ color: estado === 'pendiente' ? '#94a3b8' : color }}>
+        <span className="tnum shrink-0" style={{ color }}>
           {fmt(elegido, elegido % 1 ? 1 : 0)}/{fmt(pautado, pautado % 1 ? 1 : 0)}
         </span>
       </p>
