@@ -77,7 +77,7 @@ describe('El día de quien cuenta macros', () => {
     enFase4();
     expect(screen.getByText('Lo que llevas hoy')).toBeTruthy();
     // Cada comida del plan con su propio botón de añadir.
-    expect(screen.getAllByText(/Añadir a /i).length).toBeGreaterThan(1);
+    expect(screen.getAllByText('+ Añadir').length).toBeGreaterThan(1);
   });
 
   it('sin comidas que marcar ni extras que apuntar aparte', () => {
@@ -90,6 +90,37 @@ describe('El día de quien cuenta macros', () => {
   it('y sin recetas asignadas no aparece el apartado', () => {
     enFase4();
     expect(screen.queryByText('Tus recetas')).toBeNull();
+  });
+});
+
+/**
+ * EL MENSAJE SE LEE Y SE CIERRA
+ *
+ * Es lo primero que hay que leer el día que llega el plan, y a partir de ahí
+ * ocupa sitio en la única pantalla que se usa a diario.
+ */
+describe('El mensaje de la nutricionista', () => {
+  const conMensaje = () => {
+    useAppStore.setState({
+      plans: [
+        {
+          ...DEMO_PLAN,
+          envio: { fecha: '2026-08-16T09:00:00.000Z', mensaje: 'Ya tienes tu plan nuevo' },
+        },
+      ],
+    });
+    abrir();
+  };
+
+  it('sale cuando llega', () => {
+    conMensaje();
+    expect(screen.getByText('Ya tienes tu plan nuevo')).toBeTruthy();
+  });
+
+  it('y se puede cerrar para que no quite sitio', () => {
+    conMensaje();
+    fireEvent.click(screen.getByLabelText('Cerrar el mensaje'));
+    expect(screen.queryByText('Ya tienes tu plan nuevo')).toBeNull();
   });
 });
 

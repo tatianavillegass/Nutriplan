@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { ContadorDia } from '../phase4/ContadorDia';
 import { RecetasDeConsulta } from '../phase4/RecetasDeConsulta';
 import type { DayType } from '../../types/plan';
@@ -48,9 +48,13 @@ const BOCADO: Bocado = {
   momento: 'comida',
 };
 
-/** Abre el formulario de una comida: cada una tiene el suyo. */
-const abrirEn = (comida: string) =>
-  fireEvent.click(screen.getByText(new RegExp(`Añadir a ${comida}`, 'i')));
+
+/** Cada comida tiene su propio «+ Añadir», en el orden del día. */
+const abrirEn = (comida: string) => {
+  const titulo = screen.getByText(new RegExp(`^${comida}$`, 'i'));
+  const bloque = titulo.closest('div')?.parentElement as HTMLElement;
+  fireEvent.click(within(bloque).getByText('+ Añadir'));
+};
 
 /**
  * EL CONTADOR DE LA FASE 4
@@ -201,7 +205,7 @@ describe('Lo que ve quien cuenta macros', () => {
     fireEvent.change(screen.getByPlaceholderText(/Qué es:/i), {
       target: { value: 'Yogur de la marca esa' },
     });
-    const campos = document.querySelectorAll('input[type="number"]');
+    const campos = document.querySelectorAll('input[inputmode="decimal"]');
     // Proteína, carbohidrato, grasa y fibra por 100 g; el último es la cantidad.
     fireEvent.change(campos[0], { target: { value: '10' } });
     fireEvent.change(campos[1], { target: { value: '4' } });

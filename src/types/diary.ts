@@ -147,6 +147,12 @@ export interface RegistroDia {
    * aquí por lo mismo que todo lo demás que escribe ella: el registro es lo
    * único que sube su app. Se junta leyendo sus días.
    */
+  /**
+   * El mensaje de la nutricionista que ya ha leído, marcado por la fecha del
+   * envío. Se guarda para que no vuelva a salir mañana: un aviso que no se
+   * puede cerrar deja de ser un aviso y pasa a ser un cartel.
+   */
+  avisoLeido?: string;
   /** Reto: entrenos que ha dado por hechos. */
   entrenos?: string[];
   /**

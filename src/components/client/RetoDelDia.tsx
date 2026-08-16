@@ -97,7 +97,7 @@ export function RetoDelDia({
       </ol>
 
       <p className="mt-2 text-[11px] leading-snug text-slate-500">
-        Un día se cierra cuando marcas todas tus comidas. Comer fuera también lo cierra: salir a
+        Un día se cierra cuando marcas tus comidas. Comer fuera también lo cierra: salir a
         cenar no es un fallo.
       </p>
 

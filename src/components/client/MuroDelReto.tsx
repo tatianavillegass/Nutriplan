@@ -73,11 +73,11 @@ export function MuroDelReto({ reto, hoy, dia, clienteId, nombre, cerradoHoy }: P
     return (
       <section className="rounded-2xl border border-brand-200 bg-white p-4 no-print sm:p-5">
         <h2 className="text-sm font-bold tracking-wide text-brand-800 uppercase">
-          No estás sola en esto
+          No estás en esto en solitario
         </h2>
         <p className="mt-1.5 text-sm leading-snug text-slate-600">
-          Todavía eres la única que ha abierto la app. En cuanto entren las demás verás aquí quién
-          va cerrando su día.
+          Todavía no ha entrado nadie más. En cuanto entre el resto del grupo verás aquí quién va
+          cerrando su día.
         </p>
         {reto.whatsapp && (
           <a
@@ -96,12 +96,12 @@ export function MuroDelReto({ reto, hoy, dia, clienteId, nombre, cerradoHoy }: P
   return (
     <section className="rounded-2xl border border-brand-200 bg-white p-4 no-print sm:p-5">
       <h2 className="text-sm font-bold tracking-wide text-brand-800 uppercase">
-        No estás sola en esto
+        No estás en esto en solitario
       </h2>
 
       <p className="mt-1.5 text-sm leading-snug text-slate-700">
         {grupo.hoy.length === 0 ? (
-          <>Hoy todavía no ha cerrado el día nadie. Puedes ser la primera.</>
+          <>Hoy todavía no ha cerrado el día nadie. Puedes abrir tú la lista.</>
         ) : (
           <>
             Hoy {grupo.hoy.length === 1 ? 'ha cerrado el día' : 'han cerrado el día'}{' '}
@@ -121,7 +121,7 @@ export function MuroDelReto({ reto, hoy, dia, clienteId, nombre, cerradoHoy }: P
       <div className="mt-3">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-[11px] font-medium tracking-wide text-slate-500 uppercase">
-            Entre todas
+            Entre el grupo
           </span>
           <span className="tnum text-xs text-slate-600">
             {grupo.cerrados} de {grupo.posibles} días
@@ -134,8 +134,8 @@ export function MuroDelReto({ reto, hoy, dia, clienteId, nombre, cerradoHoy }: P
           />
         </div>
         <p className="mt-1 text-[11px] leading-snug text-slate-500">
-          Los días que ha cerrado el grupo entero, de los que se podían cerrar. Cada día que
-          aparece una, sube para todas.
+          Los días que ha cerrado el grupo entero, de los que se podían cerrar. Cada vez que
+          alguien aparece, sube para el grupo.
         </p>
       </div>
 

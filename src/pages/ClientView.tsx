@@ -250,7 +250,18 @@ export function ClientView() {
    * El catálogo de la nutricionista más lo que la clienta se haya calculado
    * hoy. Al ir juntos, todo lo que cuenta porciones los trata igual.
    */
-  const foods = [...catalogo, ...(registro?.alimentosPropios ?? [])];
+  /**
+   * SUS ALIMENTOS SON SUYOS, NO DE UN DÍA
+   *
+   * Lo que se calcula con la etiqueta se guarda en el registro del día en que
+   * se calculó —es lo único que sube su app—, pero se junta de todos sus días:
+   * el yogur de su marca lo apuntó una vez y lo come todas las semanas.
+   */
+  const foods = useMemo(() => {
+    const propios = new Map<string, Alimento>();
+    for (const r of mios) for (const a of r.alimentosPropios ?? []) propios.set(a.id, a);
+    return [...catalogo, ...propios.values()];
+  }, [catalogo, mios]);
 
   const porciones = registro?.porciones ?? {};
   /** Lo escogido por subgrupo: es la base del presupuesto del día. */
@@ -602,14 +613,31 @@ export function ClientView() {
           </div>
         </div>
 
-        {plan.envio.mensaje && (
-          <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 no-print">
-            <p className="text-[10px] font-medium tracking-wide text-brand-700 uppercase">
-              Mensaje de tu nutricionista
-            </p>
-            <p className="mt-1 text-sm leading-snug text-brand-900">
-              {plan.envio.mensaje}
-            </p>
+        {/*
+          EL MENSAJE SE LEE Y SE CIERRA
+          ==========================================================
+          Es lo primero que hay que leer el día que llega el plan, y a partir de
+          ahí ocupa sitio en la única pantalla que se usa a diario. Se cierra y
+          no vuelve: se recuerda por la fecha del envío, así que el siguiente
+          mensaje que se mande sí aparecerá.
+        */}
+        {plan.envio.mensaje && registro?.avisoLeido !== plan.envio.fecha && (
+          <div className="flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 no-print">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium tracking-wide text-brand-700 uppercase">
+                Mensaje de tu nutricionista
+              </p>
+              <p className="mt-1 text-sm leading-snug text-brand-900">
+                {plan.envio.mensaje}
+              </p>
+            </div>
+            <button
+              onClick={() => guardar({ avisoLeido: plan.envio!.fecha })}
+              aria-label="Cerrar el mensaje"
+              className="shrink-0 rounded px-1.5 py-0.5 text-brand-400 transition hover:text-brand-700"
+            >
+              ×
+            </button>
           </div>
         )}
 

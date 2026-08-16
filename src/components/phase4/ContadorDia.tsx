@@ -16,6 +16,7 @@ import { hcNeto } from '../../utils/portions';
 import { uid } from '../../utils/storage';
 import { FoodPicker } from '../food/FoodPicker';
 import { Button, Input, fmt } from '../common/ui';
+import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
 interface Props {
   dayType: DayType;
@@ -177,22 +178,28 @@ export function ContadorDia({
             ref={anadiendo === meal.id ? cajaAbierta : undefined}
             className="border-t border-slate-100 pt-2"
           >
-            <div className="flex items-baseline gap-2">
-              <span className="flex-1 text-xs font-semibold text-brand-800">{meal.nombre}</span>
-              <span className="tnum text-[11px] text-slate-500">
+            {/*
+              El nombre de la comida es el título de su bloque: en pequeño se
+              perdía entre los alimentos y había que buscar dónde empezaba la
+              cena. Y «Añadir» es lo que más se pulsa de esta pantalla, así que
+              se ve como un botón y no como una nota al pie.
+            */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex-1 text-base font-semibold text-brand-900">{meal.nombre}</span>
+              <span className="tnum text-xs text-slate-500">
                 {suyos.length ? `${fmt(suTotal.kcal)} kcal` : ''}
               </span>
               {!soloLectura && (
                 <button
                   onClick={() => setAnadiendo(anadiendo === meal.id ? null : meal.id)}
                   aria-expanded={anadiendo === meal.id}
-                  className={`rounded-lg border px-2 py-1 text-[11px] font-medium transition ${
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                     anadiendo === meal.id
                       ? 'border-brand-400 bg-brand-50 text-brand-900'
-                      : 'border-slate-200 text-slate-600 hover:border-brand-300 hover:text-brand-700'
+                      : 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100'
                   }`}
                 >
-                  {anadiendo === meal.id ? 'Cerrar' : `Añadir a ${meal.nombre.toLowerCase()}`}
+                  {anadiendo === meal.id ? 'Cerrar' : '+ Añadir'}
                 </button>
               )}
             </div>
@@ -268,7 +275,7 @@ function AnadirBocado({
 }) {
   const [foodId, setFoodId] = useState<string | undefined>();
   const [nombre, setNombre] = useState('');
-  const [cantidad, setCantidad] = useState(100);
+  const [cantidad, setCantidad] = useState('100');
   const [porEtiqueta, setPorEtiqueta] = useState(false);
   const [n, setN] = useState<Nutrientes100>({ hc: 0, proteina: 0, grasa: 0 });
   /**
@@ -282,7 +289,7 @@ function AnadirBocado({
 
   /** Del catálogo o de la etiqueta que acaba de copiar: se calcula igual. */
   const deEtiqueta = useMemo(() => {
-    const f = cantidad / 100;
+    const f = (aNumero(cantidad) ?? 0) / 100;
     const macros = {
       proteina: (n.proteina || 0) * f,
       hc: hcNeto(n) * f,
@@ -291,13 +298,14 @@ function AnadirBocado({
     return { macros, kcal: kcalFromMacros(macros) };
   }, [n, cantidad]);
 
-  const calculado = porEtiqueta ? deEtiqueta : macrosDeCantidad(cantidad, food);
-  const listo = cantidad > 0 && (porEtiqueta ? !!nombre.trim() && calculado.kcal > 0 : !!food);
+  const gramos = aNumero(cantidad) ?? 0;
+  const calculado = porEtiqueta ? deEtiqueta : macrosDeCantidad(gramos, food);
+  const listo = gramos > 0 && (porEtiqueta ? !!nombre.trim() && calculado.kcal > 0 : !!food);
 
   const limpiar = () => {
     setFoodId(undefined);
     setNombre('');
-    setCantidad(100);
+    setCantidad('100');
     setPorEtiqueta(false);
     setN({ hc: 0, proteina: 0, grasa: 0 });
     setVuelta((v) => v + 1);
@@ -328,7 +336,7 @@ function AnadirBocado({
         id: uid('bo_'),
         nombre: etiqueta,
         foodId: nuevo?.id ?? foodId,
-        cantidad,
+        cantidad: gramos,
         unidad: food?.unidad ?? 'g',
         macros: calculado.macros,
         kcal: calculado.kcal,
@@ -353,7 +361,7 @@ function AnadirBocado({
           onSelect={(f) => {
             setFoodId(f.id);
             setNombre(f.nombre);
-            setCantidad(f.gramos || 100);
+            setCantidad(String(f.gramos || 100));
           }}
           onLibre={(t) => {
             setNombre(t);
@@ -382,21 +390,13 @@ function AnadirBocado({
             ).map(([k, label]) => (
               <label key={k} className="block">
                 <span className="mb-0.5 block text-[10px] text-slate-500">{label}</span>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={n[k] ?? ''}
-                  onChange={(e) =>
-                    setN(
-                      (p) =>
-                        ({
-                          ...p,
-                          [k]: e.target.value === '' ? undefined : Number(e.target.value),
-                        }) as Nutrientes100,
-                    )
+                <NumeroConComa
+                  value={n[k] === undefined ? '' : String(n[k])}
+                  onChange={(texto) =>
+                    setN((p) => ({ ...p, [k]: aNumero(texto) }) as Nutrientes100)
                   }
                   className="w-full text-sm"
+                  aria-label={label}
                 />
               </label>
             ))}
@@ -407,12 +407,11 @@ function AnadirBocado({
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <label className="block">
           <span className="mb-0.5 block text-[10px] text-slate-500">Cuánto</span>
-          <Input
-            type="number"
-            min="1"
+          <NumeroConComa
             value={cantidad}
-            onChange={(e) => setCantidad(Number(e.target.value) || 0)}
+            onChange={setCantidad}
             className="w-24 text-sm"
+            aria-label="Cuánto has comido"
           />
         </label>
         <span className="pb-2 text-xs text-slate-400">{food?.unidad ?? 'g'}</span>
