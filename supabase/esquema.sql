@@ -264,3 +264,17 @@ create policy "solicitudes_borrado" on public.solicitudes
       where r.id = solicitudes.reto_id and r.nutri_id = auth.uid()
     )
   );
+
+-- ── Que pueda ir preparándose mientras espera ───────────────────────────────
+--
+-- Entre apuntarse y empezar pasan días, y en ese hueco se pierde la gente. La
+-- pantalla de la cuenta atrás la deja medirse, subir su foto y marcar la guía,
+-- pero eso llega ANTES de que tenga cuenta: hay que poder escribir sobre su
+-- propia solicitud sin haber iniciado sesión.
+--
+-- Se permite actualizar, no leer. El id de la solicitud es aleatorio y sólo lo
+-- tiene el navegador que la creó, así que hace de llave: sin poder listarlas,
+-- no hay forma de saber qué id tocar. Es el mismo trato que el alta.
+drop policy if exists "solicitudes_preparacion" on public.solicitudes;
+create policy "solicitudes_preparacion" on public.solicitudes
+  for update using (true) with check (true);

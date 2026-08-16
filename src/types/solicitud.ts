@@ -20,6 +20,17 @@ export interface Solicitud {
   id: string;
   retoId: string;
   creada: string;
+  /**
+   * Lo que va haciendo mientras espera a que empiece: medirse, la foto, la
+   * guía. Se escribe desde la cuenta atrás, antes de tener cuenta, y al darla
+   * de alta pasa a su primera medición.
+   */
+  preparacion?: {
+    hechos: ('medidas' | 'foto' | 'guia')[];
+    cintura?: number;
+    cadera?: number;
+    foto?: string;
+  };
 
   // ── Quién eres ──────────────────────────────
   nombre: string;

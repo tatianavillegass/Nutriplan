@@ -2,13 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { DURACIONES, type RecetaDeReto, type Reto } from "../types/reto";
 import type { MealSlot } from "../types/food";
+import { fotoDelPlan, type Plan } from "../types/plan";
 import {
   diaDelReto,
   diasQueQuedan,
   estadoDelReto,
   fechaFinal,
+  primerDiaDeSemana,
   proximaApertura,
   recetasAbiertas,
+  semanaDeDia,
   textoDelDia,
 } from "../utils/retos";
 import { recursosVisibles } from "../types/recursos";
@@ -24,6 +27,7 @@ import { uid, nowIso } from "../utils/storage";
 import { avisosDeSolicitud, type Solicitud } from "../types/solicitud";
 import { borrarSolicitud, leerSolicitudes } from "../utils/solicitudes";
 import { EntrenosDelReto } from "../components/retos/EntrenosDelReto";
+import { ParticipantesDelReto } from "../components/retos/ParticipantesDelReto";
 import { SeguimientoDelReto } from "../components/retos/SeguimientoDelReto";
 import { clienteDeSolicitud, comidasDelPlan } from "../utils/altaDeSolicitud";
 
@@ -91,6 +95,8 @@ export function RetosPage() {
   const addClient = useAppStore((s) => s.addClient);
   const ensurePlan = useAppStore((s) => s.ensurePlan);
   const updateDayType = useAppStore((s) => s.updateDayType);
+  const updatePlan = useAppStore((s) => s.updatePlan);
+  const addMedicion = useAppStore((s) => s.addMedicion);
 
   /**
    * LAS SOLICITUDES DEL ENLACE PÚBLICO
@@ -117,6 +123,29 @@ export function RetosPage() {
     if (dia) {
       updateDayType(plan.id, dia.id, { meals: comidasDelPlan(s.comidasDia) });
     }
+    /**
+     * Lo que se midió mientras esperaba no se puede perder al borrar la
+     * solicitud: pasa a ser su primera medición, que es el punto de partida
+     * con el que se compara todo lo demás.
+     */
+    if (s.preparacion?.cintura || s.preparacion?.cadera || s.peso) {
+      addMedicion({
+        clientId: cliente.id,
+        fecha: hoy,
+        peso: s.peso,
+        talla: s.altura,
+        pliegues: {},
+        diametros: {},
+        perimetros: {
+          cintura: s.preparacion?.cintura,
+          cadera: s.preparacion?.cadera,
+        },
+        notas: s.preparacion?.foto
+          ? "Se midió ella al apuntarse. Subió foto del primer día."
+          : "Se midió ella al apuntarse.",
+      });
+    }
+
     editar(reto, { participantes: [...reto.participantes, cliente.id] });
     await borrarSolicitud(s.id);
     refrescarSolicitudes();
@@ -133,6 +162,16 @@ export function RetosPage() {
 
   const editar = (reto: Reto, patch: Partial<Reto>) =>
     upsertReto({ ...reto, ...patch });
+
+  /**
+   * Publicar el plan de una participante. Es lo mismo que hace el botón de su
+   * ficha: se guarda la foto de lo que se manda, que es lo único que verá ella.
+   */
+  const enviarPlan = (plan: Plan) =>
+    updatePlan(plan.id, {
+      publicado: fotoDelPlan(plan),
+      envio: { fecha: new Date().toISOString() },
+    });
 
   const alternarParticipante = (reto: Reto, clientId: string) =>
     editar(reto, {
@@ -305,7 +344,7 @@ export function RetosPage() {
                         Día {diaDelReto(reto, hoy)} de {reto.dias} · quedan{" "}
                         {diasQueQuedan(reto, hoy)}
                         {proxima
-                          ? `. El día ${proxima.dia} se abren ${proxima.cuantas} recetas más.`
+                          ? `. En la semana ${semanaDeDia(proxima.dia)} se abren ${proxima.cuantas} recetas más.`
                           : "."}
                       </p>
                     )}
@@ -446,6 +485,26 @@ export function RetosPage() {
                       </code>
                     </div>
 
+                    {/* ── Las participantes, una a una ──────── */}
+                    <div>
+                      <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-brand-800 uppercase">
+                        Participantes
+                      </h3>
+                      <p className="mb-2 text-[11px] leading-snug text-slate-500">
+                        Despliega una y verás su gasto, su preparación y en qué
+                        estado está su plan. Móntalos según van llegando y
+                        publícalos todos el día que empieza el reto.
+                      </p>
+                      <ParticipantesDelReto
+                        reto={reto}
+                        hoy={hoy}
+                        clients={clients}
+                        plans={plans}
+                        registros={registros}
+                        onEnviarPlan={enviarPlan}
+                      />
+                    </div>
+
                     {/* ── Cómo va el grupo ──────────────────── */}
                     <div>
                       <h3 className="mb-1.5 text-[11px] font-semibold tracking-wide text-brand-800 uppercase">
@@ -566,7 +625,7 @@ export function RetosPage() {
                                         : "bg-slate-100 text-slate-500"
                                     }`}
                                   >
-                                    Día {r.desdeDia}
+                                    Semana {semanaDeDia(r.desdeDia)}
                                   </span>
                                   <span className="w-24 shrink-0 text-xs text-slate-500">
                                     {LABEL_SLOT[r.slot] ?? r.slot}
@@ -688,7 +747,12 @@ function ElegirRecetas({
   onQuitar: (r: RecetaDeReto) => void;
 }) {
   const [slot, setSlot] = useState<MealSlot>("desayuno");
-  const [dia, setDia] = useState(1);
+  /**
+   * Se elige la SEMANA, no el día: «la semana 1 tiene cuatro desayunos entre
+   * los que elegir» es como se piensa un reto. Por dentro se sigue guardando
+   * el día, que es lo que ya sabe calcular todo lo demás.
+   */
+  const [semana, setSemana] = useState(1);
   const [busca, setBusca] = useState("");
 
   const deEsaComida = useMemo(() => {
@@ -741,12 +805,12 @@ function ElegirRecetas({
       </div>
 
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        <Field label="Las que elija ahora se abren el día">
+        <Field label="Las que elija ahora se abren en la semana">
           <Input
             type="number"
             min={1}
-            value={dia}
-            onChange={(e) => setDia(Math.max(1, Number(e.target.value) || 1))}
+            value={semana}
+            onChange={(e) => setSemana(Math.max(1, Number(e.target.value) || 1))}
             className="w-24"
           />
         </Field>
@@ -767,7 +831,7 @@ function ElegirRecetas({
               <li key={r.id}>
                 <button
                   onClick={() =>
-                    ya ? onQuitar(ya) : onAnadir(r.id, slot, dia)
+                    ya ? onQuitar(ya) : onAnadir(r.id, slot, primerDiaDeSemana(semana))
                   }
                   aria-pressed={!!ya}
                   className={`flex w-full items-center gap-2.5 rounded-xl border p-2 text-left transition ${
@@ -798,7 +862,7 @@ function ElegirRecetas({
                       className={`tnum text-[11px] ${ya ? "text-brand-700" : "text-slate-400"}`}
                     >
                       {ya
-                        ? `Abierta el día ${ya.desdeDia} · toca para quitar`
+                        ? `Semana ${semanaDeDia(ya.desdeDia)} · toca para quitar`
                         : "Toca para añadir"}
                     </span>
                   </span>

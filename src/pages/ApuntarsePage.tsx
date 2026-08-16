@@ -8,9 +8,12 @@ import {
 } from "../types/solicitud";
 import {
   enviarSolicitud,
+  guardarPreparacion,
   leerRetoPublico,
   type RetoPublico,
 } from "../utils/solicitudes";
+import { Preparacion } from "../components/client/Preparacion";
+import type { Preparacion as DatosPreparacion } from "../utils/preparacion";
 import { diasEntre } from "../utils/retos";
 import { uid, nowIso } from "../utils/storage";
 
@@ -63,7 +66,11 @@ export function ApuntarsePage() {
   const { retoId = "" } = useParams();
   const [reto, setReto] = useState<RetoPublico | null | undefined>(undefined);
   const [enviando, setEnviando] = useState(false);
-  const [enviada, setEnviada] = useState(false);
+  /**
+   * La solicitud ya mandada. Se guarda entera —y no un simple «ya está»—
+   * porque desde aquí ella sigue escribiendo sobre ella: su preparación.
+   */
+  const [enviada, setEnviada] = useState<Solicitud | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [f, setF] = useState<Partial<Solicitud>>({
@@ -108,7 +115,7 @@ export function ApuntarsePage() {
     };
     const r = await enviarSolicitud(solicitud);
     setEnviando(false);
-    if (r.ok) setEnviada(true);
+    if (r.ok) setEnviada(solicitud);
     else
       setError(
         r.error ?? "No se pudo guardar. Inténtalo otra vez en un momento.",
@@ -139,6 +146,23 @@ export function ApuntarsePage() {
   }
 
   // ── Ya enviada: la cuenta atrás ─────────────────────
+  /** Cada paso que marca se guarda al momento: no hay botón de «terminar». */
+  const guardarPaso = (patch: Partial<DatosPreparacion>) => {
+    if (!enviada) return;
+    const previa = enviada.preparacion ?? { hechos: [] };
+    const actualizada: Solicitud = {
+      ...enviada,
+      preparacion: {
+        hechos: patch.hechos ?? previa.hechos,
+        cintura: patch.cintura ?? previa.cintura,
+        cadera: patch.cadera ?? previa.cadera,
+        foto: patch.foto ?? previa.foto,
+      },
+    };
+    setEnviada(actualizada);
+    void guardarPreparacion(actualizada);
+  };
+
   if (enviada) {
     return (
       <div className="mx-auto max-w-md px-5 py-10 text-center">
@@ -166,48 +190,26 @@ export function ApuntarsePage() {
         </div>
 
         {/*
-          LO QUE VA A HACER, ENSEÑADO YA
+          LA PREPARACIÓN, AQUÍ MISMO
           ==============================================================
           Entre apuntarse y empezar pasan días y es donde se pierde la gente.
-          Ver la lista ahora convierte la espera en algo que ya ha empezado.
+          Esperar sin nada que hacer enfría; tres cosas que se pueden terminar
+          hoy convierten la espera en algo que ya ha empezado.
 
-          Aquí sólo se enseña: se marca en su app, que es donde queda guardado
-          y donde lo ve su nutricionista. Poner casillas que no guardan nada
-          sería pedirle el trabajo dos veces.
+          Se guarda sobre su propia solicitud, que todavía es lo único suyo que
+          existe: la cuenta le llega después. Al darla de alta, sus medidas
+          pasan a ser su primera medición.
         */}
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 text-left">
-          <p className="text-sm font-semibold text-brand-900">
-            Lo primero que harás en la app
-          </p>
-          <p className="mt-0.5 text-xs leading-snug text-slate-500">
-            Tres cosas, una vez. Es tu punto de partida: sin ellas, el último
-            día no hay con qué comparar.
-          </p>
-
-          <ul className="mt-3 space-y-2.5">
-            {[
-              ["Mídete la cintura y la cadera", "Con una cinta, en ayunas"],
-              ["Hazte la foto del primer día", "La comparación que más motiva"],
-              ["Léete la guía de raciones", "Diez minutos que te ahorran dudas"],
-            ].map(([titulo, detalle]) => (
-              <li key={titulo} className="flex items-start gap-2.5">
-                <span
-                  aria-hidden
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-slate-300"
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm text-slate-800">{titulo}</span>
-                  <span className="block text-[11px] leading-snug text-slate-500">
-                    {detalle}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          <p className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] leading-snug text-slate-500">
+        <div className="mt-6 text-left">
+          <Preparacion
+            nombreReto={reto.nombre}
+            faltan={faltan}
+            datos={enviada.preparacion ?? { hechos: [] }}
+            onGuardar={guardarPaso}
+          />
+          <p className="mt-2 px-1 text-[11px] leading-snug text-slate-500">
             El acceso a la app te llega unos días antes de empezar, al correo
-            que has puesto.
+            que has puesto. Lo que marques aquí ya queda guardado.
           </p>
         </div>
       </div>

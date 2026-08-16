@@ -73,8 +73,8 @@ describe('Ver los retos', () => {
     abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     expect(screen.getByText('Cómo va el grupo')).toBeTruthy();
-    // Sale en el seguimiento y en la lista de quién está dentro.
-    expect(screen.getAllByText('Catalina').length).toBe(2);
+    // Sale en el seguimiento, en la lista de participantes y en quién está dentro.
+    expect(screen.getAllByText('Catalina').length).toBe(3);
   });
 });
 
@@ -108,7 +108,7 @@ describe('Apuntar gente al reto', () => {
  * El reto se va abriendo: diez recetas de golpe se leen como un PDF y se
  * cierran, tres cada semana se cocinan.
  */
-describe('Las recetas, con su día de apertura', () => {
+describe('Las recetas, con su semana de apertura', () => {
   /**
    * Se elige como al pautar: se mira la comida, se ven las recetas que valen
    * para esa comida y se toca la que se quiere.
@@ -125,15 +125,20 @@ describe('Las recetas, con su día de apertura', () => {
     expect(screen.getByText('Pollo al horno')).toBeTruthy();
   });
 
-  it('un toque la añade con el día que esté puesto', () => {
+  /**
+   * Se piensa en semanas —«la semana 1 tiene cuatro desayunos»— y por dentro se
+   * sigue guardando el día, que es lo que ya sabe calcular todo lo demás.
+   */
+  it('un toque la añade en la semana que esté puesta', () => {
     abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
     fireEvent.click(screen.getByRole('button', { name: /^Cena$/ }));
-    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '8' } });
+    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } });
     fireEvent.click(screen.getByText('Pollo al horno'));
 
     const puestas = useAppStore.getState().retos[0].recetas;
     expect(puestas).toHaveLength(2);
+    // La semana 2 empieza el día 8.
     expect(puestas[1]).toMatchObject({ recetaId: 'rc2', slot: 'cena', desdeDia: 8 });
   });
 
@@ -144,11 +149,11 @@ describe('Las recetas, con su día de apertura', () => {
     expect(useAppStore.getState().retos[0].recetas).toEqual([]);
   });
 
-  it('la que ya está dice en qué día se abre', () => {
+  it('la que ya está dice en qué semana se abre', () => {
     abrir();
     fireEvent.click(screen.getByText('UPGRADE 1.0'));
-    expect(screen.getByText('Día 1')).toBeTruthy();
-    expect(screen.getByText(/Abierta el día 1/)).toBeTruthy();
+    expect(screen.getByText('Semana 1')).toBeTruthy();
+    expect(screen.getByText(/Semana 1 · toca para quitar/)).toBeTruthy();
   });
 
   it('una receta borrada del banco no deja el hueco en blanco', () => {

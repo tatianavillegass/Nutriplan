@@ -147,6 +147,8 @@ export interface RegistroDia {
    * aquí por lo mismo que todo lo demás que escribe ella: el registro es lo
    * único que sube su app. Se junta leyendo sus días.
    */
+  /** Reto: entrenos que ha dado por hechos. */
+  entrenos?: string[];
   preparacion?: {
     hechos: ('medidas' | 'foto' | 'guia')[];
     cintura?: number;

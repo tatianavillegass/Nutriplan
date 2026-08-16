@@ -86,6 +86,28 @@ export function recetasAbiertasDe(
   return recetasAbiertas(reto, hoy).filter((r) => r.slot === slot);
 }
 
+/**
+ * SE ABRE POR SEMANAS, NO POR DÍAS
+ *
+ * «Semana 1» es lo que se piensa al montar un reto: cuatro desayunos entre los
+ * que elegir esa semana, no una receta cada martes. Por dentro se sigue
+ * guardando el día —el cálculo de qué está abierto es el mismo y no hay que
+ * tocar los retos ya montados—, pero lo que se elige y lo que se lee es la
+ * semana.
+ */
+export function semanaDeDia(dia: number): number {
+  return Math.max(1, Math.ceil(dia / 7));
+}
+
+export function primerDiaDeSemana(semana: number): number {
+  return (Math.max(1, semana) - 1) * 7 + 1;
+}
+
+/** En qué semana del reto estamos hoy. */
+export function semanaDelReto(reto: Reto, hoy: string): number {
+  return semanaDeDia(Math.max(1, diaDelReto(reto, hoy)));
+}
+
 /** Los entrenos abiertos hoy. Misma regla que las recetas: lo abierto suma. */
 export function entrenosAbiertos(reto: Reto, hoy: string): EntrenoDeReto[] {
   const dia = diaDelReto(reto, hoy);

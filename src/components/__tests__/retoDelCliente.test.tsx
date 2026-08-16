@@ -62,7 +62,7 @@ const RETO: Reto = {
  * etiqueta de color en la pantalla de otra cosa.
  */
 describe('El reto, dentro de su app', () => {
-  const pintar = (hoy: string) =>
+  const pintar = (hoy: string, onEntreno = vi.fn(), hechos: string[] = []) =>
     render(
       <RetoDelDia
         reto={RETO}
@@ -70,6 +70,8 @@ describe('El reto, dentro de su app', () => {
         recetas={[RECETA]}
         dayType={DIA}
         foods={FOOD_CATALOG}
+        hechos={hechos}
+        onEntreno={onEntreno}
       />,
     );
 
@@ -98,6 +100,22 @@ describe('El reto, dentro de su app', () => {
     expect(screen.getByText('Sentadilla')).toBeTruthy();
     expect(screen.getByText(/4 series × 10-12/)).toBeTruthy();
     expect(screen.getByText('Ver el vídeo')).toBeTruthy();
+  });
+
+  /** Marcarlo es lo que deja ver a la nutricionista si de verdad se entrena. */
+  it('el entreno se puede marcar hecho', () => {
+    const onEntreno = vi.fn();
+    pintar('2026-09-03', onEntreno);
+    fireEvent.click(screen.getByText(/Entrenos \(1\)/));
+    fireEvent.click(screen.getByText('Tren inferior'));
+    fireEvent.click(screen.getByText('Marcar hecho'));
+    expect(onEntreno).toHaveBeenCalledWith('e1');
+  });
+
+  it('y una vez hecho se ve sin abrirlo', () => {
+    pintar('2026-09-03', vi.fn(), ['e1']);
+    fireEvent.click(screen.getByText(/Entrenos \(1\)/));
+    expect(screen.getByText('hecho ✓')).toBeTruthy();
   });
 });
 

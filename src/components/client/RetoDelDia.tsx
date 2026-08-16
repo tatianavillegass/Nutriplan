@@ -23,6 +23,9 @@ interface Props {
   /** Su tipo de día: es lo que escala la receta compartida a SUS porciones. */
   dayType: DayType;
   foods: Alimento[];
+  /** Entrenos que ya ha dado por hechos hoy. */
+  hechos: string[];
+  onEntreno: (entrenoId: string) => void;
 }
 
 /**
@@ -36,7 +39,15 @@ interface Props {
  * recetas de golpe se leen como un PDF y se cierran; tres cada semana se
  * cocinan.
  */
-export function RetoDelDia({ reto, hoy, recetas, dayType, foods }: Props) {
+export function RetoDelDia({
+  reto,
+  hoy,
+  recetas,
+  dayType,
+  foods,
+  hechos,
+  onEntreno,
+}: Props) {
   const [pestana, setPestana] = useState<'recetas' | 'entrenos'>('recetas');
   const [viendo, setViendo] = useState<string | null>(null);
   const dia = diaDelReto(reto, hoy);
@@ -132,7 +143,12 @@ export function RetoDelDia({ reto, hoy, recetas, dayType, foods }: Props) {
       ) : (
         <ul className="mt-2 space-y-2">
           {entrenos.map((e) => (
-            <EntrenoAbierto key={e.id} entreno={e} />
+            <EntrenoAbierto
+              key={e.id}
+              entreno={e}
+              hecho={hechos.includes(e.id)}
+              onHecho={() => onEntreno(e.id)}
+            />
           ))}
         </ul>
       )}
@@ -141,7 +157,15 @@ export function RetoDelDia({ reto, hoy, recetas, dayType, foods }: Props) {
 }
 
 /** Un entreno: el vídeo enseña a hacerlo y la lista dice cuántas vueltas van. */
-function EntrenoAbierto({ entreno }: { entreno: EntrenoDeReto }) {
+function EntrenoAbierto({
+  entreno,
+  hecho,
+  onHecho,
+}: {
+  entreno: EntrenoDeReto;
+  hecho: boolean;
+  onHecho: () => void;
+}) {
   const [abierto, setAbierto] = useState(false);
 
   return (
@@ -159,6 +183,11 @@ function EntrenoAbierto({ entreno }: { entreno: EntrenoDeReto }) {
             </span>
           )}
         </span>
+        {hecho && (
+          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+            hecho ✓
+          </span>
+        )}
         <span aria-hidden className="shrink-0 text-slate-300">
           {abierto ? '⌃' : '⌄'}
         </span>
@@ -197,6 +226,20 @@ function EntrenoAbierto({ entreno }: { entreno: EntrenoDeReto }) {
               ))}
             </ul>
           )}
+
+          {/* Marcarlo es lo que deja ver a la nutricionista si se entrena. */}
+          <div className="mt-2 flex justify-end">
+            <button
+              onClick={onHecho}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                hecho
+                  ? 'border-emerald-500 bg-emerald-600 text-white'
+                  : 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100'
+              }`}
+            >
+              {hecho ? 'Hecho ✓' : 'Marcar hecho'}
+            </button>
+          </div>
         </div>
       )}
     </li>

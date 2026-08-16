@@ -657,6 +657,15 @@ export function ClientView() {
                     recetas={recipes}
                     dayType={dayType}
                     foods={foods}
+                    hechos={registro?.entrenos ?? []}
+                    onEntreno={(entrenoId) => {
+                      const ya = registro?.entrenos ?? [];
+                      guardar({
+                        entrenos: ya.includes(entrenoId)
+                          ? ya.filter((x) => x !== entrenoId)
+                          : [...ya, entrenoId],
+                      });
+                    }}
                   />
                 )}
               </>

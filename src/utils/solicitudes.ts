@@ -99,6 +99,27 @@ export async function enviarSolicitud(
   return { ok: true };
 }
 
+/**
+ * GUARDAR SU PREPARACIÓN MIENTRAS ESPERA
+ *
+ * Entre apuntarse y empezar pasan días y todavía no tiene cuenta, así que
+ * escribe sobre su propia solicitud. El id lo tiene sólo su navegador —no se
+ * pueden listar—, y por eso hace de llave.
+ *
+ * Se manda la solicitud entera con la preparación dentro: es un jsonb, y
+ * mandarlo completo evita quedarse con media ficha si algo se cruza.
+ */
+export async function guardarPreparacion(
+  s: Solicitud,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!hayNube) return { ok: false, error: "Sin conexión con el servidor." };
+  const { error } = await nube()
+    .from("solicitudes")
+    .update({ datos: s })
+    .eq("id", s.id);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 /** Las que están sin dar de alta. Sólo las ve la nutricionista. */
 export async function leerSolicitudes(): Promise<Solicitud[]> {
   if (!hayNube) return [];

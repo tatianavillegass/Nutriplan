@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { EjercicioDeEntreno, EntrenoDeReto } from '../../types/reto';
+import { primerDiaDeSemana, semanaDeDia } from '../../utils/retos';
 import { uid } from '../../utils/storage';
 import { Button, Input } from '../common/ui';
 
@@ -43,7 +44,7 @@ export function EntrenosDelReto({ entrenos, onCambiar }: Props) {
   return (
     <div>
       <p className="mb-2 text-[11px] leading-snug text-slate-500">
-        Con su día de apertura, como las recetas. El vídeo enseña a hacerlo y los ejercicios dicen
+        Con su semana de apertura, como las recetas. El vídeo enseña a hacerlo y los ejercicios dicen
         cuántas vueltas van, que es lo que hace falta en mitad de la serie.
       </p>
 
@@ -53,7 +54,7 @@ export function EntrenosDelReto({ entrenos, onCambiar }: Props) {
             <li key={e.id}>
               <div className="flex items-center gap-3 px-3 py-2">
                 <span className="tnum w-16 shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-center text-[11px] text-slate-500">
-                  Día {e.desdeDia}
+                  Semana {semanaDeDia(e.desdeDia)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
                   {e.nombre || <span className="text-slate-400">Sin nombre</span>}
@@ -89,13 +90,17 @@ export function EntrenosDelReto({ entrenos, onCambiar }: Props) {
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-0.5 block text-[10px] text-slate-500">Desde el día</span>
+                      <span className="mb-0.5 block text-[10px] text-slate-500">
+                        Desde la semana
+                      </span>
                       <Input
                         type="number"
                         min="1"
-                        value={e.desdeDia}
+                        value={semanaDeDia(e.desdeDia)}
                         onChange={(ev) =>
-                          editar(e.id, { desdeDia: Math.max(1, Number(ev.target.value) || 1) })
+                          editar(e.id, {
+                            desdeDia: primerDiaDeSemana(Number(ev.target.value) || 1),
+                          })
                         }
                         className="w-full text-sm"
                       />
