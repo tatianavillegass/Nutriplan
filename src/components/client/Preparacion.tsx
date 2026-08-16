@@ -5,7 +5,8 @@ import {
   type PasoId,
   type Preparacion as Datos,
 } from '../../utils/preparacion';
-import { Button, Input } from '../common/ui';
+import { Button } from '../common/ui';
+import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
 interface Props {
   nombreReto: string;
@@ -152,7 +153,7 @@ function MedidasDelPrimerDia({
 }) {
   const [cintura, setCintura] = useState(datos.cintura ? String(datos.cintura) : '');
   const [cadera, setCadera] = useState(datos.cadera ? String(datos.cadera) : '');
-  const hay = Number(cintura) > 0 || Number(cadera) > 0;
+  const hay = !!aNumero(cintura) || !!aNumero(cadera);
 
   return (
     <>
@@ -162,33 +163,24 @@ function MedidasDelPrimerDia({
       <div className="flex flex-wrap items-end gap-2">
         <label className="block">
           <span className="mb-0.5 block text-[10px] text-slate-500">Cintura (cm)</span>
-          <Input
-            type="number"
-            step="0.1"
-            inputMode="decimal"
+          <NumeroConComa
             value={cintura}
-            onChange={(e) => setCintura(e.target.value)}
+            onChange={setCintura}
             className="w-24 text-sm"
           />
         </label>
         <label className="block">
           <span className="mb-0.5 block text-[10px] text-slate-500">Cadera (cm)</span>
-          <Input
-            type="number"
-            step="0.1"
-            inputMode="decimal"
+          <NumeroConComa
             value={cadera}
-            onChange={(e) => setCadera(e.target.value)}
+            onChange={setCadera}
             className="w-24 text-sm"
           />
         </label>
         <Button
           disabled={!hay}
           onClick={() =>
-            onListo({
-              cintura: Number(cintura) || undefined,
-              cadera: Number(cadera) || undefined,
-            })
+            onListo({ cintura: aNumero(cintura), cadera: aNumero(cadera) })
           }
         >
           Guardar

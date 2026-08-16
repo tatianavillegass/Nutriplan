@@ -7,7 +7,8 @@ import {
   tendenciaDePeso,
   ultimasMedidas,
 } from '../../utils/misMedidas';
-import { Button, Input, fmt } from '../common/ui';
+import { Button, fmt } from '../common/ui';
+import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
 interface Props {
   registros: RegistroDia[];
@@ -59,8 +60,11 @@ export function MisMedidas({ registros, preparacion, deHoy, onGuardar }: Props) 
   };
 
   const guardar = () => {
-    const n = (v: string) => (Number(v) > 0 ? Number(v) : undefined);
-    onGuardar({ peso: n(peso), cintura: n(cintura), cadera: n(cadera) });
+    onGuardar({
+      peso: aNumero(peso),
+      cintura: aNumero(cintura),
+      cadera: aNumero(cadera),
+    });
     setAbierto(false);
   };
 
@@ -87,34 +91,25 @@ export function MisMedidas({ registros, preparacion, deHoy, onGuardar }: Props) 
           <div className="flex flex-wrap items-end gap-2">
             <label className="block">
               <span className="mb-0.5 block text-[10px] text-slate-500">Peso (kg)</span>
-              <Input
-                type="number"
-                step="0.1"
-                inputMode="decimal"
+              <NumeroConComa
                 value={peso}
-                onChange={(e) => setPeso(e.target.value)}
+                onChange={setPeso}
                 className="w-24 text-sm"
               />
             </label>
             <label className="block">
               <span className="mb-0.5 block text-[10px] text-slate-500">Cintura (cm)</span>
-              <Input
-                type="number"
-                step="0.1"
-                inputMode="decimal"
+              <NumeroConComa
                 value={cintura}
-                onChange={(e) => setCintura(e.target.value)}
+                onChange={setCintura}
                 className="w-24 text-sm"
               />
             </label>
             <label className="block">
               <span className="mb-0.5 block text-[10px] text-slate-500">Cadera (cm)</span>
-              <Input
-                type="number"
-                step="0.1"
-                inputMode="decimal"
+              <NumeroConComa
                 value={cadera}
-                onChange={(e) => setCadera(e.target.value)}
+                onChange={setCadera}
                 className="w-24 text-sm"
               />
             </label>

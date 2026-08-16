@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
+import { useAuthStore } from "../store/useAuthStore";
 import { MealOptionsBoard } from "../components/phase2/MealOptionsBoard";
 import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
 import { FoodPortionPicker } from "../components/phase3/FoodPortionPicker";
@@ -138,6 +139,17 @@ export function ClientView() {
   const recursos = useAppStore((s) => s.recursos);
   const retos = useAppStore((s) => s.retos);
   const upsertRegistro = useAppStore((s) => s.upsertRegistro);
+  /**
+   * QUIÉN ESTÁ MIRANDO ESTA PANTALLA
+   *
+   * La misma pantalla la abre la clienta desde su móvil y la nutricionista
+   * desde la ficha, para ver qué le llega. El muro del grupo sólo funciona
+   * para quien es del grupo: el servidor comprueba el correo, así que en la
+   * vista previa no se puede ni escribir ni leer.
+   */
+  const soyElCliente = useAuthStore(
+    (s) => s.perfil?.rol === "cliente" && s.perfil?.clientId === id,
+  );
 
   const [fecha, setFecha] = useState(claveFecha(new Date()));
   const [interactivo, setInteractivo] = useState(true);
@@ -730,7 +742,8 @@ export function ClientView() {
                   Y con quién lo está haciendo. Va después de lo suyo: primero
                   su día, y luego el grupo.
                 */}
-                {estadoDelReto(reto, fecha) === "en-marcha" && (
+                {estadoDelReto(reto, fecha) === "en-marcha" &&
+                  (soyElCliente ? (
                   <MuroDelReto
                     reto={reto}
                     hoy={fecha}
@@ -739,7 +752,14 @@ export function ClientView() {
                     nombre={client.nombre}
                     cerradoHoy={diaCerrado(registro, dayType)}
                   />
-                )}
+                  ) : (
+                    <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs leading-snug text-slate-500 no-print">
+                      El muro del grupo sólo se ve desde la cuenta de la
+                      participante: el servidor comprueba el correo para que
+                      nadie vea el grupo de otro. Entra con su correo si quieres
+                      comprobarlo.
+                    </p>
+                  ))}
               </>
             )}
 
