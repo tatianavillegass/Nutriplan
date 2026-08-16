@@ -649,6 +649,7 @@ export function ClientView() {
             */}
             <MisMedidas
               registros={mios}
+              mediciones={mediciones}
               preparacion={preparacion}
               deHoy={registro?.medidas}
               onGuardar={(medidas) => guardar({ medidas })}

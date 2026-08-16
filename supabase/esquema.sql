@@ -320,19 +320,31 @@ create policy "muro_propio" on public.muro
     )
   );
 
--- Y lee el muro quien está en ese muro: hay que tener fila propia en el mismo
--- reto. Sin eso, cualquiera con cuenta podría mirar los nombres de un grupo al
--- que no pertenece.
+-- Y lee el muro quien está en ese muro. La comprobación va en una función
+-- porque una política que consulta su propia tabla se llama a sí misma sin
+-- parar: Postgres corta con «infinite recursion detected in policy» y la tabla
+-- entera deja de poder leerse. Con `security definer`, la función mira el muro
+-- por debajo de las políticas y devuelve un sí o un no.
+create or replace function public.esta_en_el_muro(p_reto text)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.muro m
+    join public.clientes c on c.id = m.cliente_id
+    where m.reto_id = p_reto
+      and lower(c.email) = lower(auth.jwt() ->> 'email')
+  );
+$$;
+
 drop policy if exists "muro_del_grupo" on public.muro;
 create policy "muro_del_grupo" on public.muro
   for select using (
-    exists (
-      select 1
-      from public.muro mio
-      join public.clientes c on c.id = mio.cliente_id
-      where mio.reto_id = muro.reto_id
-        and lower(c.email) = lower(auth.jwt() ->> 'email')
-    )
+    public.esta_en_el_muro(muro.reto_id)
     or exists (
       select 1 from public.retos_publicos r
       where r.id = muro.reto_id and r.nutri_id = auth.uid()

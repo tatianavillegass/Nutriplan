@@ -140,9 +140,13 @@ export function RetosPage() {
           cintura: s.preparacion?.cintura,
           cadera: s.preparacion?.cadera,
         },
-        notas: s.preparacion?.foto
-          ? "Se midió ella al apuntarse. Subió foto del primer día."
-          : "Se midió ella al apuntarse.",
+        /**
+         * La foto se queda con la medición. Antes se mencionaba en las notas y
+         * la imagen se iba a la basura con la solicitud: lo que se pierde ahí
+         * no se puede volver a pedir, porque era la foto del día uno.
+         */
+        foto: s.preparacion?.foto,
+        notas: "Se midió ella al apuntarse.",
       });
     }
 
@@ -518,6 +522,7 @@ export function RetosPage() {
                         clients={clients}
                         plans={plans}
                         registros={registros}
+                        mediciones={mediciones}
                         onEnviarPlan={enviarPlan}
                       />
                     </div>

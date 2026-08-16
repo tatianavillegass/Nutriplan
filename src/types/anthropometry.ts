@@ -66,6 +66,12 @@ export interface Medicion {
   diametros: Diametros; // cm
   /** Lo que dio la báscula ese día, si se usó. */
   bioimpedancia?: Bioimpedancia;
+  /**
+   * La foto del primer día, si ella quiso subirla. Vive aquí porque una foto
+   * de progreso es de una fecha concreta, igual que un pliegue: guardarla en la
+   * ficha dejaría sólo la última y la gracia es comparar.
+   */
+  foto?: string;
   notas?: string;
 }
 

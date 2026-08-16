@@ -52,9 +52,32 @@ export function Field({
 const inputBase =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-400';
 
+/**
+ * AL TOCAR UN NÚMERO, SE SELECCIONA ENTERO
+ *
+ * Escribir un número era pelearse: había que subrayar lo que ponía, borrarlo y
+ * escribir; y si se borraba a medias quedaba un 0 delante y salía «05». Con el
+ * contenido seleccionado al entrar, teclear sustituye — que es lo que espera
+ * cualquiera al tocar una casilla que ya tiene algo.
+ *
+ * Sólo en las de número: en un texto largo, seleccionarlo todo al tocarlo sería
+ * un peligro.
+ */
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  const { className = '', ...rest } = props;
-  return <input {...rest} className={`${inputBase} tnum ${className}`} />;
+  const { className = '', onFocus, type, ...rest } = props;
+  const numerica = type === 'number' || props.inputMode === 'decimal';
+
+  return (
+    <input
+      {...rest}
+      type={type}
+      onFocus={(e) => {
+        if (numerica) e.currentTarget.select();
+        onFocus?.(e);
+      }}
+      className={`${inputBase} tnum ${className}`}
+    />
+  );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {

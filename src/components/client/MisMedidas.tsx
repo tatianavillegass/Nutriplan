@@ -12,6 +12,8 @@ import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
 interface Props {
   registros: RegistroDia[];
+  /** Sus mediciones: ahí está la foto si la subió antes de tener cuenta. */
+  mediciones?: { fecha: string; foto?: string; perimetros?: { cintura?: number; cadera?: number } }[];
   /** Lo que se midió y la foto que subió antes de empezar. */
   preparacion: Preparacion;
   /** Lo de hoy, para poder corregirlo el mismo día. */
@@ -41,7 +43,13 @@ const fechaCorta = (iso: string) => {
  * y hasta que no hay dos semanas no se dice nada de la tendencia: un número
  * sacado de tres días no es una tendencia.
  */
-export function MisMedidas({ registros, preparacion, deHoy, onGuardar }: Props) {
+export function MisMedidas({
+  registros,
+  mediciones = [],
+  preparacion,
+  deHoy,
+  onGuardar,
+}: Props) {
   const [abierto, setAbierto] = useState(false);
   const [peso, setPeso] = useState(deHoy?.peso ? String(deHoy.peso) : '');
   const [cintura, setCintura] = useState(deHoy?.cintura ? String(deHoy.cintura) : '');
@@ -53,11 +61,17 @@ export function MisMedidas({ registros, preparacion, deHoy, onGuardar }: Props) 
   const tendencia = tendenciaDePeso(medidas);
   const estaSemana = semanas[semanas.length - 1];
 
-  /** Las de antes de empezar: son el punto de partida con el que comparar. */
+  /**
+   * El punto de partida. Puede venir de dos sitios y los dos valen: de lo que
+   * marcó en la app, o de la medición que se creó al darla de alta si se midió
+   * desde la cuenta atrás, antes de tener cuenta.
+   */
+  const primera = [...mediciones].sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
   const partida = {
-    cintura: preparacion.cintura,
-    cadera: preparacion.cadera,
+    cintura: preparacion.cintura ?? primera?.perimetros?.cintura,
+    cadera: preparacion.cadera ?? primera?.perimetros?.cadera,
   };
+  const foto = preparacion.foto ?? mediciones.find((m) => m.foto)?.foto;
 
   const guardar = () => {
     onGuardar({
@@ -181,13 +195,13 @@ export function MisMedidas({ registros, preparacion, deHoy, onGuardar }: Props) 
         )
       )}
 
-      {preparacion.foto && (
+      {foto && (
         <div className="mt-3">
           <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
             Tu foto del primer día
           </p>
           <img
-            src={preparacion.foto}
+            src={foto}
             alt="Tu foto del primer día"
             className="max-h-56 rounded-lg border border-slate-200"
           />

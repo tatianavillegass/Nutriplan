@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Client } from '../../types/client';
 import type { Plan } from '../../types/plan';
 import type { RegistroDia } from '../../types/diary';
+import type { Medicion } from '../../types/anthropometry';
 import type { Reto } from '../../types/reto';
 import { hayCambiosSinEnviar } from '../../types/plan';
 import { useEnergy } from '../../hooks/useEnergy';
@@ -17,6 +18,7 @@ interface Props {
   clients: Client[];
   plans: Plan[];
   registros: RegistroDia[];
+  mediciones: Medicion[];
   onEnviarPlan: (plan: Plan) => void;
 }
 
@@ -41,6 +43,7 @@ export function ParticipantesDelReto({
   clients,
   plans,
   registros,
+  mediciones,
   onEnviarPlan,
 }: Props) {
   const [abierta, setAbierta] = useState<string | null>(null);
@@ -88,6 +91,7 @@ export function ParticipantesDelReto({
             hoy={hoy}
             plan={planDe(c.id)}
             registros={registros.filter((r) => r.clientId === c.id)}
+            mediciones={mediciones}
             abierta={abierta === c.id}
             onAbrir={() => setAbierta(abierta === c.id ? null : c.id)}
             onEnviarPlan={onEnviarPlan}
@@ -104,6 +108,7 @@ function Participante({
   hoy,
   plan,
   registros,
+  mediciones,
   abierta,
   onAbrir,
   onEnviarPlan,
@@ -113,6 +118,7 @@ function Participante({
   hoy: string;
   plan?: Plan;
   registros: RegistroDia[];
+  mediciones: Medicion[];
   abierta: boolean;
   onAbrir: () => void;
   onEnviarPlan: (plan: Plan) => void;
@@ -125,6 +131,9 @@ function Participante({
   const abiertos = entrenosAbiertos(reto, hoy);
   const hechos = new Set(registros.flatMap((r) => r.entrenos ?? []));
   const entrenosHechos = abiertos.filter((e) => hechos.has(e.id)).length;
+
+  /** La foto del primer día: puede haberla subido antes de tener cuenta. */
+  const fotoDeSusMediciones = mediciones.find((m) => m.clientId === client.id && m.foto)?.foto;
 
   /** Lo que se mide ella: en un reto online no hay báscula en consulta. */
   const susMedidas = medidasDe(registros);
@@ -216,9 +225,9 @@ function Participante({
               </p>
             )}
 
-            {preparacion.foto && (
+            {(preparacion.foto ?? fotoDeSusMediciones) && (
               <img
-                src={preparacion.foto}
+                src={preparacion.foto ?? fotoDeSusMediciones}
                 alt={`Foto del primer día de ${client.nombre}`}
                 className="mt-2 max-h-48 rounded-lg border border-slate-200"
               />
