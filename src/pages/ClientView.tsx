@@ -274,6 +274,30 @@ export function ClientView() {
     (registro?.cumplidas ?? []).includes(mealId);
 
   /**
+   * LAS RECETAS ENTRE LAS QUE PUEDE ELEGIR EN UNA COMIDA
+   *
+   * Las que le asignó su nutricionista más las del reto que ya estén abiertas
+   * para esa comida. En un reto las recetas son del grupo: se eligen una vez
+   * en la pantalla del reto y se abren solas en la comida que les toca, así
+   * que asignárselas además a cada participante sería repetir veinte veces el
+   * mismo trabajo. Los gramos sí son suyos: la receta se escala con lo que
+   * tenga pautado ella.
+   */
+  const opcionesDeComida = (m: { id: string; slot: string }) =>
+    [
+      ...new Set([
+        ...recetasDeComida(dayType.recetasAsignadas, m.id),
+        ...(reto
+          ? recetasAbiertasDe(reto, fecha, m.slot as never).map(
+              (r) => r.recetaId,
+            )
+          : []),
+      ]),
+    ]
+      .map((rid) => recipes.find((r) => r.id === rid))
+      .filter(Boolean) as typeof recipes;
+
+  /**
    * LO DE SIEMPRE
    *
    * Quien desayuna lo mismo todos los días estaba volviendo a apuntar cinco
@@ -621,15 +645,24 @@ export function ClientView() {
             */}
             {reto && estadoDelReto(reto, fecha) !== "terminado" && (
               <>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-brand-300 bg-brand-600 px-4 py-2.5 no-print">
-                  <span className="text-sm font-semibold text-white">
-                    {reto.nombre}
-                  </span>
-                  <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                    {textoDelDia(reto, fecha)}
-                  </span>
+                {/*
+                  EL DÍA EN EL QUE VA ES LA MITAD DE LA MOTIVACIÓN
+                  ======================================================
+                  «Día 7 de 30» cuenta una historia que va a alguna parte, y en
+                  letra pequeña no la contaba nadie: ahora es lo más grande de
+                  la línea, con el nombre del reto encima.
+                */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-brand-300 bg-brand-600 px-4 py-3 no-print">
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-medium tracking-wide text-white/80 uppercase">
+                      {reto.nombre}
+                    </span>
+                    <span className="tnum block text-xl leading-tight font-bold text-white">
+                      {textoDelDia(reto, fecha)}
+                    </span>
+                  </div>
                   {reto.descripcion && (
-                    <span className="min-w-0 flex-1 truncate text-xs text-white/80">
+                    <span className="min-w-0 flex-1 text-xs leading-snug text-white/80">
                       {reto.descripcion}
                     </span>
                   )}
@@ -893,30 +926,7 @@ export function ClientView() {
             {plan.fase === 1 && (
               <div className="space-y-5">
                 {comidas.map((m) => {
-                  /**
-                   * LAS DEL RETO NO HAY QUE ASIGNARLAS UNA A UNA
-                   *
-                   * En un reto las recetas son las mismas para todo el grupo:
-                   * se eligen una vez en la pantalla del reto y se abren solas
-                   * en la comida que les toca. Hacerlas asignar además en cada
-                   * ficha sería repetir veinte veces el mismo trabajo, que es
-                   * justo lo que un reto viene a evitar.
-                   *
-                   * Los gramos sí son suyos: la receta se escala con lo que
-                   * tenga pautado ella en esa comida.
-                   */
-                  const opciones = [
-                    ...new Set([
-                      ...recetasDeComida(dayType.recetasAsignadas, m.id),
-                      ...(reto
-                        ? recetasAbiertasDe(reto, fecha, m.slot).map(
-                            (r) => r.recetaId,
-                          )
-                        : []),
-                    ]),
-                  ]
-                    .map((rid) => recipes.find((r) => r.id === rid))
-                    .filter(Boolean) as typeof recipes;
+                  const opciones = opcionesDeComida(m);
                   if (!opciones.length) return null;
 
                   const elegida =
@@ -978,9 +988,12 @@ export function ClientView() {
                     </div>
                   );
                 })}
-                {!comidas.some(
-                  (m) => recetasDeComida(dayType.recetasAsignadas, m.id).length,
-                ) && (
+                {/*
+                  Se cuentan también las del reto: mirando sólo las asignadas
+                  a mano, una participante con todas sus recetas abiertas veía
+                  «tu nutricionista todavía no ha elegido las recetas».
+                */}
+                {!comidas.some((m) => opcionesDeComida(m).length) && (
                   <EmptyState title="Aún no hay recetas asignadas">
                     Tu nutricionista todavía no ha elegido las recetas de este
                     día.

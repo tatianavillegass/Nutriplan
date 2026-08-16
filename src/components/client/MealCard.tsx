@@ -41,14 +41,18 @@ export function MealCard({
   siempreAbierta = false,
 }: Props) {
   const [abierta, setAbierta] = useState(false);
+  /**
+   * ELEGIR ES VER LAS OPCIONES, NO IR PASANDO
+   *
+   * Antes se cambiaba de plato de uno en uno: para ver la tercera opción había
+   * que pasar por la segunda, y no se sabía cuántas quedaban ni qué había. Con
+   * las fotos delante se elige lo que apetece, que es como se decide qué comer.
+   */
+  const [eligiendo, setEligiendo] = useState(false);
   const desplegada = siempreAbierta || abierta;
 
   const i = opciones.findIndex((r) => r.id === receta.id);
   const varias = opciones.length > 1;
-  const mover = (paso: number) => {
-    const siguiente = opciones[(i + paso + opciones.length) % opciones.length];
-    if (siguiente) onElegir(siguiente.id);
-  };
 
   return (
     <article
@@ -104,12 +108,15 @@ export function MealCard({
           <div className="absolute right-2 bottom-2 flex items-center gap-1.5 no-print">
             {varias && (
               <button
-                onClick={() => mover(1)}
-                aria-label="Cambiar de plato"
-                title={`Cambiar de plato (${i + 1} de ${opciones.length})`}
+                onClick={() => setEligiendo((v) => !v)}
+                aria-expanded={eligiendo}
+                title={`Elegir entre ${opciones.length} opciones`}
                 className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-xs font-semibold text-brand-800 shadow-md transition hover:bg-brand-50"
               >
-                ⇄ Otro plato <span className="tnum text-brand-400">{i + 1}/{opciones.length}</span>
+                ⇄ Cambiar {meal.nombre.toLowerCase()}{' '}
+                <span className="tnum text-brand-400">
+                  {i + 1}/{opciones.length}
+                </span>
               </button>
             )}
             {/* Con un ✓ gris sobre la foto no se veía que fuera pulsable:
@@ -128,6 +135,54 @@ export function MealCard({
             </button>
           </div>
         </div>
+
+        {/* ── Las opciones, con su foto ─────────────────── */}
+        {eligiendo && (
+          <div className="mt-3 no-print">
+            <p className="mb-2 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+              Cambiar {meal.nombre.toLowerCase()} · {opciones.length} opciones
+            </p>
+            <ul className="grid grid-cols-2 gap-2">
+              {opciones.map((r) => {
+                const puesta = r.id === receta.id;
+                return (
+                  <li key={r.id}>
+                    <button
+                      onClick={() => {
+                        onElegir(r.id);
+                        setEligiendo(false);
+                      }}
+                      aria-pressed={puesta}
+                      className={`w-full overflow-hidden rounded-xl border text-left transition ${
+                        puesta
+                          ? 'border-brand-500 ring-2 ring-brand-100'
+                          : 'border-slate-200 hover:border-brand-300'
+                      }`}
+                    >
+                      {r.foto_url ? (
+                        <img
+                          src={r.foto_url}
+                          alt=""
+                          className="aspect-[4/3] w-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex aspect-[4/3] w-full items-center justify-center bg-brand-50 text-2xl text-brand-200">
+                          🍽
+                        </span>
+                      )}
+                      <span className="block px-2 py-1.5">
+                        <span className="block text-xs leading-snug font-medium text-slate-800">
+                          {r.nombre}
+                        </span>
+                        <RecipeMeta receta={r} className="mt-1 text-[10px]" />
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {!siempreAbierta && (
           <button

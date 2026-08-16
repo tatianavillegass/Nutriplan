@@ -88,24 +88,41 @@ describe('Marcar como hecha', () => {
   });
 });
 
-describe('Cambiar de plato', () => {
-  it('con una sola opción no hay nada que cambiar', () => {
+/**
+ * ELEGIR ES VER LAS OPCIONES, NO IR PASANDO
+ *
+ * Antes se cambiaba de plato de uno en uno: para llegar a la tercera había que
+ * pasar por la segunda, y no se sabía qué venía. Con las fotos delante se
+ * elige lo que apetece, que es como se decide qué comer.
+ */
+describe('Elegir entre las opciones', () => {
+  const abrirOpciones = () =>
+    fireEvent.click(screen.getByText(/Cambiar desayuno/i));
+
+  it('con una sola opción no hay nada que elegir', () => {
     pintar();
-    expect(screen.queryByLabelText('Cambiar de plato')).toBeNull();
+    expect(screen.queryByText(/Cambiar desayuno/i)).toBeNull();
   });
 
-  it('con dos, el botón pasa a la otra y dice por dónde vas', () => {
+  it('con varias se dice cuántas hay y por cuál vas', () => {
+    pintar({ opciones: [A, B] });
+    expect(screen.getByText('1/2')).toBeTruthy();
+  });
+
+  it('se despliegan todas y se elige la que apetezca', () => {
     const onElegir = vi.fn();
     pintar({ opciones: [A, B], onElegir });
-    expect(screen.getByText('1/2')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText('Cambiar de plato'));
+    abrirOpciones();
+
+    expect(screen.getByText(/2 opciones/)).toBeTruthy();
+    fireEvent.click(screen.getByText(B.nombre));
     expect(onElegir).toHaveBeenCalledWith('r2');
   });
 
-  it('y desde la última vuelve a la primera', () => {
-    const onElegir = vi.fn();
-    pintar({ opciones: [A, B], receta: B, onElegir });
-    fireEvent.click(screen.getByLabelText('Cambiar de plato'));
-    expect(onElegir).toHaveBeenCalledWith('r1');
+  it('y al elegir se cierra la lista', () => {
+    pintar({ opciones: [A, B] });
+    abrirOpciones();
+    fireEvent.click(screen.getByText(B.nombre));
+    expect(screen.queryByText(/2 opciones/)).toBeNull();
   });
 });

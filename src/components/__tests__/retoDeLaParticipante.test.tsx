@@ -82,6 +82,25 @@ describe('Las recetas del reto llegan solas a su día', () => {
     expect(screen.getAllByText(/Tortitas del reto/).length).toBeGreaterThan(0);
   });
 
+  /**
+   * Mirando sólo las asignadas a mano, una participante con todas sus recetas
+   * abiertas veía «tu nutricionista todavía no ha elegido las recetas».
+   */
+  it('y no se le dice que no hay ninguna', () => {
+    useAppStore.setState({
+      plans: [
+        {
+          ...DEMO_PLAN,
+          fase: 1,
+          dayTypes: [{ ...DEMO_PLAN.dayTypes[0], recetasAsignadas: {} }],
+        },
+      ],
+    });
+    abrir();
+    expect(screen.queryByText(/no hay recetas asignadas/i)).toBeNull();
+  });
+
+
   it('y las de un reto que aún no ha empezado, no', () => {
     useAppStore.setState({ retos: [{ ...RETO, fechaInicio: '2099-01-01' }] });
     abrir();
