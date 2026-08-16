@@ -57,6 +57,17 @@ export interface Foto {
   retos: Reto[];
 }
 
+/**
+ * Lo que vuelve del servidor. Es la Foto, pero con las columnas nuevas
+ * pudiendo faltar: mientras no estén creadas en Supabase, la fila no las trae
+ * y eso NO significa que no haya nada — significa que el servidor todavía no
+ * sabe de ellas y hay que quedarse con lo del navegador.
+ */
+export type FotoDelServidor = Omit<Foto, "recursos" | "retos"> & {
+  recursos?: Recurso[];
+  retos?: Reto[];
+};
+
 export interface FilaCliente {
   id: string;
   nutri_id: string;
@@ -174,7 +185,7 @@ export function deFilas(
 // ------------------------------------------------------------------
 
 /** Todo lo que esta persona puede ver, montado como lo espera la app. */
-export async function bajar(perfil: Perfil): Promise<Foto> {
+export async function bajar(perfil: Perfil): Promise<FotoDelServidor> {
   const sb = nube();
 
   const [compartido, fichas] = await Promise.all([
@@ -241,9 +252,30 @@ export async function bajar(perfil: Perfil): Promise<Foto> {
     foods: (compartido.data?.alimentos ?? []) as Alimento[],
     plantillas: plantillas.comidas ?? [],
     plantillasDia: plantillas.dias ?? [],
-    recursos: (compartido.data?.recursos ?? []) as Recurso[],
-    retos: (compartido.data?.retos ?? []) as Reto[],
+    /**
+     * COLUMNA QUE NO EXISTE NO ES «NO TIENES NADA»
+     *
+     * Mientras la columna no esté creada en Supabase, la fila que vuelve no
+     * trae la clave. Dándolo por una lista vacía se borraba lo que había en el
+     * navegador: se creaba un reto, se subía —el envío se guarda sin esa
+     * columna, que para eso es tolerante—, y al recargar volvía sin retos y se
+     * llevaba por delante el que se acababa de crear.
+     *
+     * Devolviendo `undefined` se distingue una cosa de la otra, y quien lo
+     * recibe se queda con lo suyo.
+     */
+    recursos: leerColumna<Recurso>(compartido.data, "recursos"),
+    retos: leerColumna<Reto>(compartido.data, "retos"),
   };
+}
+
+/** La lista de esa columna, o `undefined` si el servidor no la tiene todavía. */
+function leerColumna<T>(
+  fila: Record<string, unknown> | null | undefined,
+  columna: string,
+): T[] | undefined {
+  if (!fila || !(columna in fila)) return undefined;
+  return (fila[columna] ?? []) as T[];
 }
 
 // ------------------------------------------------------------------

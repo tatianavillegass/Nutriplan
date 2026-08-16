@@ -741,8 +741,21 @@ export const useAppStore = create<AppState>((set, get) => {
       persistFoods(foods);
       persistMediciones(datos.mediciones);
       persistRegistros(datos.registros);
-      persistRecursos(datos.recursos ?? []);
-      persistRetos(datos.retos ?? []);
+      /**
+       * COLUMNA QUE NO EXISTE NO ES «NO TIENES NADA»
+       *
+       * Mientras la columna no esté creada en Supabase, lo que baja no trae la
+       * clave. Dándolo por una lista vacía se borraba lo que había aquí: se
+       * creaba un reto, se subía —el envío ya sabe guardarse sin esa columna— y
+       * al recargar volvía sin retos y se llevaba por delante el recién creado.
+       *
+       * Si el servidor no sabe de esto todavía, manda lo del navegador.
+       */
+      const recursos = datos.recursos ?? get().recursos;
+      const retos = datos.retos ?? get().retos;
+
+      persistRecursos(recursos);
+      persistRetos(retos);
 
       set({
         clients: datos.clients,
@@ -751,8 +764,8 @@ export const useAppStore = create<AppState>((set, get) => {
         foods,
         mediciones: datos.mediciones,
         registros: datos.registros,
-        recursos: datos.recursos ?? [],
-        retos: datos.retos ?? [],
+        recursos,
+        retos,
       });
     },
   };

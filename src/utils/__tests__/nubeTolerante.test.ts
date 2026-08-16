@@ -102,8 +102,12 @@ describe('Leer lo compartido', () => {
     const foto = await bajar(PERFIL);
     expect(foto.recipes).toHaveLength(1);
     expect(foto.foods).toHaveLength(1);
-    // Sin columna «recursos», la lista viene vacía y no pasa nada más.
-    expect(foto.recursos).toEqual([]);
+    /**
+     * Sin columna «recursos» no se dice «no tienes ninguno», se dice «el
+     * servidor no sabe de esto»: quien lo recibe se queda con lo suyo. Dándolo
+     * por vacío se borraba en el navegador lo que se acababa de crear.
+     */
+    expect(foto.recursos).toBeUndefined();
   });
 
   /**
@@ -128,7 +132,7 @@ describe('Leer lo compartido', () => {
     CONSULTAS.nutricionistas = { data: null, error: null };
     const foto = await bajar(PERFIL);
     expect(foto.recipes).toEqual([]);
-    expect(foto.recursos).toEqual([]);
+    expect(foto.recursos).toBeUndefined();
   });
 });
 
