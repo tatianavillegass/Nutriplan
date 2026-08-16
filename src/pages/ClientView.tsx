@@ -709,6 +709,8 @@ export function ClientView() {
                   <RetoDelDia
                     reto={reto}
                     hoy={fecha}
+                    registros={mios}
+                    dayTypes={plan.dayTypes}
                     hechos={registro?.entrenos ?? []}
                     onEntreno={(entrenoId) => {
                       const ya = registro?.entrenos ?? [];

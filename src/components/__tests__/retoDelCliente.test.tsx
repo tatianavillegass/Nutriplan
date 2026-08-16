@@ -5,6 +5,18 @@ import { Preparacion } from '../client/Preparacion';
 import { RetoDelDia } from '../client/RetoDelDia';
 import { EntrenosDelReto } from '../retos/EntrenosDelReto';
 import type { Reto } from '../../types/reto';
+import type { RegistroDia } from '../../types/diary';
+import type { DayType } from '../../types/plan';
+
+const DIA_BASE: DayType = {
+  id: 'dt',
+  nombre: 'Día base',
+  proteinaGkg: 2,
+  hcGkg: 3,
+  meals: [{ id: 'comida', nombre: 'Comida', slot: 'comida', orden: 1 }],
+  grid: { comida: { proteicos_magros: 4 } },
+  notas: {},
+};
 
 afterEach(cleanup);
 
@@ -36,13 +48,28 @@ const RETO: Reto = {
  * etiqueta de color en la pantalla de otra cosa.
  */
 describe('El reto, dentro de su app', () => {
-  const pintar = (hoy: string, onEntreno = vi.fn(), hechos: string[] = []) =>
+  const pintar = (
+    hoy: string,
+    onEntreno = vi.fn(),
+    hechos: string[] = [],
+    registros: RegistroDia[] = [],
+  ) =>
     render(
-      <RetoDelDia reto={RETO} hoy={hoy} hechos={hechos} onEntreno={onEntreno} />,
+      <RetoDelDia
+        reto={RETO}
+        hoy={hoy}
+        registros={registros}
+        dayTypes={[DIA_BASE]}
+        hechos={hechos}
+        onEntreno={onEntreno}
+      />,
     );
+
+  const abrirEntrenos = () => fireEvent.click(screen.getByText(/^Entrenos/));
 
   it('enseña los entrenos abiertos, con sus series', () => {
     pintar('2026-09-03');
+    abrirEntrenos();
     fireEvent.click(screen.getByText('Tren inferior'));
     expect(screen.getByText('Sentadilla')).toBeTruthy();
     expect(screen.getByText(/4 series × 10-12/)).toBeTruthy();
@@ -51,7 +78,38 @@ describe('El reto, dentro de su app', () => {
 
   it('lo que todavía no se ha abierto no se ve', () => {
     pintar('2026-09-03');
+    abrirEntrenos();
     expect(screen.queryByText('Tren superior')).toBeNull();
+  });
+
+  /** Ver los días caer es lo que hace que un reto se sienta como un reto. */
+  it('la tira de días dice por dónde va', () => {
+    pintar('2026-09-03');
+    expect(document.body.textContent?.replace(/\s+/g, ' ')).toContain('0 de 3 días cerrados');
+  });
+
+  it('y un día cerrado se marca con su ✓', () => {
+    const dia = {
+      id: 'r1',
+      clientId: 'c1',
+      fecha: '2026-09-02',
+      recetaElegida: {},
+      cumplidas: [],
+      porciones: {},
+      sustituciones: {},
+      extras: [],
+      bocados: [
+        {
+          id: 'b1',
+          nombre: 'Algo',
+          cantidad: 100,
+          macros: { proteina: 10, hc: 10, grasa: 5 },
+          kcal: 125,
+        },
+      ],
+    } as RegistroDia;
+    pintar('2026-09-03', vi.fn(), [], [dia]);
+    expect(document.body.textContent?.replace(/\s+/g, ' ')).toContain('1 de 3 días cerrados');
   });
 
   /**
@@ -67,6 +125,7 @@ describe('El reto, dentro de su app', () => {
   it('el entreno se puede marcar hecho', () => {
     const onEntreno = vi.fn();
     pintar('2026-09-03', onEntreno);
+    abrirEntrenos();
     fireEvent.click(screen.getByText('Tren inferior'));
     fireEvent.click(screen.getByText('Marcar hecho'));
     expect(onEntreno).toHaveBeenCalledWith('e1');
@@ -74,6 +133,7 @@ describe('El reto, dentro de su app', () => {
 
   it('y una vez hecho se ve sin abrirlo', () => {
     pintar('2026-09-03', vi.fn(), ['e1']);
+    abrirEntrenos();
     expect(screen.getByText('hecho ✓')).toBeTruthy();
   });
 });

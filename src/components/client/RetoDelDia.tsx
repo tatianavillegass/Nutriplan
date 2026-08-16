@@ -1,62 +1,146 @@
 import { useState } from 'react';
+import type { DayType } from '../../types/plan';
+import type { RegistroDia } from '../../types/diary';
 import type { EntrenoDeReto, Reto } from '../../types/reto';
-import { entrenosAbiertos, proximaApertura, semanaDeDia } from '../../utils/retos';
+import { diaDelReto, entrenosAbiertos, proximaApertura, semanaDeDia } from '../../utils/retos';
+import { diaCerrado } from '../../utils/racha';
 
 interface Props {
   reto: Reto;
   hoy: string;
+  /** Sus días, para saber cuáles ha cerrado. */
+  registros: RegistroDia[];
+  dayTypes: DayType[];
   /** Entrenos que ya ha dado por hechos hoy. */
   hechos: string[];
   onEntreno: (entrenoId: string) => void;
 }
 
+/** El día del reto al que corresponde una fecha, o 0 si cae fuera. */
+function diaDeFecha(reto: Reto, fecha: string): number {
+  const d = diaDelReto({ ...reto, fechaInicio: reto.fechaInicio }, fecha);
+  return d >= 1 && d <= reto.dias ? d : 0;
+}
+
 /**
- * EL RETO, DENTRO DE SU APP
+ * CÓMO VA TU RETO
  *
- * Antes de esto la participante veía una línea con el nombre del reto y ya: las
- * recetas que se iban abriendo y los entrenos no llegaban a ninguna parte, así
- * que el reto era una etiqueta de color en la pantalla de otra cosa.
+ * Lo que hace que un reto se sienta como un reto es ver los días caer. Una
+ * tira con los treinta días y un ✓ en los cerrados dice de un vistazo por
+ * dónde va, y eso es justo lo que se quiere mirar al abrir la app.
  *
- * Se abre por días y lo abierto se queda abierto: el reto suma, no rota. Diez
- * recetas de golpe se leen como un PDF y se cierran; tres cada semana se
- * cocinan.
+ * Se cuentan **días cerrados**, que es lo mismo que la racha: una comida fuera
+ * cierra el día igual que una hecha. Si salir a cenar apagara una casilla, la
+ * tira estaría enseñando que salir a cenar es un fallo.
+ *
+ * Las recetas no se repiten aquí: ya salen abajo, en su comida, que es donde
+ * se buscan cuando toca comer.
  */
-export function RetoDelDia({ reto, hoy, hechos, onEntreno }: Props) {
+export function RetoDelDia({
+  reto,
+  hoy,
+  registros,
+  dayTypes,
+  hechos,
+  onEntreno,
+}: Props) {
+  const [verEntrenos, setVerEntrenos] = useState(false);
   const entrenos = entrenosAbiertos(reto, hoy);
   const proxima = proximaApertura(reto, hoy);
+  const dia = Math.max(1, diaDelReto(reto, hoy));
 
-  /**
-   * LAS RECETAS NO SE REPITEN AQUÍ
-   *
-   * Ya salen abajo, en su comida, que es donde se buscan cuando toca comer.
-   * Enseñarlas también aquí ocupaba media pantalla y hacía dudar de si eran
-   * las mismas o unas aparte del reto.
-   */
-  if (!entrenos.length) return null;
+  /** Qué días del reto están cerrados, por número de día. */
+  const cerrados = new Set<number>();
+  for (const r of registros) {
+    const n = diaDeFecha(reto, r.fecha);
+    if (!n) continue;
+    const suTipo = dayTypes.find((d) => d.id === r.dayTypeId) ?? dayTypes[0];
+    if (diaCerrado(r, suTipo)) cerrados.add(n);
+  }
+
+  const dias = Array.from({ length: reto.dias }, (_, i) => i + 1);
 
   return (
     <section className="rounded-2xl border border-brand-200 bg-white p-4 no-print sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-bold tracking-wide text-brand-800 uppercase">
-          Entrenos de tu reto
+          Cómo va tu reto
         </h2>
-        {proxima && (
-          <span className="text-[11px] text-slate-500">
-            En la semana {semanaDeDia(proxima.dia)} se abre más
-          </span>
-        )}
+        <span className="tnum text-xs text-slate-600">
+          <strong className="font-semibold text-brand-800">{cerrados.size}</strong> de {dia}{' '}
+          {dia === 1 ? 'día cerrado' : 'días cerrados'}
+        </span>
       </div>
 
-      <ul className="mt-2 space-y-2">
-        {entrenos.map((e) => (
-          <EntrenoAbierto
-            key={e.id}
-            entreno={e}
-            hecho={hechos.includes(e.id)}
-            onHecho={() => onEntreno(e.id)}
-          />
-        ))}
-      </ul>
+      {/* La tira de días: un cuadrito por día, con ✓ en los que cerró. */}
+      <ol className="mt-2.5 flex flex-wrap gap-1">
+        {dias.map((n) => {
+          const hecho = cerrados.has(n);
+          const esHoy = n === dia;
+          const futuro = n > dia;
+          return (
+            <li
+              key={n}
+              title={`Día ${n}${hecho ? ' · cerrado' : ''}`}
+              className={`tnum flex h-7 w-7 items-center justify-center rounded-lg text-[11px] font-medium ${
+                hecho
+                  ? 'bg-emerald-500 text-white'
+                  : futuro
+                    ? 'bg-slate-50 text-slate-300'
+                    : 'bg-slate-100 text-slate-400'
+              } ${esHoy ? 'ring-2 ring-brand-400' : ''}`}
+            >
+              {hecho ? '✓' : n}
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className="mt-2 text-[11px] leading-snug text-slate-500">
+        Un día se cierra cuando marcas todas tus comidas. Comer fuera también lo cierra: salir a
+        cenar no es un fallo.
+      </p>
+
+      {/* Los entrenos, aparte y plegados: no todos los días toca entrenar. */}
+      {entrenos.length > 0 && (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <button
+            onClick={() => setVerEntrenos((v) => !v)}
+            aria-expanded={verEntrenos}
+            className="flex w-full items-center justify-between gap-2 text-left"
+          >
+            <span className="text-sm font-medium text-brand-800">
+              Entrenos
+              <span className="ml-1.5 text-[11px] text-slate-400">
+                {entrenos.filter((e) => hechos.includes(e.id)).length} de {entrenos.length} hechos
+              </span>
+            </span>
+            <span aria-hidden className="text-slate-300">
+              {verEntrenos ? '⌃' : '⌄'}
+            </span>
+          </button>
+
+          {verEntrenos && (
+            <>
+              {proxima && (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  En la semana {semanaDeDia(proxima.dia)} se abre más
+                </p>
+              )}
+              <ul className="mt-2 space-y-2">
+                {entrenos.map((e) => (
+                  <EntrenoAbierto
+                    key={e.id}
+                    entreno={e}
+                    hecho={hechos.includes(e.id)}
+                    onHecho={() => onEntreno(e.id)}
+                  />
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }
