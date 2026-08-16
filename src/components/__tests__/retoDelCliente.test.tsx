@@ -4,35 +4,9 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { Preparacion } from '../client/Preparacion';
 import { RetoDelDia } from '../client/RetoDelDia';
 import { EntrenosDelReto } from '../retos/EntrenosDelReto';
-import { FOOD_CATALOG } from '../../data/foodCatalog';
-import type { DayType } from '../../types/plan';
-import type { Receta } from '../../types/recipe';
 import type { Reto } from '../../types/reto';
 
 afterEach(cleanup);
-
-const DIA: DayType = {
-  id: 'dt',
-  nombre: 'Día base',
-  proteinaGkg: 2,
-  hcGkg: 3,
-  meals: [{ id: 'desayuno', nombre: 'Desayuno', slot: 'desayuno', orden: 1 }],
-  grid: { desayuno: { almidones: 2, proteicos_magros: 2 } },
-  notas: {},
-};
-
-const RECETA: Receta = {
-  id: 'rc1',
-  nombre: 'Tortitas de avena',
-  categorias: ['desayuno'],
-  tags: [],
-  base: { almidones: 2, proteicos_magros: 2 },
-  ingredientes: [],
-  preparacion: '',
-  notas: '',
-  createdAt: '',
-  updatedAt: '',
-};
 
 const RETO: Reto = {
   id: 'rt1',
@@ -64,49 +38,35 @@ const RETO: Reto = {
 describe('El reto, dentro de su app', () => {
   const pintar = (hoy: string, onEntreno = vi.fn(), hechos: string[] = []) =>
     render(
-      <RetoDelDia
-        reto={RETO}
-        hoy={hoy}
-        recetas={[RECETA]}
-        dayType={DIA}
-        foods={FOOD_CATALOG}
-        hechos={hechos}
-        onEntreno={onEntreno}
-      />,
+      <RetoDelDia reto={RETO} hoy={hoy} hechos={hechos} onEntreno={onEntreno} />,
     );
 
-  it('enseña lo abierto y en qué día va', () => {
+  it('enseña los entrenos abiertos, con sus series', () => {
     pintar('2026-09-03');
-    expect(screen.getByText(/Tu reto · día 3/i)).toBeTruthy();
-    expect(screen.getByText('Tortitas de avena')).toBeTruthy();
-  });
-
-  it('lo que todavía no se ha abierto no se ve, pero se dice cuándo llega', () => {
-    pintar('2026-09-03');
-    expect(screen.queryByText('Tren superior')).toBeNull();
-  });
-
-  /** Un reto no es «todas comiendo lo mismo»: la receta se escala a sus números. */
-  it('la receta se abre con sus gramos', () => {
-    pintar('2026-09-03');
-    fireEvent.click(screen.getByText('Tortitas de avena'));
-    expect(screen.getAllByText(/Tortitas de avena/).length).toBeGreaterThan(1);
-  });
-
-  it('los entrenos van en su pestaña, con las series', () => {
-    pintar('2026-09-03');
-    fireEvent.click(screen.getByText(/Entrenos \(1\)/));
     fireEvent.click(screen.getByText('Tren inferior'));
     expect(screen.getByText('Sentadilla')).toBeTruthy();
     expect(screen.getByText(/4 series × 10-12/)).toBeTruthy();
     expect(screen.getByText('Ver el vídeo')).toBeTruthy();
   });
 
+  it('lo que todavía no se ha abierto no se ve', () => {
+    pintar('2026-09-03');
+    expect(screen.queryByText('Tren superior')).toBeNull();
+  });
+
+  /**
+   * Las recetas ya salen abajo, en su comida: repetirlas aquí ocupaba media
+   * pantalla y hacía dudar de si eran las mismas o unas aparte.
+   */
+  it('las recetas no se repiten aquí', () => {
+    pintar('2026-09-03');
+    expect(screen.queryByText(/Tortitas/)).toBeNull();
+  });
+
   /** Marcarlo es lo que deja ver a la nutricionista si de verdad se entrena. */
   it('el entreno se puede marcar hecho', () => {
     const onEntreno = vi.fn();
     pintar('2026-09-03', onEntreno);
-    fireEvent.click(screen.getByText(/Entrenos \(1\)/));
     fireEvent.click(screen.getByText('Tren inferior'));
     fireEvent.click(screen.getByText('Marcar hecho'));
     expect(onEntreno).toHaveBeenCalledWith('e1');
@@ -114,7 +74,6 @@ describe('El reto, dentro de su app', () => {
 
   it('y una vez hecho se ve sin abrirlo', () => {
     pintar('2026-09-03', vi.fn(), ['e1']);
-    fireEvent.click(screen.getByText(/Entrenos \(1\)/));
     expect(screen.getByText('hecho ✓')).toBeTruthy();
   });
 });

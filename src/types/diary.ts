@@ -149,6 +149,13 @@ export interface RegistroDia {
    */
   /** Reto: entrenos que ha dado por hechos. */
   entrenos?: string[];
+  /**
+   * Lo que se mide ella. En consulta la báscula la pone la nutricionista; en un
+   * reto online no hay consulta, así que lo apunta aquí. Todo opcional: pesarse
+   * a diario le va bien a quien no le da importancia y le hace daño a quien se
+   * la da, así que no se pide ni rompe ninguna racha.
+   */
+  medidas?: { peso?: number; cintura?: number; cadera?: number };
   preparacion?: {
     hechos: ('medidas' | 'foto' | 'guia')[];
     cintura?: number;

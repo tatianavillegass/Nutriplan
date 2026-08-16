@@ -18,6 +18,7 @@ import { ExtrasPanel } from "../components/client/ExtrasPanel";
 import { MealExtras } from "../components/client/MealExtras";
 import { ComidaLibre } from "../components/client/ComidaLibre";
 import { ResumenTab } from "../components/client/ResumenTab";
+import { MisMedidas } from "../components/client/MisMedidas";
 import { MetasDiarias } from "../components/client/MetasDiarias";
 import { RecursosTab } from "../components/client/RecursosTab";
 import { PlanDocument } from "../components/export/PlanDocument";
@@ -28,7 +29,6 @@ import {
   comidasConPauta,
   ajustesDeReceta,
   acompanamientosDeReceta,
-  FASE_POR_NUMERO,
   planParaCliente,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
@@ -566,10 +566,13 @@ export function ClientView() {
             <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-brand-900">
               Hola, {client.nombre.split(" ")[0]}
             </h1>
-            <p className="text-sm text-slate-500">
-              {fechaLegible(fecha)} · Fase {plan.fase} —{" "}
-              {FASE_POR_NUMERO[plan.fase].titulo.toLowerCase()}
-            </p>
+            {/*
+              «Fase 1» es vocabulario de la consulta, no de quien come: dice
+              en qué punto del método está, que es cosa de la nutricionista, y
+              a quien lo lee sólo le deja la duda de qué fases hay y por qué
+              está en la primera. La fecha sí le sirve.
+            */}
+            <p className="text-sm text-slate-500">{fechaLegible(fecha)}</p>
           </div>
           <div className="flex gap-2">
             {plan.fase === 3 && (
@@ -623,13 +626,26 @@ export function ClientView() {
         </div>
 
         {tab === "resumen" && (
-          <ResumenTab
-            client={client}
-            dayTypes={plan.dayTypes}
-            registros={mios}
-            mediciones={mediciones}
-            fecha={fecha}
-          />
+          <div className="space-y-5">
+            {/*
+              En un reto no hay consulta, así que la báscula y la cinta las
+              lleva ella: esto es lo único que su nutricionista va a saber de
+              su cuerpo hasta que termine.
+            */}
+            <MisMedidas
+              registros={mios}
+              preparacion={preparacion}
+              deHoy={registro?.medidas}
+              onGuardar={(medidas) => guardar({ medidas })}
+            />
+            <ResumenTab
+              client={client}
+              dayTypes={plan.dayTypes}
+              registros={mios}
+              mediciones={mediciones}
+              fecha={fecha}
+            />
+          </div>
         )}
 
         {tab === "recursos" && <RecursosTab recursos={susRecursos} />}
@@ -693,9 +709,6 @@ export function ClientView() {
                   <RetoDelDia
                     reto={reto}
                     hoy={fecha}
-                    recetas={recipes}
-                    dayType={dayType}
-                    foods={foods}
                     hechos={registro?.entrenos ?? []}
                     onEntreno={(entrenoId) => {
                       const ya = registro?.entrenos ?? [];
@@ -955,6 +968,7 @@ export function ClientView() {
                           })
                         }
                         onAlternarHecha={() => alternarCumplida(m.id)}
+                        onLibre={() => setPidiendoLibre(m.id)}
                       >
                         <ScaledRecipeView
                           receta={receta}

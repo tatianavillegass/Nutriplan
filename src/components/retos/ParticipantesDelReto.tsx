@@ -8,6 +8,7 @@ import { hayCambiosSinEnviar } from '../../types/plan';
 import { useEnergy } from '../../hooks/useEnergy';
 import { entrenosAbiertos } from '../../utils/retos';
 import { PASOS_DE_PREPARACION, preparacionDe } from '../../utils/preparacion';
+import { medidasDe, tendenciaDePeso, ultimasMedidas } from '../../utils/misMedidas';
 import { Button, fmt } from '../common/ui';
 
 interface Props {
@@ -125,6 +126,11 @@ function Participante({
   const hechos = new Set(registros.flatMap((r) => r.entrenos ?? []));
   const entrenosHechos = abiertos.filter((e) => hechos.has(e.id)).length;
 
+  /** Lo que se mide ella: en un reto online no hay báscula en consulta. */
+  const susMedidas = medidasDe(registros);
+  const suyas = ultimasMedidas(susMedidas);
+  const tendencia = tendenciaDePeso(susMedidas);
+
   return (
     <li>
       <button
@@ -216,6 +222,40 @@ function Participante({
                 alt={`Foto del primer día de ${client.nombre}`}
                 className="mt-2 max-h-48 rounded-lg border border-slate-200"
               />
+            )}
+          </div>
+
+          {/* ── Lo que se ha medido ella ──────────────────── */}
+          <div>
+            <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+              Lo que se ha medido
+            </p>
+            {suyas.peso || suyas.cintura || suyas.cadera ? (
+              <p className="tnum text-xs text-slate-700">
+                {suyas.peso ? `${fmt(suyas.peso, 1)} kg` : ''}
+                {suyas.peso && (suyas.cintura || suyas.cadera) ? ' · ' : ''}
+                {suyas.cintura ? `cintura ${fmt(suyas.cintura, 0)} cm` : ''}
+                {suyas.cintura && suyas.cadera ? ' · ' : ''}
+                {suyas.cadera ? `cadera ${fmt(suyas.cadera, 0)} cm` : ''}
+                {suyas.fecha && (
+                  <span className="text-slate-400"> · {suyas.fecha}</span>
+                )}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">Todavía no ha apuntado nada.</p>
+            )}
+
+            {/*
+              La media de la semana y no el peso de hoy: el de un día son dos
+              kilos de agua y de lo que quedó de la cena, y sobre eso no se
+              cambia un plan.
+            */}
+            {tendencia && (
+              <p className="tnum mt-0.5 text-xs text-slate-600">
+                Tendencia: {tendencia.porSemana > 0 ? '+' : '−'}
+                {fmt(Math.abs(tendencia.porSemana), 1)} kg/semana
+                <span className="text-slate-400"> · {tendencia.semanas} semanas</span>
+              </p>
             )}
           </div>
 

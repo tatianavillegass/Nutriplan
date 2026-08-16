@@ -28,6 +28,12 @@ interface Props {
   children: ReactNode;
   /** Abierta de entrada (para imprimir el plan entero). */
   siempreAbierta?: boolean;
+  /**
+   * Marcar la comida como libre. Va en la cabecera, junto al nombre de la
+   * comida: aquí no había forma de decir «hoy he comido fuera», y comer fuera
+   * pasa en todas las fases, no sólo cuando se marcan porciones.
+   */
+  onLibre?: () => void;
 }
 
 export function MealCard({
@@ -39,6 +45,7 @@ export function MealCard({
   onAlternarHecha,
   children,
   siempreAbierta = false,
+  onLibre,
 }: Props) {
   const [abierta, setAbierta] = useState(false);
   /**
@@ -69,6 +76,15 @@ export function MealCard({
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
               ✓ hecha
             </span>
+          )}
+          {onLibre && !hecha && (
+            <button
+              onClick={onLibre}
+              title={`Marcar ${meal.nombre.toLowerCase()} como comida libre`}
+              className="ml-auto rounded-lg border border-violet-200 px-2.5 py-1 text-[11px] font-medium text-violet-700 transition hover:bg-violet-50 no-print"
+            >
+              Libre
+            </button>
           )}
         </div>
 

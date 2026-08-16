@@ -73,6 +73,24 @@ describe('La comida se ve plegada', () => {
   });
 });
 
+/**
+ * Comer fuera pasa en todas las fases, no sólo donde se marcan porciones: en
+ * la tarjeta de la comida no había forma de decirlo.
+ */
+describe('Comida libre', () => {
+  it('el botón está junto al nombre de la comida', () => {
+    const onLibre = vi.fn();
+    pintar({ onLibre });
+    fireEvent.click(screen.getByText('Libre'));
+    expect(onLibre).toHaveBeenCalled();
+  });
+
+  it('una comida ya hecha no se marca como libre', () => {
+    pintar({ onLibre: vi.fn(), hecha: true });
+    expect(screen.queryByText('Libre')).toBeNull();
+  });
+});
+
 describe('Marcar como hecha', () => {
   it('el botón está sin abrir la receta', () => {
     const onAlternarHecha = vi.fn();
