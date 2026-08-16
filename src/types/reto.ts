@@ -43,6 +43,15 @@ export interface Reto {
   recetas: RecetaDeReto[];
   /** Entrenos, con su día de apertura. Opcional: un reto puede no llevarlos. */
   entrenos?: EntrenoDeReto[];
+  /**
+   * EL GRUPO DE WHATSAPP
+   *
+   * La charla del día a día vive donde ya están: en WhatsApp. Competir con
+   * WhatsApp en charlar es una pelea perdida —sin notificaciones al móvil, un
+   * chat dentro de la app se queda mudo en tres días—, así que la app pone el
+   * botón para entrar y se quita de en medio.
+   */
+  whatsapp?: string;
   createdAt: string;
 }
 

@@ -384,6 +384,23 @@ export function RetosPage() {
                       </Field>
                     </div>
 
+                    {/*
+                      La charla del día a día vive en WhatsApp, que es donde ya
+                      están. La app pone el botón para entrar y se quita de en
+                      medio: competir con WhatsApp en charlar es una pelea
+                      perdida, y un chat dentro de la app se queda mudo en tres
+                      días por no tener notificaciones.
+                    */}
+                    <Field label="Enlace del grupo de WhatsApp (opcional)">
+                      <Input
+                        value={reto.whatsapp ?? ""}
+                        placeholder="https://chat.whatsapp.com/…"
+                        onChange={(e) =>
+                          editar(reto, { whatsapp: e.target.value.trim() })
+                        }
+                      />
+                    </Field>
+
                     {/* ── Solicitudes ───────────────────────── */}
                     {(() => {
                       const suyas = solicitudes.filter(

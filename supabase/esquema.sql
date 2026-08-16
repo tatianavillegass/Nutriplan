@@ -278,3 +278,63 @@ create policy "solicitudes_borrado" on public.solicitudes
 drop policy if exists "solicitudes_preparacion" on public.solicitudes;
 create policy "solicitudes_preparacion" on public.solicitudes
   for update using (true) with check (true);
+
+-- ────────────────────────────────────────────────────────────────────────────
+--  EL MURO DEL RETO
+-- ────────────────────────────────────────────────────────────────────────────
+--
+-- Lo que hace grupo no es un muro de publicaciones —si cinco publican y quince
+-- miran, las quince se sienten menos del grupo— sino ver que las demás también
+-- están apareciendo hoy.
+--
+-- Por eso aquí sólo hay tres cosas: quién, qué día, y si lo cerró. Ni comida,
+-- ni peso, ni notas: nada de lo que una participante escribe en su registro
+-- sale de su registro. Con esto se puede pintar «hoy han cerrado Marta, Ana y
+-- Lucía» y la meta común del grupo, y nada más.
+create table if not exists public.muro (
+  reto_id     text        not null,
+  cliente_id  text        not null references public.clientes(id) on delete cascade,
+  nombre      text        not null,
+  fecha       date        not null,
+  cerrado     boolean     not null default false,
+  actualizado timestamptz not null default now(),
+  primary key (reto_id, cliente_id, fecha)
+);
+
+alter table public.muro enable row level security;
+
+-- Cada una escribe SU fila y sólo la suya: la comprobación es su propio correo
+-- contra la ficha, igual que en los registros.
+drop policy if exists "muro_propio" on public.muro;
+create policy "muro_propio" on public.muro
+  for all using (
+    exists (
+      select 1 from public.clientes c
+      where c.id = muro.cliente_id and lower(c.email) = lower(auth.jwt() ->> 'email')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.clientes c
+      where c.id = muro.cliente_id and lower(c.email) = lower(auth.jwt() ->> 'email')
+    )
+  );
+
+-- Y lee el muro quien está en ese muro: hay que tener fila propia en el mismo
+-- reto. Sin eso, cualquiera con cuenta podría mirar los nombres de un grupo al
+-- que no pertenece.
+drop policy if exists "muro_del_grupo" on public.muro;
+create policy "muro_del_grupo" on public.muro
+  for select using (
+    exists (
+      select 1
+      from public.muro mio
+      join public.clientes c on c.id = mio.cliente_id
+      where mio.reto_id = muro.reto_id
+        and lower(c.email) = lower(auth.jwt() ->> 'email')
+    )
+    or exists (
+      select 1 from public.retos_publicos r
+      where r.id = muro.reto_id and r.nutri_id = auth.uid()
+    )
+  );

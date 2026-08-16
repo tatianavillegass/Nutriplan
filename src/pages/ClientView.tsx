@@ -35,15 +35,18 @@ import { claveFecha, fechaLegible } from "../types/diary";
 import { LABEL_MODO_CITA, metasActivas } from "../types/client";
 import { citaLegible, citaPasada } from "../utils/agenda";
 import {
+  diaDelReto,
   diasEntre,
   estadoDelReto,
   recetasAbiertasDe,
   retoDe,
   textoDelDia,
 } from "../utils/retos";
+import { diaCerrado } from "../utils/racha";
 import { preparacionDe } from "../utils/preparacion";
 import { Preparacion } from "../components/client/Preparacion";
 import { RetoDelDia } from "../components/client/RetoDelDia";
+import { MuroDelReto } from "../components/client/MuroDelReto";
 import {
   balanceDelDia,
   extrasDeComida,
@@ -720,6 +723,21 @@ export function ClientView() {
                           : [...ya, entrenoId],
                       });
                     }}
+                  />
+                )}
+
+                {/*
+                  Y con quién lo está haciendo. Va después de lo suyo: primero
+                  su día, y luego el grupo.
+                */}
+                {estadoDelReto(reto, fecha) === "en-marcha" && (
+                  <MuroDelReto
+                    reto={reto}
+                    hoy={fecha}
+                    dia={Math.max(1, diaDelReto(reto, fecha))}
+                    clienteId={client.id}
+                    nombre={client.nombre}
+                    cerradoHoy={diaCerrado(registro, dayType)}
                   />
                 )}
               </>
