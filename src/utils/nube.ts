@@ -7,6 +7,7 @@ import type { Alimento } from "../types/food";
 import type { Medicion } from "../types/anthropometry";
 import type { RegistroDia } from "../types/diary";
 import type { PlantillaDespensa, PlantillaDia } from "./plantillas";
+import type { PlantillaReparto } from "./repartos";
 import type { Recurso } from "../types/recursos";
 import type { Reto } from "../types/reto";
 import { publicarRetos } from "./solicitudes";
@@ -51,6 +52,8 @@ export interface Foto {
   registros: RegistroDia[];
   plantillas: PlantillaDespensa[];
   plantillasDia: PlantillaDia[];
+  /** Repartos de intercambios guardados para reutilizar. */
+  plantillasReparto: PlantillaReparto[];
   /** Material de consulta: lo mismo para todas las clientas. */
   recursos: Recurso[];
   /** Grupos que empiezan el mismo día. */
@@ -243,6 +246,7 @@ export async function bajar(perfil: Perfil): Promise<FotoDelServidor> {
   const plantillas = (compartido.data?.plantillas ?? {}) as {
     comidas?: PlantillaDespensa[];
     dias?: PlantillaDia[];
+    repartos?: PlantillaReparto[];
   };
 
   return {
@@ -252,6 +256,7 @@ export async function bajar(perfil: Perfil): Promise<FotoDelServidor> {
     foods: (compartido.data?.alimentos ?? []) as Alimento[],
     plantillas: plantillas.comidas ?? [],
     plantillasDia: plantillas.dias ?? [],
+    plantillasReparto: plantillas.repartos ?? [],
     /**
      * COLUMNA QUE NO EXISTE NO ES «NO TIENES NADA»
      *
@@ -296,7 +301,15 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
     nombre: perfil.nombre,
     recetas: foto.recipes,
     alimentos: foto.foods,
-    plantillas: { comidas: foto.plantillas, dias: foto.plantillasDia },
+    /**
+     * Los tres tipos de plantilla van en la misma columna: es un jsonb, así que
+     * añadir una clase nueva no pide tocar la base de datos.
+     */
+    plantillas: {
+      comidas: foto.plantillas,
+      dias: foto.plantillasDia,
+      repartos: foto.plantillasReparto,
+    },
     actualizado: new Date().toISOString(),
   };
 

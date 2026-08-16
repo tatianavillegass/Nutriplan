@@ -31,6 +31,7 @@ import { SendPlanPanel } from "../components/client/SendPlanPanel";
 import { ClientAccountPanel } from "../components/client/ClientAccountPanel";
 import { RestrictionsPanel } from "../components/common/RestrictionsPanel";
 import { SuggestedDistribution } from "../components/planning/SuggestedDistribution";
+import { RepartosGuardados } from "../components/planning/RepartosGuardados";
 import { MealPantryEditor } from "../components/planning/MealPantryEditor";
 import { DayTemplateBar } from "../components/planning/DayTemplateBar";
 import { ComboEditor } from "../components/phase2/ComboEditor";
@@ -398,6 +399,17 @@ export function ClientDetail() {
             />
             <ValidationPanel planeado={planeado} pautado={pautado} />
           </div>
+
+          {/*
+            Dos personas con calorías parecidas y las mismas comidas llevan
+            casi el mismo reparto: guardarlo una vez es la diferencia entre
+            montar un reto de veinte y montarlo veinte veces.
+          */}
+          <RepartosGuardados
+            dayType={dayType}
+            kcal={kcalDia}
+            onGrid={(grid) => updateDayType(plan.id, dayType.id, { grid })}
+          />
 
           <SuggestedDistribution
             planeado={planeado}

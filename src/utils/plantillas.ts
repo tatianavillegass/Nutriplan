@@ -97,7 +97,7 @@ export function sinAvisar<T>(fn: () => T): T {
   }
 }
 
-function avisarDelCambio(): void {
+export function avisarDelCambio(): void {
   if (callado) return;
   for (const fn of escuchas) fn();
 }

@@ -19,6 +19,7 @@ import {
   observarPlantillas,
   sinAvisar,
 } from "./plantillas";
+import { guardarRepartos, leerRepartos } from "./repartos";
 
 /**
  * MANTENER LOS DOS LADOS IGUALES
@@ -67,6 +68,7 @@ export function fotoActual(): Foto {
     registros: s.registros,
     plantillas: leerPlantillas(),
     plantillasDia: leerPlantillasDia(),
+    plantillasReparto: leerRepartos(),
     recursos: s.recursos,
     retos: s.retos,
   };
@@ -94,6 +96,7 @@ export function olvidarLocal(): void {
   sinAvisar(() => {
     guardarPlantillas([]);
     guardarPlantillasDia([]);
+    guardarRepartos([]);
   });
   void storage.remove(DUENO_KEY);
 }
@@ -129,6 +132,7 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
       sinAvisar(() => {
         guardarPlantillas(foto.plantillas);
         guardarPlantillasDia(foto.plantillasDia);
+        guardarRepartos(foto.plantillasReparto);
       });
     }
     avisar("al-dia");

@@ -59,6 +59,7 @@ const foto = (): Foto => ({
   foods: [],
   plantillas: [],
   plantillasDia: [],
+    plantillasReparto: [],
   recursos: [],
   retos: [],
 });
