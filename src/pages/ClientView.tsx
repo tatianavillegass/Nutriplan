@@ -34,7 +34,13 @@ import {
 import { claveFecha, fechaLegible } from "../types/diary";
 import { LABEL_MODO_CITA, metasActivas } from "../types/client";
 import { citaLegible, citaPasada } from "../utils/agenda";
-import { diasEntre, estadoDelReto, retoDe, textoDelDia } from "../utils/retos";
+import {
+  diasEntre,
+  estadoDelReto,
+  recetasAbiertasDe,
+  retoDe,
+  textoDelDia,
+} from "../utils/retos";
 import { preparacionDe } from "../utils/preparacion";
 import { Preparacion } from "../components/client/Preparacion";
 import { RetoDelDia } from "../components/client/RetoDelDia";
@@ -887,10 +893,28 @@ export function ClientView() {
             {plan.fase === 1 && (
               <div className="space-y-5">
                 {comidas.map((m) => {
-                  const opciones = recetasDeComida(
-                    dayType.recetasAsignadas,
-                    m.id,
-                  )
+                  /**
+                   * LAS DEL RETO NO HAY QUE ASIGNARLAS UNA A UNA
+                   *
+                   * En un reto las recetas son las mismas para todo el grupo:
+                   * se eligen una vez en la pantalla del reto y se abren solas
+                   * en la comida que les toca. Hacerlas asignar además en cada
+                   * ficha sería repetir veinte veces el mismo trabajo, que es
+                   * justo lo que un reto viene a evitar.
+                   *
+                   * Los gramos sí son suyos: la receta se escala con lo que
+                   * tenga pautado ella en esa comida.
+                   */
+                  const opciones = [
+                    ...new Set([
+                      ...recetasDeComida(dayType.recetasAsignadas, m.id),
+                      ...(reto
+                        ? recetasAbiertasDe(reto, fecha, m.slot).map(
+                            (r) => r.recetaId,
+                          )
+                        : []),
+                    ]),
+                  ]
                     .map((rid) => recipes.find((r) => r.id === rid))
                     .filter(Boolean) as typeof recipes;
                   if (!opciones.length) return null;

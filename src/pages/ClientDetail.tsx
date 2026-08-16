@@ -63,6 +63,7 @@ export function ClientDetail() {
   const recipes = useAppStore((s) => s.recipes);
   const updateRecipe = useAppStore((s) => s.updateRecipe);
   const registros = useAppStore((s) => s.registros);
+  const retos = useAppStore((s) => s.retos);
   const foods = useAppStore((s) => s.foods);
   const recursos = useAppStore((s) => s.recursos);
   const mediciones = useAppStore((s) => s.mediciones);
@@ -116,6 +117,8 @@ export function ClientDetail() {
     return b.bloqueado ? b.motivos.join(" · ") : undefined;
   };
   const registrosCliente = registros.filter((r) => r.clientId === client.id);
+  /** Si está en un reto, aquí sólo se calcula y se reparte: lo demás es del reto. */
+  const suReto = retos.find((r) => r.participantes.includes(client.id));
   const medicionesCliente = mediciones.filter((m) => m.clientId === client.id);
   /**
    * Los g/kg se multiplican por el peso de referencia, no siempre por el total:
@@ -515,7 +518,32 @@ export function ClientDetail() {
             </div>
           )}
 
-          {plan.fase === 1 && (
+          {/*
+            EN UN RETO NO HAY QUE ASIGNAR RECETAS
+            ==========================================================
+            Son las mismas para todo el grupo: se eligen una vez en la pantalla
+            del reto y se abren solas en la comida que les toca, escaladas a
+            las porciones de cada una. Repetir aquí ese trabajo por cada
+            participante es justo lo que un reto viene a evitar.
+          */}
+          {suReto && (
+            <p className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-xs leading-snug text-brand-900">
+              <strong className="font-semibold">
+                Está en «{suReto.nombre}».
+              </strong>{" "}
+              Sus recetas salen del reto y ya se le abren solas con estos
+              gramos: aquí sólo hay que calcular y repartir las porciones.
+              {dayType.meals.length > 0 && (
+                <>
+                  {" "}
+                  Come <strong>{dayType.meals.length} veces al día</strong>, que
+                  es lo que dijo al apuntarse.
+                </>
+              )}
+            </p>
+          )}
+
+          {plan.fase === 1 && !suReto && (
             <Card
               title="Recetas por comida"
               subtitle={`Elige ${RECETAS_POR_COMIDA} opciones por comida: el cliente escoge entre ellas`}

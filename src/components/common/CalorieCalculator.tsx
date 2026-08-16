@@ -1,4 +1,5 @@
 import type { Client } from '../../types/client';
+import { edadDe } from '../../types/client';
 import type { BmrFormulaId } from '../../types/calculations';
 import { BMR_FORMULA_LABELS, BMR_FORMULA_ORDER, BMR_FORMULA_NOTES } from '../../utils/bmr';
 import { ACTIVITY_FACTORS, ACTIVITY_GROUP_LABELS, GOAL_PRESETS, THERMOGENESIS_FACTOR } from '../../data/activityFactors';
@@ -28,12 +29,30 @@ export function CalorieCalculator({ client, onChange }: Props) {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
       <Card title="Cálculo GET" subtitle="Todo se recalcula en tiempo real">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Edad (años)">
+          {/*
+            LA EDAD SALE DE SU FECHA DE NACIMIENTO
+            ==========================================================
+            El cálculo ya usaba la edad de verdad, pero esta casilla enseñaba
+            el número suelto de la ficha: en quien se apuntó por el enlace del
+            reto —que da su fecha de nacimiento y no su edad— ponía 0, y
+            parecía que el GET estaba mal calculado.
+
+            Con fecha de nacimiento no se escribe: se calcula y se bloquea,
+            porque si no cumple años cada 365 días sin que nadie lo toque.
+          */}
+          <Field
+            label={
+              client.fechaNacimiento
+                ? "Edad (de su fecha de nacimiento)"
+                : "Edad (años)"
+            }
+          >
             <Input
               type="number"
-              value={client.edad}
+              value={edadDe(client)}
               min={10}
               max={100}
+              disabled={!!client.fechaNacimiento}
               onChange={(e) => onChange({ edad: Number(e.target.value) })}
             />
           </Field>
