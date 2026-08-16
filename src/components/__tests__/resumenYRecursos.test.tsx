@@ -93,9 +93,15 @@ describe('Composición corporal', () => {
     expect(screen.queryByText(/desde la anterior/)).toBeNull();
   });
 
-  it('sin mediciones lo dice y no rompe nada', () => {
+  /**
+   * Esto es de la antropometría de consulta. Quien no ha pasado por consulta
+   * —una participante del reto— no tiene ninguno de estos datos, y lo único
+   * que salía era el peso, que ya está arriba en «Tus medidas». Dos veces el
+   * mismo número no informa el doble: hace dudar de cuál es el bueno.
+   */
+  it('sin composición que enseñar, el apartado no sale', () => {
     pintar();
-    expect(screen.getByText(/Todavía no tienes mediciones/i)).toBeTruthy();
+    expect(screen.queryByText('Tu composición')).toBeNull();
   });
 
   it('avisa de que un salto suelto no significa nada', () => {

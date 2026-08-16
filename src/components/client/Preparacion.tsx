@@ -164,6 +164,7 @@ function MedidasDelPrimerDia({
           <span className="mb-0.5 block text-[10px] text-slate-500">Cintura (cm)</span>
           <Input
             type="number"
+            step="0.1"
             inputMode="decimal"
             value={cintura}
             onChange={(e) => setCintura(e.target.value)}
@@ -174,6 +175,7 @@ function MedidasDelPrimerDia({
           <span className="mb-0.5 block text-[10px] text-slate-500">Cadera (cm)</span>
           <Input
             type="number"
+            step="0.1"
             inputMode="decimal"
             value={cadera}
             onChange={(e) => setCadera(e.target.value)}

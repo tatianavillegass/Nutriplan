@@ -235,13 +235,22 @@ export function ResumenTab({
 
   return (
     <div className="space-y-5">
-      {/* ── Composición corporal ───────────────────────── */}
-      <section>
-        <h2 className="mb-2 text-sm font-bold tracking-widest text-brand-800 uppercase">
-          Tu composición
-        </h2>
+      {/*
+        LA COMPOSICIÓN SÓLO SI HAY COMPOSICIÓN
+        ============================================================
+        Esto es de la antropometría de consulta: peso y % de grasa medidos con
+        pliegues. Quien no ha pasado por consulta —una participante del reto—
+        no tiene ninguno de esos datos, y lo único que salía aquí era el peso,
+        que ya está arriba en «Tus medidas». Dos veces el mismo número no
+        informa el doble: hace dudar de cuál es el bueno.
+      */}
+      {composicion?.grasa !== undefined && (
+        <section>
+          <h2 className="mb-2 text-sm font-bold tracking-widest text-brand-800 uppercase">
+            Tu composición
+          </h2>
 
-        {composicion ? (
+          {composicion ? (
           <>
             <div className="grid gap-2 sm:grid-cols-2">
               <Dato
@@ -264,13 +273,14 @@ export function ResumenTab({
               el salto de una.
             </p>
           </>
-        ) : (
-          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
-            Todavía no tienes mediciones. Aparecerán aquí en cuanto tu
-            nutricionista te tome la primera.
-          </p>
-        )}
-      </section>
+          ) : (
+            <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+              Todavía no tienes mediciones. Aparecerán aquí en cuanto tu
+              nutricionista te tome la primera.
+            </p>
+          )}
+        </section>
+      )}
 
       {/* ── Racha de comidas ───────────────────────────── */}
       <TarjetaDeRacha

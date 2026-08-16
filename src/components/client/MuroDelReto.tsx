@@ -63,9 +63,35 @@ export function MuroDelReto({ reto, hoy, dia, clienteId, nombre, cerradoHoy }: P
   if (!senales?.length) return null;
 
   const grupo = comoVaElGrupo(senales, hoy, dia);
-  if (grupo.cuantas < 2) return null;
-
   const pct = grupo.posibles > 0 ? Math.min(100, (grupo.cerrados / grupo.posibles) * 100) : 0;
+
+  /**
+   * Sola en el muro no hay grupo del que hablar, pero esconder la sección sin
+   * más deja la duda de si esto funciona. Se dice que faltan las demás.
+   */
+  if (grupo.cuantas < 2) {
+    return (
+      <section className="rounded-2xl border border-brand-200 bg-white p-4 no-print sm:p-5">
+        <h2 className="text-sm font-bold tracking-wide text-brand-800 uppercase">
+          No estás sola en esto
+        </h2>
+        <p className="mt-1.5 text-sm leading-snug text-slate-600">
+          Todavía eres la única que ha abierto la app. En cuanto entren las demás verás aquí quién
+          va cerrando su día.
+        </p>
+        {reto.whatsapp && (
+          <a
+            href={reto.whatsapp}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 flex w-full items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100"
+          >
+            Abrir el grupo de WhatsApp
+          </a>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-2xl border border-brand-200 bg-white p-4 no-print sm:p-5">
