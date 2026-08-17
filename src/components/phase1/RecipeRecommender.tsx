@@ -180,7 +180,16 @@ export function RecipeRecommender({
     );
   }
 
-  const completo = elegidas.length >= RECETAS_POR_COMIDA;
+  /**
+   * EL REPERTORIO CRECE, NO SE SUSTITUYE
+   *
+   * Antes había un tope de tres y para meter una cuarta receta había que quitar
+   * otra. Eso convertía cada seguimiento en un cambio de plan: la clienta
+   * perdía el desayuno que ya se sabía de memoria justo cuando lo tenía
+   * cogido. Ahora tres es lo mínimo recomendable para arrancar y a partir de
+   * ahí se suma — que es lo que hace que se note el paso del tiempo.
+   */
+  const minimoPuesto = elegidas.length >= RECETAS_POR_COMIDA;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -191,14 +200,16 @@ export function RecipeRecommender({
           </p>
           <span
             className={`rounded px-1.5 py-0.5 text-[10px] ${
-              completo
+              minimoPuesto
                 ? 'bg-emerald-50 text-emerald-700'
                 : elegidas.length > 0
                   ? 'bg-amber-50 text-amber-700'
                   : 'bg-slate-100 text-slate-500'
             }`}
           >
-            {elegidas.length} de {RECETAS_POR_COMIDA} opciones
+            {elegidas.length}{' '}
+            {elegidas.length === 1 ? 'opción' : 'opciones'}
+            {!minimoPuesto && ` · mínimo ${RECETAS_POR_COMIDA}`}
           </span>
         </div>
         <p className="tnum text-[11px] text-slate-400">
@@ -289,7 +300,7 @@ export function RecipeRecommender({
                       <li key={s.receta.id}>
                         <button
                           onClick={() => !s.bloqueada && onToggle(s.receta.id)}
-                          disabled={s.bloqueada || (!activa && completo)}
+                          disabled={s.bloqueada}
                           className={`flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left text-xs transition disabled:cursor-not-allowed ${
                             activa
                               ? 'bg-brand-600 text-white'
@@ -337,7 +348,7 @@ export function RecipeRecommender({
             <button
               key={s.receta.id}
               onClick={() => onToggle(s.receta.id)}
-              disabled={!activa && completo}
+              disabled={false}
               className={`rounded-xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
                 activa
                   ? 'border-brand-500 bg-brand-50'
@@ -421,9 +432,10 @@ export function RecipeRecommender({
         )}
       </div>
 
-      {completo && (
+      {minimoPuesto && (
         <p className="mt-2 text-[11px] text-slate-400">
-          Ya hay {RECETAS_POR_COMIDA} opciones. Quita una para poder cambiarla.
+          Puedes seguir añadiendo: en cada seguimiento, sumar una o dos hace que su repertorio
+          crezca sin quitarle lo que ya se sabe.
         </p>
       )}
 

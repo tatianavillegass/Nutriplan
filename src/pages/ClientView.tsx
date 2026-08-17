@@ -62,6 +62,7 @@ import {
   seleccionPorGrupo,
 } from "../utils/marcado";
 import { comidaCubierta } from "../utils/dailyBudget";
+import { matchRecipes } from "../utils/recipeMatcher";
 import {
   alimentosQueFaltan,
   comidaGuardadaDe,
@@ -309,8 +310,8 @@ export function ClientView() {
    * mismo trabajo. Los gramos sí son suyos: la receta se escala con lo que
    * tenga pautado ella.
    */
-  const opcionesDeComida = (m: { id: string; slot: string }) =>
-    [
+  const opcionesDeComida = (m: { id: string; slot: string }) => {
+    const suyas = [
       ...new Set([
         ...recetasDeComida(dayType.recetasAsignadas, m.id),
         ...(reto
@@ -322,6 +323,38 @@ export function ClientView() {
     ]
       .map((rid) => recipes.find((r) => r.id === rid))
       .filter(Boolean) as typeof recipes;
+
+    /**
+     * PRIMERO LA QUE MEJOR ENCAJA
+     *
+     * Según crece el repertorio, el orden en que se añadieron deja de decir
+     * nada: la receta que mejor cuadra con lo pautado hoy puede ser la última
+     * que se puso. Se ordenan por cobertura de grupos, que es lo que decide
+     * cuánto hay que completar aparte.
+     */
+    if (suyas.length < 2) return suyas;
+
+    /**
+     * Sin pasarle el cliente a propósito: las restricciones ya las miró la
+     * nutricionista al asignarlas, y aquí lo único que se decide es el orden.
+     * Con ellas de por medio, una receta marcada acababa la primera o la
+     * última por motivos que no tienen que ver con lo pautado hoy.
+     */
+    const puntuadas = matchRecipes(suyas, dayType.grid[m.id] ?? {}, {
+      slot: m.slot as never,
+      limite: suyas.length,
+      incluirBloqueadas: true,
+    });
+
+    /**
+     * El recomendador puede dejarse alguna fuera —por una alergia, por su
+     * categoría—; ésas no se pierden, van detrás. Lo que no puede pasar es que
+     * una receta que la nutricionista le asignó desaparezca de su pantalla.
+     */
+    const ordenadas = puntuadas.map((p) => p.receta);
+    const vistas = new Set(ordenadas.map((r) => r.id));
+    return [...ordenadas, ...suyas.filter((r) => !vistas.has(r.id))];
+  };
 
   /**
    * LO DE SIEMPRE
