@@ -32,6 +32,7 @@ import { ClientAccountPanel } from "../components/client/ClientAccountPanel";
 import { RestrictionsPanel } from "../components/common/RestrictionsPanel";
 import { SuggestedDistribution } from "../components/planning/SuggestedDistribution";
 import { RepartosGuardados } from "../components/planning/RepartosGuardados";
+import { RecetasDeLaParticipante } from "../components/retos/RecetasDeLaParticipante";
 import { MealPantryEditor } from "../components/planning/MealPantryEditor";
 import { DayTemplateBar } from "../components/planning/DayTemplateBar";
 import { ComboEditor } from "../components/phase2/ComboEditor";
@@ -553,6 +554,43 @@ export function ClientDetail() {
                 </>
               )}
             </p>
+          )}
+
+          {/*
+            En un reto las recetas son del grupo, pero los gramos son suyos: la
+            misma tortilla no lleva lo mismo con 1.500 kcal que con 2.200. Aquí
+            se revisan ya escaladas y se retocan si algo no cuadra.
+          */}
+          {suReto && (
+            <Card
+              title="Recetas del reto, con sus gramos"
+              subtitle="Las mismas para todo el grupo, escaladas a lo que tiene pautado esta persona"
+            >
+              <RecetasDeLaParticipante
+                reto={suReto}
+                dayType={dayType}
+                recetas={recipes}
+                foods={foodsPermitidos}
+                onAjustar={(mealId, recetaId, ajustes, acompanamientos) =>
+                  updateDayType(plan.id, dayType.id, {
+                    ajustesReceta: {
+                      ...(dayType.ajustesReceta ?? {}),
+                      [mealId]: {
+                        ...(dayType.ajustesReceta?.[mealId] ?? {}),
+                        [recetaId]: ajustes,
+                      },
+                    },
+                    acompanamientos: {
+                      ...(dayType.acompanamientos ?? {}),
+                      [mealId]: {
+                        ...(dayType.acompanamientos?.[mealId] ?? {}),
+                        [recetaId]: acompanamientos,
+                      },
+                    },
+                  })
+                }
+              />
+            </Card>
           )}
 
           {plan.fase === 1 && !suReto && (

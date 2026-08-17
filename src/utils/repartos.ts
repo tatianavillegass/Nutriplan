@@ -137,3 +137,29 @@ export function repartosQueEncajan(
       return Math.abs(a.plantilla.kcal - kcal) - Math.abs(b.plantilla.kcal - kcal);
     });
 }
+
+
+/**
+ * ALIMENTOS DE CLIENTES QUE NO ENTRAN
+ *
+ * No todo lo que apunta alguien sirve para el catálogo: la mitad son productos
+ * de una marca que no vende aquí, o etiquetas mal copiadas. Al descartar uno se
+ * guarda su nombre para que no vuelva a proponerse; el alimento no se toca, que
+ * es de quien lo creó y lo sigue usando.
+ */
+export const OMITIDOS_KEY = 'alimentos_omitidos';
+
+export function leerOmitidos(): string[] {
+  return storage.getSync<string[]>(OMITIDOS_KEY) ?? [];
+}
+
+export function guardarOmitidos(lista: string[]): void {
+  storage.set(OMITIDOS_KEY, lista);
+  avisarDelCambio();
+}
+
+/** Se compara por nombre, que es lo que la nutricionista reconoce. */
+export function omitir(lista: string[], nombre: string): string[] {
+  const clave = nombre.trim().toLowerCase();
+  return lista.includes(clave) ? lista : [...lista, clave];
+}

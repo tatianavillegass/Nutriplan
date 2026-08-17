@@ -54,6 +54,8 @@ export interface Foto {
   plantillasDia: PlantillaDia[];
   /** Repartos de intercambios guardados para reutilizar. */
   plantillasReparto: PlantillaReparto[];
+  /** Alimentos de clientes que ella ha descartado para el catálogo. */
+  alimentosOmitidos: string[];
   /** Material de consulta: lo mismo para todas las clientas. */
   recursos: Recurso[];
   /** Grupos que empiezan el mismo día. */
@@ -247,6 +249,7 @@ export async function bajar(perfil: Perfil): Promise<FotoDelServidor> {
     comidas?: PlantillaDespensa[];
     dias?: PlantillaDia[];
     repartos?: PlantillaReparto[];
+    omitidos?: string[];
   };
 
   return {
@@ -257,6 +260,7 @@ export async function bajar(perfil: Perfil): Promise<FotoDelServidor> {
     plantillas: plantillas.comidas ?? [],
     plantillasDia: plantillas.dias ?? [],
     plantillasReparto: plantillas.repartos ?? [],
+    alimentosOmitidos: plantillas.omitidos ?? [],
     /**
      * COLUMNA QUE NO EXISTE NO ES «NO TIENES NADA»
      *
@@ -309,6 +313,7 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
       comidas: foto.plantillas,
       dias: foto.plantillasDia,
       repartos: foto.plantillasReparto,
+      omitidos: foto.alimentosOmitidos,
     },
     actualizado: new Date().toISOString(),
   };

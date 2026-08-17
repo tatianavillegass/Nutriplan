@@ -19,7 +19,12 @@ import {
   observarPlantillas,
   sinAvisar,
 } from "./plantillas";
-import { guardarRepartos, leerRepartos } from "./repartos";
+import {
+  guardarOmitidos,
+  guardarRepartos,
+  leerOmitidos,
+  leerRepartos,
+} from "./repartos";
 
 /**
  * MANTENER LOS DOS LADOS IGUALES
@@ -69,6 +74,7 @@ export function fotoActual(): Foto {
     plantillas: leerPlantillas(),
     plantillasDia: leerPlantillasDia(),
     plantillasReparto: leerRepartos(),
+    alimentosOmitidos: leerOmitidos(),
     recursos: s.recursos,
     retos: s.retos,
   };
@@ -97,6 +103,7 @@ export function olvidarLocal(): void {
     guardarPlantillas([]);
     guardarPlantillasDia([]);
     guardarRepartos([]);
+    guardarOmitidos([]);
   });
   void storage.remove(DUENO_KEY);
 }
@@ -133,6 +140,7 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
         guardarPlantillas(foto.plantillas);
         guardarPlantillasDia(foto.plantillasDia);
         guardarRepartos(foto.plantillasReparto);
+        guardarOmitidos(foto.alimentosOmitidos);
       });
     }
     avisar("al-dia");

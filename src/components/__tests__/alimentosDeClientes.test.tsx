@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import {
   AlimentosDeClientes,
@@ -11,6 +11,9 @@ import type { Client } from '../../types/client';
 import type { RegistroDia } from '../../types/diary';
 
 afterEach(cleanup);
+// Lo descartado se guarda en el navegador: sin limpiarlo, una prueba se lleva
+// por delante la siguiente.
+beforeEach(() => localStorage.clear());
 
 const CLIENTE = { id: 'c1', nombre: 'Marta Ruiz' } as unknown as Client;
 
@@ -64,6 +67,30 @@ describe('Los alimentos que apuntan los clientes', () => {
       [],
     );
     expect(lista).toHaveLength(1);
+  });
+
+  /** No todo sirve: media lista son marcas de una tienda concreta. */
+  it('lo descartado deja de proponerse', () => {
+    const lista = alimentosDeClientes(
+      [CLIENTE],
+      [dia('2026-08-14', [suyo('Granola')])],
+      [],
+      ['granola'],
+    );
+    expect(lista).toEqual([]);
+  });
+
+  it('y se descarta con su × sin tocar el alimento de quien lo creó', () => {
+    render(
+      <AlimentosDeClientes
+        clients={[CLIENTE]}
+        registros={[dia('2026-08-14', [suyo('Yogur de marca')])]}
+        foods={[]}
+        onAnadir={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Descartar Yogur de marca'));
+    expect(screen.queryByText('Yogur de marca')).toBeNull();
   });
 
   it('sin nada apuntado, la sección no ocupa sitio', () => {

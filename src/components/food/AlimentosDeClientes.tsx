@@ -3,6 +3,7 @@ import type { Alimento } from '../../types/food';
 import type { Client } from '../../types/client';
 import type { RegistroDia } from '../../types/diary';
 import { Button, fmt } from '../common/ui';
+import { guardarOmitidos, leerOmitidos, omitir } from '../../utils/repartos';
 
 interface Props {
   clients: Client[];
@@ -27,8 +28,12 @@ export function alimentosDeClientes(
   clients: Client[],
   registros: RegistroDia[],
   foods: Alimento[],
+  omitidos: string[] = [],
 ): AlimentoDeCliente[] {
-  const yaEstan = new Set(foods.map((f) => f.nombre.trim().toLowerCase()));
+  const yaEstan = new Set([
+    ...foods.map((f) => f.nombre.trim().toLowerCase()),
+    ...omitidos,
+  ]);
   const nombreDe = new Map(clients.map((c) => [c.id, c.nombre]));
   const vistos = new Set<string>();
   const out: AlimentoDeCliente[] = [];
@@ -62,10 +67,11 @@ export function alimentosDeClientes(
  */
 export function AlimentosDeClientes({ clients, registros, foods, onAnadir }: Props) {
   const [anadidos, setAnadidos] = useState<string[]>([]);
+  const [omitidos, setOmitidos] = useState<string[]>(() => leerOmitidos());
 
   const suyos = useMemo(
-    () => alimentosDeClientes(clients, registros, foods),
-    [clients, registros, foods],
+    () => alimentosDeClientes(clients, registros, foods, omitidos),
+    [clients, registros, foods, omitidos],
   );
 
   if (!suyos.length) return null;
@@ -106,15 +112,33 @@ export function AlimentosDeClientes({ clients, registros, foods, onAnadir }: Pro
                   En el catálogo ✓
                 </span>
               ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    onAnadir(alimento);
-                    setAnadidos((v) => [...v, alimento.id]);
-                  }}
-                >
-                  Añadir al catálogo
-                </Button>
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      onAnadir(alimento);
+                      setAnadidos((v) => [...v, alimento.id]);
+                    }}
+                  >
+                    Añadir al catálogo
+                  </Button>
+                  {/*
+                    Descartar no toca el alimento: es de quien lo creó y lo
+                    sigue usando. Sólo deja de proponerse aquí.
+                  */}
+                  <button
+                    onClick={() => {
+                      const nueva = omitir(omitidos, alimento.nombre);
+                      guardarOmitidos(nueva);
+                      setOmitidos(nueva);
+                    }}
+                    aria-label={`Descartar ${alimento.nombre}`}
+                    title="No lo quiero en el catálogo"
+                    className="rounded px-2 py-1 text-slate-300 transition hover:text-rose-600"
+                  >
+                    ×
+                  </button>
+                </span>
               )}
             </li>
           );

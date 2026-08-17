@@ -82,6 +82,7 @@ const FOTO = {
   plantillas: [{ id: 'pt1' }] as never,
   plantillasDia: [],
     plantillasReparto: [],
+    alimentosOmitidos: [],
   recursos: [{ id: 'rc1' }] as never,
   retos: [] as never,
 };
