@@ -100,6 +100,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
                       foods={foods}
                       ajustes={ajustes}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, receta.id)}
+                      recetas={recetas}
                       onGuardar={(a, ac) => {
                         onAjustar(meal.id, receta.id, a, ac);
                         setAjustando(null);

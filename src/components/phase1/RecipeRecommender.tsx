@@ -507,6 +507,7 @@ export function RecipeRecommender({
                       foods={foods}
                       ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}
+                      recetas={recetas}
                       onGuardar={(a, ac) => {
                         onAjustarCantidades(r.id, a, ac);
                         setAjustando(null);

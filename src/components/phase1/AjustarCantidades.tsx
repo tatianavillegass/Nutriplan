@@ -28,6 +28,11 @@ interface Props {
   ajustes: Record<string, number>;
   /** Lo que ya se le ha puesto al lado. */
   acompanamientos?: Acompanamiento[];
+  /**
+   * El banco entero, para poder poner al lado un acompañamiento ya escrito
+   * —la ensalada de tomate, el puré— en vez de sus alimentos uno a uno.
+   */
+  recetas?: Receta[];
   onGuardar: (ajustes: Record<string, number>, acompanamientos: Acompanamiento[]) => void;
   onCerrar: () => void;
 }
@@ -67,6 +72,7 @@ export function AjustarCantidades({
   foods,
   ajustes,
   acompanamientos: inicial = [],
+  recetas = [],
   onGuardar,
   onCerrar,
 }: Props) {
@@ -108,6 +114,38 @@ export function AjustarCantidades({
     .sort(([a], [b]) => EXCHANGE_GROUPS[a].orden - EXCHANGE_GROUPS[b].orden);
 
   const hayAjustes = Object.keys(valores).length > 0;
+
+  /**
+   * PONER UN ACOMPAÑAMIENTO DEL BANCO
+   *
+   * Al lado del salmón va la ensalada de tomate entera, no sus cuatro
+   * alimentos buscados de uno en uno. Entra con los gramos con los que está
+   * escrita —un acompañamiento no se escala: es la guarnición de siempre— y
+   * desde ahí se retoca como cualquier otro.
+   *
+   * Sólo cuentan los ingredientes enlazados al catálogo, que son los únicos de
+   * los que se sabe cuánto aportan. La verdura y lo que no gasta intercambios
+   * —gelatinas, bebida de almendras— entran igual y suman cero: es justo lo
+   * que se espera de ellos.
+   */
+  const guarniciones = useMemo(() => recetas.filter((r) => r.acompanamiento), [recetas]);
+
+  const ponerGuarnicion = (r: Receta) => {
+    const nuevos = r.ingredientes
+      .filter((i) => i.foodId && (i.cantidad_base ?? 0) > 0)
+      .map((i) => ({
+        id: uid('ac_'),
+        foodId: i.foodId as string,
+        nombre: i.nombre,
+        gramos: i.cantidad_base as number,
+        unidad: i.unidad || 'g',
+        tipo: 'acompanamiento' as TipoAcompanamiento,
+      }));
+    setAcompanamientos((prev) => [...prev, ...nuevos]);
+  };
+
+  /** Lo que no está enlazado no cuenta, y callárselo sería mentir. */
+  const sueltos = (r: Receta) => r.ingredientes.filter((i) => !i.foodId).length;
 
   const poner = (id: string, v: string) => {
     setValores((prev) => {
@@ -279,6 +317,40 @@ export function AjustarCantidades({
             />
           </div>
         </div>
+
+        {/*
+          Los acompañamientos del banco, con foto pequeña: se eligen mirando
+          varios a la vez, no leyendo una lista de nombres.
+        */}
+        {guarniciones.length > 0 && (
+          <div className="mt-2.5">
+            <p className="mb-1.5 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+              O uno del banco
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {guarniciones.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => ponerGuarnicion(r)}
+                  title={
+                    sueltos(r)
+                      ? `Ojo: ${sueltos(r)} de sus ingredientes no están enlazados al catálogo y no contarán`
+                      : 'Entra con los gramos con los que está escrita'
+                  }
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1 pr-2 pl-1 text-xs text-slate-700 transition hover:border-brand-400"
+                >
+                  {r.foto_url ? (
+                    <img src={r.foto_url} alt="" className="h-7 w-7 rounded object-cover" />
+                  ) : (
+                    <span className="h-7 w-7 rounded bg-brand-50" />
+                  )}
+                  <span className="max-w-[9rem] truncate">{r.nombre}</span>
+                  {sueltos(r) > 0 && <span className="text-amber-600">!</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Cómo quedan los macros con lo escrito ─────────── */}
