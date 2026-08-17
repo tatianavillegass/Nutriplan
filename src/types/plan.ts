@@ -266,7 +266,11 @@ export interface PlanPublicado {
   fecha: string;
 }
 
-/** Cuántas recetas se ofrecen por comida en Fase 1. */
+/**
+ * El MÍNIMO recomendable de recetas por comida en fase 1, no un tope: el
+ * repertorio crece en cada seguimiento y quitar una para meter otra le borra a
+ * la clienta el desayuno que ya se sabía de memoria.
+ */
 export const RECETAS_POR_COMIDA = 3;
 
 /** Compatibilidad: las versiones antiguas guardaban una sola receta por comida. */

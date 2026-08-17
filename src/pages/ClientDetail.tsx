@@ -596,7 +596,7 @@ export function ClientDetail() {
           {plan.fase === 1 && !suReto && (
             <Card
               title="Recetas por comida"
-              subtitle={`Elige ${RECETAS_POR_COMIDA} opciones por comida: el cliente escoge entre ellas`}
+              subtitle={`Al menos ${RECETAS_POR_COMIDA} opciones por comida, y en cada seguimiento puedes sumar más sin quitar las que ya se sabe`}
             >
               <div className="space-y-6">
                 {dayType.meals.map((m) => (
@@ -645,9 +645,14 @@ export function ClientDetail() {
                         dayType.recetasAsignadas,
                         m.id,
                       );
+                      /*
+                       * Sin tope: el repertorio crece en cada seguimiento. Con
+                       * un tope de tres, meter una cuarta obligaba a quitar
+                       * otra y la clienta perdía el desayuno que ya se sabía.
+                       */
                       const nuevas = actuales.includes(rid)
                         ? actuales.filter((x) => x !== rid)
-                        : [...actuales, rid].slice(0, RECETAS_POR_COMIDA);
+                        : [...actuales, rid];
                       updateDayType(plan.id, dayType.id, {
                         recetasAsignadas: {
                           ...(dayType.recetasAsignadas ?? {}),
