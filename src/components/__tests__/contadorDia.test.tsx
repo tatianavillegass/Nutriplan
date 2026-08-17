@@ -64,7 +64,12 @@ const abrirEn = (comida: string) => {
  * parte de contar macros que hace daño.
  */
 describe('Lo que ve quien cuenta macros', () => {
-  const pintar = (bocados: Bocado[] = [], onAnadir = vi.fn(), onQuitar = vi.fn()) =>
+  const pintar = (
+    bocados: Bocado[] = [],
+    onAnadir = vi.fn(),
+    onQuitar = vi.fn(),
+    onCantidad = vi.fn(),
+  ) =>
     render(
       <ContadorDia
         dayType={DIA}
@@ -72,6 +77,7 @@ describe('Lo que ve quien cuenta macros', () => {
         foods={[POLLO]}
         onAnadir={onAnadir}
         onQuitar={onQuitar}
+        onCantidad={onCantidad}
       />,
     );
 
@@ -136,6 +142,39 @@ describe('Lo que ve quien cuenta macros', () => {
     expect(screen.getByText(/Pechuga de pollo/)).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Quitar Pechuga de pollo'));
     expect(onQuitar).toHaveBeenCalledWith('b1');
+  });
+
+  /**
+   * Repetir el desayuno de ayer no sirve de nada si hoy te has puesto 20 g de
+   * queso donde ayer había 40 y la única salida es borrarlo y buscarlo otra
+   * vez: lo normal es repetir CASI lo mismo.
+   */
+  it('se toca lo apuntado y se cambian los gramos', () => {
+    const onCantidad = vi.fn();
+    pintar([BOCADO], vi.fn(), vi.fn(), onCantidad);
+
+    fireEvent.click(screen.getByText(/Pechuga de pollo/));
+    fireEvent.change(screen.getByLabelText(/Cantidad de Pechuga/i), {
+      target: { value: '20' },
+    });
+    fireEvent.click(screen.getByText('Guardar'));
+    expect(onCantidad).toHaveBeenCalledWith('b1', 20);
+  });
+
+  it('y en la vista de la nutricionista no se toca nada', () => {
+    render(
+      <ContadorDia
+        dayType={DIA}
+        bocados={[BOCADO]}
+        foods={[POLLO]}
+        onAnadir={vi.fn()}
+        onQuitar={vi.fn()}
+        onCantidad={vi.fn()}
+        soloLectura
+      />,
+    );
+    fireEvent.click(screen.getByText(/Pechuga de pollo/));
+    expect(screen.queryByLabelText(/Cantidad de Pechuga/i)).toBeNull();
   });
 
   /** Ni racha de registro, ni nota del día, ni proyección de peso. */
@@ -228,6 +267,7 @@ describe('Lo que ve quien cuenta macros', () => {
         foods={[POLLO]}
         onAnadir={vi.fn()}
         onQuitar={vi.fn()}
+        onCantidad={vi.fn()}
         soloLectura
       />,
     );

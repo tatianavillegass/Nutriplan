@@ -10,6 +10,7 @@ import { ALERGENO_LABELS, type Alimento } from '../types/food';
 import { calcularPorcion } from '../utils/portions';
 import { esCompuesto, describeEquivalencia } from '../utils/exchanges';
 import { Badge, Button, Card, EmptyState, Input, Select, fmt } from '../components/common/ui';
+import { AlimentosDeClientes } from '../components/food/AlimentosDeClientes';
 
 /**
  * Base de datos de alimentos. De aquí salen los intercambios: se introducen
@@ -17,6 +18,8 @@ import { Badge, Button, Card, EmptyState, Input, Select, fmt } from '../componen
  */
 export function FoodCatalogPage() {
   const foods = useAppStore((s) => s.foods);
+  const clients = useAppStore((s) => s.clients);
+  const registros = useAppStore((s) => s.registros);
   const addFood = useAppStore((s) => s.addFood);
   const updateFood = useAppStore((s) => s.updateFood);
   const deleteFood = useAppStore((s) => s.deleteFood);
@@ -88,6 +91,21 @@ export function FoodCatalogPage() {
           <Button onClick={() => setCreando(true)}>Añadir alimento</Button>
         )}
       </div>
+
+      {/*
+        Lo que apuntan ellos con la etiqueta se queda suyo hasta que tú lo
+        revisas: un dato mal copiado en el catálogo se llevaría por delante los
+        planes de todo el mundo. Pero casi siempre sirve para más gente.
+      */}
+      <AlimentosDeClientes
+        clients={clients}
+        registros={registros}
+        foods={foods}
+        onAnadir={({ id, ...sinId }) => {
+          void id; // el catálogo le pone el suyo
+          addFood(sinId);
+        }}
+      />
 
       <div ref={formulario} className="scroll-mt-20" />
 

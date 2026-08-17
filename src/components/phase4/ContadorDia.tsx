@@ -24,6 +24,8 @@ interface Props {
   foods: Alimento[];
   onAnadir: (bocado: Bocado, alimentoNuevo?: Alimento) => void;
   onQuitar: (id: string) => void;
+  /** Cambiar los gramos de algo ya apuntado. */
+  onCantidad: (id: string, cantidad: number) => void;
   /**
    * Los atajos de cada comida —repetir lo de siempre, sus comidas guardadas—.
    * Se pinta desde fuera porque quien sabe de sus otros días es la pantalla,
@@ -101,6 +103,7 @@ export function ContadorDia({
   foods,
   onAnadir,
   onQuitar,
+  onCantidad,
   atajosDe,
   soloLectura = false,
 }: Props) {
@@ -209,29 +212,13 @@ export function ContadorDia({
             {suyos.length > 0 && (
               <ul className="mt-0.5 divide-y divide-slate-50">
                 {suyos.map((b) => (
-                  <li key={b.id} className="flex items-baseline gap-2 py-1 text-xs">
-                    <span className="min-w-0 flex-1 text-slate-700">
-                      {b.nombre}
-                      <span className="tnum ml-1 text-slate-400">
-                        {fmt(b.cantidad)} {b.unidad ?? 'g'}
-                      </span>
-                    </span>
-                    <span className="tnum hidden shrink-0 text-slate-500 sm:inline">
-                      P {fmt(b.macros.proteina)} · HC {fmt(b.macros.hc)} · G {fmt(b.macros.grasa)}
-                    </span>
-                    <span className="tnum w-16 shrink-0 text-right text-slate-700">
-                      {fmt(b.kcal)} kcal
-                    </span>
-                    {!soloLectura && (
-                      <button
-                        onClick={() => onQuitar(b.id)}
-                        className="text-slate-300 transition hover:text-rose-600"
-                        aria-label={`Quitar ${b.nombre}`}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </li>
+                  <Apuntado
+                    key={b.id}
+                    bocado={b}
+                    soloLectura={soloLectura}
+                    onQuitar={() => onQuitar(b.id)}
+                    onCantidad={(cantidad) => onCantidad(b.id, cantidad)}
+                  />
                 ))}
               </ul>
             )}
@@ -249,6 +236,84 @@ export function ContadorDia({
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * UNA LÍNEA DE LO APUNTADO
+ *
+ * Se toca y se cambian los gramos. Repetir el desayuno de ayer deja de servir
+ * si hoy te has puesto 20 g de queso donde ayer había 40 y la única salida es
+ * borrarlo y volver a buscarlo: lo normal es repetir CASI lo mismo.
+ */
+function Apuntado({
+  bocado,
+  soloLectura,
+  onQuitar,
+  onCantidad,
+}: {
+  bocado: Bocado;
+  soloLectura: boolean;
+  onQuitar: () => void;
+  onCantidad: (cantidad: number) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [cantidad, setCantidad] = useState(String(bocado.cantidad));
+
+  const guardar = () => {
+    const n = aNumero(cantidad);
+    if (n) onCantidad(n);
+    setEditando(false);
+  };
+
+  return (
+    <li className="py-1 text-xs">
+      <div className="flex items-baseline gap-2">
+        <button
+          onClick={() => !soloLectura && setEditando((v) => !v)}
+          className="min-w-0 flex-1 text-left text-slate-700"
+        >
+          {bocado.nombre}
+          <span className="tnum ml-1 text-slate-400">
+            {fmt(bocado.cantidad)} {bocado.unidad ?? 'g'}
+          </span>
+        </button>
+        <span className="tnum hidden shrink-0 text-slate-500 sm:inline">
+          P {fmt(bocado.macros.proteina)} · HC {fmt(bocado.macros.hc)} · G{' '}
+          {fmt(bocado.macros.grasa)}
+        </span>
+        <span className="tnum w-16 shrink-0 text-right text-slate-700">
+          {fmt(bocado.kcal)} kcal
+        </span>
+        {!soloLectura && (
+          <button
+            onClick={onQuitar}
+            className="text-slate-300 transition hover:text-rose-600"
+            aria-label={`Quitar ${bocado.nombre}`}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {editando && (
+        <div className="mt-1 flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-2">
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] text-slate-500">
+              Cuánto ha sido hoy
+            </span>
+            <NumeroConComa
+              value={cantidad}
+              onChange={setCantidad}
+              className="w-24 text-sm"
+              aria-label={`Cantidad de ${bocado.nombre}`}
+            />
+          </label>
+          <span className="pb-2 text-xs text-slate-400">{bocado.unidad ?? 'g'}</span>
+          <Button onClick={guardar}>Guardar</Button>
+        </div>
+      )}
+    </li>
   );
 }
 

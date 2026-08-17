@@ -6,6 +6,7 @@ import { hcNeto } from '../../utils/portions';
 import { snapHalf } from '../../utils/macros';
 import { uid } from '../../utils/storage';
 import { Button, Input, fmt } from '../common/ui';
+import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
 interface Props {
   /** Comidas del día, para poder decir en cuál se lo comió. */
@@ -45,18 +46,20 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [nombre, setNombre] = useState('');
   const [n, setN] = useState<Nutrientes100>({ hc: 0, proteina: 0, grasa: 0 });
-  const [gramos, setGramos] = useState(100);
+  const [gramos, setGramos] = useState('100');
   const [mealId, setMealId] = useState(comidas[0]?.id ?? '');
 
   /** Lo que aporta de verdad esa cantidad, ya con la fibra descontada. */
+  const cuanto = aNumero(gramos) ?? 0;
+
   const aporta = useMemo(() => {
-    const f = gramos / 100;
+    const f = cuanto / 100;
     return {
       carbohidrato: hcNeto(n) * f,
       proteina: (n.proteina || 0) * f,
       grasa: (n.grasa || 0) * f,
     };
-  }, [n, gramos]);
+  }, [n, cuanto]);
 
   /**
    * En porciones, redondeadas a medias. Por debajo de un cuarto no se cuenta:
@@ -74,7 +77,7 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
   const kcal = aporta.carbohidrato * 4 + aporta.proteina * 4 + aporta.grasa * 9;
   const hayAlgo = Object.keys(enPorciones).length > 0;
   const setNut = (k: keyof Nutrientes100, v: string) =>
-    setN((p) => ({ ...p, [k]: v === '' ? undefined : Number(v) }) as Nutrientes100);
+    setN((p) => ({ ...p, [k]: aNumero(v) }) as Nutrientes100);
 
   const anadir = () => {
     const alimento: Alimento = {
@@ -82,8 +85,8 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
       nombre: nombre.trim() || 'Alimento calculado',
       grupo: (Object.keys(enPorciones)[0] as ExchangeGroupId) ?? 'almidones',
       bucket: 'carbohidrato',
-      medida_casera: `${gramos} g`,
-      gramos,
+      medida_casera: `${cuanto} g`,
+      gramos: cuanto,
       intercambios: 1,
       equivale: enPorciones,
       nutrientes: n,
@@ -97,7 +100,7 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
     setAbierto(false);
     setNombre('');
     setN({ hc: 0, proteina: 0, grasa: 0 });
-    setGramos(100);
+    setGramos('100');
   };
 
   /*
@@ -166,13 +169,11 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
         ).map(([k, label]) => (
           <label key={k} className="block">
             <span className="mb-0.5 block text-[10px] text-slate-500">{label}</span>
-            <Input
-              type="number"
-              step="0.1"
-              min="0"
-              value={n[k] ?? ''}
-              onChange={(e) => setNut(k, e.target.value)}
+            <NumeroConComa
+              value={n[k] === undefined ? '' : String(n[k])}
+              onChange={(texto) => setNut(k, texto)}
               className="w-full text-sm"
+              aria-label={label}
             />
           </label>
         ))}
@@ -181,12 +182,11 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <label className="block">
           <span className="mb-0.5 block text-[10px] text-slate-500">Cuánto has comido</span>
-          <Input
-            type="number"
-            min="1"
+          <NumeroConComa
             value={gramos}
-            onChange={(e) => setGramos(Number(e.target.value) || 0)}
+            onChange={setGramos}
             className="w-24 text-sm"
+            aria-label="Cuánto has comido"
           />
         </label>
         <span className="pb-2 text-xs text-slate-400">g</span>
@@ -212,7 +212,7 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
       {/* ── El resultado ──────────────────────────────────── */}
       <div className="mt-3 rounded-lg bg-slate-50 p-3">
         <p className="text-[10px] font-medium tracking-wide text-slate-500 uppercase">
-          Tus {gramos} g aportan
+          Tus {cuanto} g aportan
         </p>
         {hayAlgo ? (
           <>

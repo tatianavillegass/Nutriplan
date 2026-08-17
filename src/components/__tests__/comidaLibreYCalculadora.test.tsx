@@ -183,7 +183,9 @@ describe('¿A cuánto equivale un alimento?', () => {
 
   /** Granola: 60 g de hidrato, 10 de proteína, 20 de grasa por 100 g. */
   const rellenarGranola = (gramos: string) => {
-    const cajas = screen.getAllByRole('spinbutton');
+    // Casillas de texto con teclado numérico: en España se escribe 59,8 y una
+    // casilla «de número» tira la coma.
+    const cajas = document.querySelectorAll('input[inputmode="decimal"]');
     fireEvent.change(cajas[0], { target: { value: '60' } }); // hc
     fireEvent.change(cajas[1], { target: { value: '10' } }); // proteína
     fireEvent.change(cajas[2], { target: { value: '20' } }); // grasa
@@ -203,7 +205,9 @@ describe('¿A cuánto equivale un alimento?', () => {
     rellenarGranola('40');
     // 4 g de proteína son 0,57 porciones: se redondea a ½ y sí sale.
     // Con 10 g comidos, 1 g de proteína no llega y desaparece.
-    fireEvent.change(screen.getAllByRole('spinbutton')[4], { target: { value: '10' } });
+    fireEvent.change(document.querySelectorAll('input[inputmode="decimal"]')[4], {
+      target: { value: '10' },
+    });
     expect(screen.queryByText(/proteicos magros/i)).toBeNull();
   });
 

@@ -933,6 +933,28 @@ export function ClientView() {
                     ),
                   })
                 }
+                /**
+                 * Al cambiar los gramos, los macros se recalculan en la misma
+                 * proporción: es lo que tienen los macros, que van con el peso.
+                 */
+                onCantidad={(id, cantidad) =>
+                  guardar({
+                    bocados: (registro?.bocados ?? []).map((b) => {
+                      if (b.id !== id || !(b.cantidad > 0)) return b;
+                      const f = cantidad / b.cantidad;
+                      return {
+                        ...b,
+                        cantidad,
+                        macros: {
+                          proteina: b.macros.proteina * f,
+                          hc: b.macros.hc * f,
+                          grasa: b.macros.grasa * f,
+                        },
+                        kcal: b.kcal * f,
+                      };
+                    }),
+                  })
+                }
                 atajosDe={(mealId) => {
                   const m = dayType.meals.find((x) => x.id === mealId);
                   return m ? atajosDeComida(m) : null;
