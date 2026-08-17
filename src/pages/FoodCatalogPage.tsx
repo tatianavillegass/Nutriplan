@@ -59,7 +59,8 @@ export function FoodCatalogPage() {
     const datos = {
       nombre: v.nombre,
       grupo: v.grupo,
-      bucket: EXCHANGE_GROUPS[v.grupo].bucket,
+      // Sin subgrupo no hay macro que anclar: es un alimento libre.
+      bucket: v.grupo ? EXCHANGE_GROUPS[v.grupo].bucket : undefined,
       medida_casera: v.medida_casera,
       gramos: v.gramos ?? 0,
       // En un compuesto la medida es la unidad: gasta lo que diga `equivale`.

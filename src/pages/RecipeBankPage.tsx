@@ -42,6 +42,23 @@ export function RecipeBankPage() {
   const foods = useAppStore((s) => s.foods);
   const { addRecipe, updateRecipe, deleteRecipe } = useAppStore();
 
+  /**
+   * La copia se abre para editar en cuanto se crea: lo siguiente que se hace
+   * siempre es cambiarle el nombre y el ingrediente que motivó la copia.
+   */
+  const duplicar = (r: Receta) => {
+    const { id, createdAt, updatedAt, ...resto } = r;
+    void id;
+    void createdAt;
+    void updatedAt;
+    const copia = addRecipe({
+      ...resto,
+      nombre: `${r.nombre} (copia)`,
+      ingredientes: r.ingredientes.map((i) => ({ ...i })),
+    });
+    abrirEdicion(copia);
+  };
+
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Omit<Receta, 'id' | 'createdAt' | 'updatedAt'>>(RECETA_VACIA);
   const [filtro, setFiltro] = useState('');
@@ -529,6 +546,20 @@ export function RecipeBankPage() {
                 <div className="flex shrink-0 gap-1 text-[11px]">
                   <button onClick={() => abrirEdicion(r)} className="text-brand-600 hover:underline">
                     Editar
+                  </button>
+                  {/*
+                    DUPLICAR PARA CAMBIAR DOS COSAS
+                    ================================================
+                    La misma receta con el pollo en cocido, o con tofu en vez
+                    de pollo, es otra receta con un ingrediente distinto.
+                    Volver a escribirla entera —foto, pasos, gramos— por un
+                    cambio es lo que hace que el banco no crezca.
+                  */}
+                  <button
+                    onClick={() => duplicar(r)}
+                    className="text-slate-500 hover:underline"
+                  >
+                    Duplicar
                   </button>
                   <button onClick={() => deleteRecipe(r.id)} className="text-red-500 hover:underline">
                     Borrar

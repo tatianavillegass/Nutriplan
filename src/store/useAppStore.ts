@@ -80,7 +80,7 @@ interface AppState {
   removeMeal: (planId: string, dayTypeId: string, mealId: string) => void;
 
   // Recetas
-  addRecipe: (r: Omit<Receta, "id" | "createdAt" | "updatedAt">) => void;
+  addRecipe: (r: Omit<Receta, "id" | "createdAt" | "updatedAt">) => Receta;
   updateRecipe: (id: string, patch: Partial<Receta>) => void;
   deleteRecipe: (id: string) => void;
 
@@ -551,15 +551,22 @@ export const useAppStore = create<AppState>((set, get) => {
         return { ...d, meals: d.meals.filter((m) => m.id !== mealId), grid };
       }),
 
-    addRecipe: (r) =>
+    addRecipe: (r) => {
+      const receta: Receta = {
+        ...r,
+        id: uid("rc_"),
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      };
       set((s) => {
-        const recipes = [
-          ...s.recipes,
-          { ...r, id: uid("rc_"), createdAt: nowIso(), updatedAt: nowIso() },
-        ];
+        const recipes = [...s.recipes, receta];
         persistRecipes(recipes);
         return { recipes };
-      }),
+      });
+      // Se devuelve para poder abrirla al momento: al duplicar una receta, lo
+      // siguiente que se hace siempre es editar la copia.
+      return receta;
+    },
 
     updateRecipe: (id, patch) =>
       set((s) => {

@@ -38,7 +38,8 @@ const NUTRIENTES_VACIOS: Nutrientes100 = { hc: 0, proteina: 0, grasa: 0 };
 
 export interface FoodFormValue {
   nombre: string;
-  grupo: ExchangeGroupId;
+  /** Sin subgrupo el alimento es libre: canela, vinagre, café, especias. */
+  grupo?: ExchangeGroupId;
   nutrientes: Nutrientes100;
   medida_casera: string;
   gramos?: number;
@@ -111,7 +112,16 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const toggle = <T,>(arr: T[], v: T, set: (x: T[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
-  const puedeGuardar = nombre.trim().length > 1 && !!grupo && !!porcion;
+  /**
+   * LOS CONDIMENTOS NO TIENEN PORCIÓN
+   *
+   * La canela, el vinagre, las especias o el café no pertenecen a ningún
+   * subgrupo y no gastan intercambios: pedirles un macro que defina la porción
+   * era pedirles algo que no existe, y por eso no se podían guardar. Sin
+   * subgrupo, el alimento es libre — que es justo lo que son.
+   */
+  const esLibre = !grupo;
+  const puedeGuardar = nombre.trim().length > 1 && (esLibre || !!porcion);
 
   /**
    * Comprobación del reparto: lo que dicen los intercambios declarados frente
@@ -523,7 +533,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
             puedeGuardar &&
             onGuardar({
               nombre: nombre.trim(),
-              grupo: grupo as ExchangeGroupId,
+              grupo: grupo as ExchangeGroupId | undefined,
               nutrientes: n,
               medida_casera: medida.trim() || `${gramosFinales} g`,
               gramos: gramosFinales,
@@ -543,10 +553,17 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
           {inicial ? 'Guardar cambios' : 'Añadir a la base de datos'}
         </Button>
       </div>
-      {!puedeGuardar && (
+      {!puedeGuardar ? (
         <p className="text-right text-[11px] text-slate-400">
-          Hacen falta el nombre, el subgrupo y el macro que define la porción.
+          Hacen falta el nombre y, si lleva subgrupo, el macro que define la porción.
         </p>
+      ) : (
+        esLibre && (
+          <p className="text-right text-[11px] text-slate-500">
+            Sin subgrupo se guarda como alimento libre: no gasta intercambios y en las recetas
+            saldrá «al gusto». Es lo que son la canela, el vinagre o el café.
+          </p>
+        )
       )}
     </div>
   );
