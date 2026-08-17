@@ -406,9 +406,42 @@ export function scaleRecipe(
    * sale 0 — y por eso la comida aparecerá incompleta en vez de fingir que
    * está cuadrada.
    */
+  /**
+   * LO QUE CUBRE SALE DE LOS GRAMOS QUE HAY EN EL PLATO
+   *
+   * No del factor con el que se calcularon. Son lo mismo mientras nadie toque
+   * nada, pero dejan de serlo en cuanto Tats escribe un gramaje a mano o el
+   * ingrediente se redondea a piezas enteras: poner 150 g de salmón donde el
+   * cálculo había dejado 90 y seguir viendo «falta proteína» es la app
+   * contradiciendo lo que tiene delante.
+   *
+   * Sólo se recalcula el grupo donde ella ha tocado algo. El redondeo a piezas
+   * enteras también separa los gramos del factor, pero ahí la diferencia es de
+   * medio huevo y darla por buena movería los intercambios de todas las
+   * recetas: lo que manda aquí es que un gramaje escrito a mano se respete.
+   *
+   * Se compara gramo a gramo y se pondera por el tamaño de cada ingrediente,
+   * así que mezclar ml y g en un mismo grupo (aceite y nueces) no desvía nada
+   * apreciable.
+   */
+  const enElPlato = new Map<ExchangeGroupId, { base: number; final: number }>();
+  const aMano = new Set<ExchangeGroupId>();
+  for (const ing of ingredientes) {
+    const gid = ing.grupo as ExchangeGroupId;
+    if (!gid || gid === 'verduras' || (ing.grupo as string) === 'condimento') continue;
+    if (!ing.cantidad_base || ing.cantidad_final == null) continue;
+    if (ing.ajustado) aMano.add(gid);
+    const s = enElPlato.get(gid) ?? { base: 0, final: 0 };
+    s.base += ing.cantidad_base;
+    s.final += ing.cantidad_final;
+    enElPlato.set(gid, s);
+  }
+
   const cubiertos: Partial<Record<ExchangeGroupId, number>> = {};
   for (const [gid, n] of Object.entries(base) as [ExchangeGroupId, number][]) {
-    const v = n * (factores[gid] ?? 1);
+    const real = aMano.has(gid) ? enElPlato.get(gid) : undefined;
+    const factor = real && real.base > 0 ? real.final / real.base : factores[gid] ?? 1;
+    const v = n * factor;
     if (v > 0.001) cubiertos[gid] = v;
   }
 
