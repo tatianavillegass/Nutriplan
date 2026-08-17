@@ -16,7 +16,10 @@ import { uid } from '../utils/storage';
 const SLOTS: MealSlot[] = ['desayuno', 'almuerzo', 'comida', 'merienda', 'cena', 'extra'];
 
 /** Las carpetas del banco. El orden es el del día. */
-const CARPETAS: { id: MealSlot | 'todas' | 'sin_clasificar'; nombre: string }[] = [
+const CARPETAS: {
+  id: MealSlot | 'todas' | 'sin_clasificar' | 'acompanamientos';
+  nombre: string;
+}[] = [
   { id: 'todas', nombre: 'Todas' },
   { id: 'desayuno', nombre: 'Desayunos' },
   { id: 'almuerzo', nombre: 'Almuerzos' },
@@ -24,6 +27,7 @@ const CARPETAS: { id: MealSlot | 'todas' | 'sin_clasificar'; nombre: string }[] 
   { id: 'merienda', nombre: 'Meriendas' },
   { id: 'cena', nombre: 'Cenas' },
   { id: 'extra', nombre: 'Extras' },
+  { id: 'acompanamientos', nombre: 'Acompañamientos' },
   { id: 'sin_clasificar', nombre: 'Sin clasificar' },
 ];
 
@@ -70,7 +74,7 @@ export function RecipeBankPage() {
    * puede estar en varias carpetas, porque una tortilla vale de cena y de
    * almuerzo, y eso es lo que dicen sus categorías.
    */
-  const [carpeta, setCarpeta] = useState<MealSlot | 'todas' | 'sin_clasificar'>('todas');
+  const [carpeta, setCarpeta] = useState<MealSlot | 'todas' | 'sin_clasificar' | 'acompanamientos'>('todas');
 
   /**
    * El formulario sale arriba del todo, y las recetas se editan desde su
@@ -116,6 +120,12 @@ export function RecipeBankPage() {
     }));
 
   const enCarpeta = (r: Receta) => {
+    /*
+     * Los acompañamientos sólo salen en la suya. En las demás son ruido: se
+     * busca «un desayuno» y aparecen cuatro ensaladas de guarnición.
+     */
+    if (carpeta === 'acompanamientos') return !!r.acompanamiento;
+    if (r.acompanamiento) return false;
     if (carpeta === 'todas') return true;
     // Las que no tienen categoría se pierden: hay que poder encontrarlas.
     if (carpeta === 'sin_clasificar') return !r.categorias.length;
@@ -227,6 +237,23 @@ export function RecipeBankPage() {
           </div>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Field label="Qué es" className="sm:col-span-2">
+              <button
+                onClick={() => setDraft({ ...draft, acompanamiento: !draft.acompanamiento })}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                  draft.acompanamiento
+                    ? 'border-brand-500 bg-brand-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                }`}
+              >
+                {draft.acompanamiento ? 'Es un acompañamiento ✓' : 'Es un acompañamiento'}
+              </button>
+              <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                Va al lado de un plato, no en su lugar: una ensalada, un puré, un pan de la cesta.
+                Se guarda en su propia carpeta y no se ofrece como opción de comida.
+              </p>
+            </Field>
+
             <Field label="Categorías de comida" className="sm:col-span-2">
               <div className="flex flex-wrap gap-1.5">
                 {SLOTS.map((s) => {
@@ -490,11 +517,15 @@ export function RecipeBankPage() {
       <div className="flex flex-wrap gap-1.5">
         {CARPETAS.map((c) => {
           const n = recipes.filter((r) =>
-            c.id === 'todas'
-              ? true
-              : c.id === 'sin_clasificar'
-                ? !r.categorias.length
-                : r.categorias.includes(c.id as MealSlot),
+            c.id === 'acompanamientos'
+              ? !!r.acompanamiento
+              : r.acompanamiento
+                ? false
+                : c.id === 'todas'
+                  ? true
+                  : c.id === 'sin_clasificar'
+                    ? !r.categorias.length
+                    : r.categorias.includes(c.id as MealSlot),
           ).length;
           if (c.id === 'sin_clasificar' && n === 0) return null;
 
@@ -519,14 +550,34 @@ export function RecipeBankPage() {
         })}
       </div>
 
+      {carpeta === 'acompanamientos' && (
+        <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs leading-snug text-brand-900">
+          Lo que va al lado del plato. Se ven en pequeño y de muchos en muchos, que es como se
+          eligen: de aquí sale la ensalada que acompaña al salmón, no la cena entera.
+        </p>
+      )}
+
       {visibles.length === 0 ? (
-        <EmptyState title="Sin recetas" />
+        <EmptyState title={carpeta === 'acompanamientos' ? 'Sin acompañamientos' : 'Sin recetas'} />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className={
+            /* Los acompañamientos, en pequeño: se eligen mirando muchos a la vez. */
+            carpeta === 'acompanamientos'
+              ? 'grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+              : 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3'
+          }
+        >
           {visibles.map((r) => (
             <div key={r.id} className="overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm">
               {r.foto_url ? (
-                <img src={r.foto_url} alt={r.nombre} className="h-36 w-full object-cover" />
+                <img
+                  src={r.foto_url}
+                  alt={r.nombre}
+                  className={`w-full object-cover ${
+                    carpeta === 'acompanamientos' ? 'h-20' : 'h-36'
+                  }`}
+                />
               ) : (
                 <button
                   onClick={() => abrirEdicion(r)}

@@ -107,6 +107,8 @@ export function RecipeRecommender({
     () =>
       recetas.filter(
         (r) =>
+          // Los acompañamientos van al lado del plato, no en su lugar.
+          !r.acompanamiento &&
           (slot === 'todas' || r.categorias.includes(slot)) &&
           tags.every((t) => r.tags.includes(t)),
       ),
@@ -128,7 +130,7 @@ export function RecipeRecommender({
     const q = busqueda.trim();
     if (q.length < 2) return [];
     return matchRecipes(
-      recetas.filter((r) => coincide(r.nombre, q)),
+      recetas.filter((r) => !r.acompanamiento && coincide(r.nombre, q)),
       reparto,
       { slot: meal.slot, limite: 12, client, foods, incluirBloqueadas: true },
     );

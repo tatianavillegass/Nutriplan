@@ -72,6 +72,11 @@ export function matchRecipes(
   } = opts;
 
   const results: MatchResult[] = recetas
+    /*
+     * Un acompañamiento no compite por ser la comida: va al lado de un plato,
+     * así que nunca se sugiere como opción de desayuno o de cena.
+     */
+    .filter((r) => !r.acompanamiento)
     .filter((r) => !r.tags.some((t) => evitar.includes(t)))
     .map((r) => {
       // 0. Restricciones del cliente: mandan sobre cualquier puntuación.

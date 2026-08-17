@@ -44,6 +44,18 @@ export interface Receta {
   /** Si aguanta preparada de un día para otro. */
   tupper?: boolean;
   categorias: MealSlot[];
+  /**
+   * UN ACOMPAÑAMIENTO NO ES UN PLATO
+   *
+   * La ensalada de tomate o el puré de batata no son «la comida»: van al lado
+   * de un plato. Mezclados con las recetas normales ensucian las carpetas y,
+   * peor, se le podían asignar a una clienta como una de sus opciones — y en
+   * su pantalla le saldría media ensalada donde esperaba una cena.
+   *
+   * Por eso viven en su propia carpeta, con foto pequeña: se ven muchos de
+   * golpe, que es como se eligen.
+   */
+  acompanamiento?: boolean;
   tags: string[];
   /** Alérgenos declarados a mano, para recetas sin ingredientes enlazados. */
   alergenos?: Alergeno[];
