@@ -516,6 +516,7 @@ export function RecipeRecommender({
                     />
                   ) : (
                     <ScaledRecipeView
+                          recetas={recetas}
                       receta={r}
                       requeridos={reparto}
                       foods={foods}

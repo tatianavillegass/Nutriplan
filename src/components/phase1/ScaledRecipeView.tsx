@@ -62,6 +62,12 @@ interface Props {
   ajustes?: Record<string, number>;
   /** Lo que la nutricionista le ha puesto al lado a esta receta. */
   acompanamientos?: Acompanamiento[];
+  /**
+   * El banco, para poder enseñar el acompañamiento como lo que es: su foto,
+   * sus ingredientes y su preparación. Sin él sale la lista de alimentos
+   * sueltos, que es lo que había antes.
+   */
+  recetas?: Receta[];
 }
 
 export function ScaledRecipeView({
@@ -77,7 +83,10 @@ export function ScaledRecipeView({
   sinCabecera = false,
   ajustes,
   acompanamientos,
+  recetas = [],
 }: Props) {
+  /** Un acompañamiento se abre para ver qué lleva y cómo se hace. */
+  const [guarnicionAbierta, setGuarnicionAbierta] = useState<string | null>(null);
   /**
    * Gramos o medidas caseras. Se mezclaban las dos y confundía: ahora se
    * elige, y la elección vale para toda la lista.
@@ -318,9 +327,87 @@ export function ScaledRecipeView({
               <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
                 Además
               </p>
-              <ul className="space-y-1.5">
+
+              {/*
+                UN ACOMPAÑAMIENTO SE ENSEÑA COMO UNA RECETA
+                ===========================================
+                La ensalada de tomate es una receta con su foto y sus pasos, no
+                cuatro alimentos sueltos en una lista. Se ve en pequeño —nombre
+                y foto— y se abre para ver qué lleva y cómo se hace, que es
+                justo cuando hace falta: al ponerse a cocinarla.
+              */}
+              <div className="space-y-1.5">
+                {[
+                  ...new Set(
+                    resultado.ingredientes
+                      .filter((i) => i.acompanamiento && i.deReceta)
+                      .map((i) => i.deReceta as string),
+                  ),
+                ].map((rid) => {
+                  const suyos = resultado.ingredientes.filter((i) => i.deReceta === rid);
+                  const guarnicion = recetas.find((r) => r.id === rid);
+                  const abierta = guarnicionAbierta === rid;
+                  const nombre = guarnicion?.nombre ?? suyos.map((i) => i.nombre).join(', ');
+
+                  return (
+                    <div key={rid} className="overflow-hidden rounded-xl bg-slate-50">
+                      <button
+                        onClick={() => setGuarnicionAbierta(abierta ? null : rid)}
+                        className="flex w-full items-center gap-2.5 p-2 text-left"
+                      >
+                        {guarnicion?.foto_url ? (
+                          <img
+                            src={guarnicion.foto_url}
+                            alt=""
+                            className="h-9 w-9 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="h-9 w-9 shrink-0 rounded-full bg-brand-100" />
+                        )}
+                        <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                          {nombre}
+                        </span>
+                        <span className="shrink-0 text-xs text-slate-400">
+                          {abierta ? 'Cerrar' : 'Ver'}
+                        </span>
+                      </button>
+
+                      {abierta && (
+                        <div className="border-t border-slate-200/70 px-3 py-2.5">
+                          <ul className="space-y-1">
+                            {suyos.map((a) => (
+                              <li key={a.id} className="flex items-baseline gap-2 text-sm">
+                                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400" />
+                                <span className="flex-1 text-slate-700">
+                                  {a.nombre}
+                                  <span className="tnum ml-1.5 font-medium text-brand-800">
+                                    {a.display}
+                                  </span>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          {guarnicion?.preparacion && (
+                            <ol className="mt-2 space-y-1 border-t border-slate-200/70 pt-2">
+                              {pasos(guarnicion.preparacion).map((paso, i) => (
+                                <li key={i} className="flex gap-2 text-sm text-slate-600">
+                                  <span className="tnum shrink-0 text-slate-400">{i + 1}.</span>
+                                  <span>{paso}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Lo suelto —un yogur, un café— sigue siendo una línea. */}
+              <ul className="mt-1.5 space-y-1.5">
                 {resultado.ingredientes
-                  .filter((i) => i.acompanamiento)
+                  .filter((i) => i.acompanamiento && !i.deReceta)
                   .map((a) => (
                     <li key={a.id} className="flex items-baseline gap-2 text-sm">
                       <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400" />

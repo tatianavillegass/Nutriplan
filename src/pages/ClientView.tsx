@@ -1095,6 +1095,7 @@ export function ClientView() {
                         onLibre={() => setPidiendoLibre(m.id)}
                       >
                         <ScaledRecipeView
+                          recetas={recipes}
                           receta={receta}
                           requeridos={dayType.grid[m.id] ?? {}}
                           foods={foods}

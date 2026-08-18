@@ -203,6 +203,12 @@ export interface Acompanamiento {
   gramos: number;
   unidad?: string;
   tipo: TipoAcompanamiento;
+  /**
+   * De qué acompañamiento del banco salió. Sin esto, en la pantalla de la
+   * clienta la ensalada de tomate se deshace en cuatro alimentos sueltos y se
+   * pierde la foto y la preparación: no sabe que eso era una receta.
+   */
+  deReceta?: string;
 }
 
 /** Lo que Tats le haya puesto al lado a esa receta en esa comida. */

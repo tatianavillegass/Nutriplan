@@ -140,6 +140,7 @@ export function AjustarCantidades({
         gramos: i.cantidad_base as number,
         unidad: i.unidad || 'g',
         tipo: 'acompanamiento' as TipoAcompanamiento,
+        deReceta: r.id,
       }));
     setAcompanamientos((prev) => [...prev, ...nuevos]);
   };

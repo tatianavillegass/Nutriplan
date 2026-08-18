@@ -69,6 +69,7 @@ export function RecipeSheetPDF({
                     <div className="space-y-3">
                       {opciones.map((receta) => (
                         <ScaledRecipeView
+                          recetas={recipes}
                           key={receta.id}
                           receta={receta}
                           requeridos={d.grid[m.id] ?? {}}

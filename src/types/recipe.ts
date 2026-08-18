@@ -81,6 +81,8 @@ export interface IngredienteEscalado extends Ingrediente {
   ajustado?: boolean;
   /** Si no es un ingrediente de la receta sino algo puesto al lado. */
   acompanamiento?: string;
+  /** Y si eso que se puso al lado es un acompañamiento del banco, cuál. */
+  deReceta?: string;
 }
 
 export interface RecetaEscalada {

@@ -83,6 +83,7 @@ export function RecetasDeConsulta({ dayType, recipes, foods }: Props) {
                 .map((r) => (
                   <div key={r.id} className="mt-2">
                     <ScaledRecipeView
+                          recetas={recipes}
                       receta={r}
                       requeridos={dayType.grid[meal.id] ?? {}}
                       foods={foods}

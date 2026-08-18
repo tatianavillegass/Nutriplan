@@ -110,6 +110,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
                   ) : (
                     <>
                       <ScaledRecipeView
+                          recetas={recetas}
                         receta={receta}
                         requeridos={requeridos}
                         foods={foods}
