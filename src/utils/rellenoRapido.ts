@@ -5,6 +5,23 @@ import { EXCHANGE_GROUPS, type ExchangeGroupId, type MacroBucket } from '../data
 import { aporteDeAlimento } from './exchanges';
 
 /**
+ * DÓNDE SE RELLENA DE GOLPE
+ *
+ * Sólo en la comida y en la cena, y sólo con carne, pescado o huevo. En el
+ * desayuno se combinan varias fuentes —el yogur con la whey, el pan con el
+ * pavo— así que meter de golpe toda la proteína en la primera que toque es
+ * justo lo contrario de lo que va a hacer. Y un lácteo casi nunca se lleva la
+ * proteína entera de un plato, ni siquiera al mediodía.
+ */
+const COMIDAS_DE_PLATO = new Set(['comida', 'cena']);
+
+const PROTEICOS = new Set<ExchangeGroupId>([
+  'proteicos_magros',
+  'proteicos_semigrasos',
+  'proteicos_grasos',
+]);
+
+/**
  * EL POLLO SE LLEVA CASI TODA LA PROTEÍNA DE LA COMIDA
  *
  * En fase 3 la comida suele resolverse con un alimento por macro: cuatro
@@ -45,7 +62,12 @@ export function porcionesDeGolpe(
   marcadas: PorcionesMarcadas[string] | undefined,
   foods: Alimento[],
   alimento: Alimento,
+  /** El momento del día: en el desayuno no se rellena de golpe. */
+  slot?: string,
 ): number {
+  if (!slot || !COMIDAS_DE_PLATO.has(slot)) return 1;
+  if (!alimento.grupo || !PROTEICOS.has(alimento.grupo as ExchangeGroupId)) return 1;
+
   const bucket = bucketDe(alimento.grupo);
   if (!bucket) return 1;
 

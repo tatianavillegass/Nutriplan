@@ -20,7 +20,7 @@ const aceite = FOOD_CATALOG.find((f) => f.grupo === 'grasas') as Alimento;
 
 describe('El primer toque en un alimento', () => {
   it('mete las porciones que le faltan a su macro', () => {
-    const n = porcionesDeGolpe({ proteicos_magros: 4 }, undefined, FOOD_CATALOG, pollo);
+    const n = porcionesDeGolpe({ proteicos_magros: 4 }, undefined, FOOD_CATALOG, pollo, 'comida');
     expect(n).toBe(4);
   });
 
@@ -30,6 +30,7 @@ describe('El primer toque en un alimento', () => {
       { [aceite.id]: 1 },
       FOOD_CATALOG,
       pollo,
+      'cena',
     );
     // El aceite es grasa: no toca la proteína, siguen faltando cuatro.
     expect(n).toBe(4);
@@ -41,11 +42,32 @@ describe('El primer toque en un alimento', () => {
       { [pollo.id]: 4 },
       FOOD_CATALOG,
       pollo,
+      'comida',
     );
     expect(n).toBe(1);
   });
 
   it('un macro que no se pautó tampoco dispara nada raro', () => {
-    expect(porcionesDeGolpe({ almidones: 3 }, undefined, FOOD_CATALOG, pollo)).toBe(1);
+    expect(porcionesDeGolpe({ almidones: 3 }, undefined, FOOD_CATALOG, pollo, 'comida')).toBe(1);
+  });
+});
+
+/**
+ * EN EL DESAYUNO SE COMBINAN VARIAS FUENTES
+ *
+ * El yogur con la whey, el pan con el pavo. Meter de golpe toda la proteína en
+ * la primera que toque es justo lo contrario de lo que va a hacer, así que el
+ * relleno se queda en la comida y la cena — y sólo con carne, pescado o huevo:
+ * un lácteo casi nunca se lleva la proteína entera de un plato.
+ */
+describe('Fuera de la comida y la cena', () => {
+  it('el desayuno suma de una en una', () => {
+    expect(porcionesDeGolpe({ proteicos_magros: 4 }, undefined, FOOD_CATALOG, pollo, 'desayuno')).toBe(1);
+    expect(porcionesDeGolpe({ proteicos_magros: 4 }, undefined, FOOD_CATALOG, pollo, 'merienda')).toBe(1);
+  });
+
+  it('y un lácteo tampoco se lleva el plato entero', () => {
+    const yogur = FOOD_CATALOG.find((f) => f.grupo === 'lacteos_proteicos') as Alimento;
+    expect(porcionesDeGolpe({ lacteos_proteicos: 3 }, undefined, FOOD_CATALOG, yogur, 'comida')).toBe(1);
   });
 });

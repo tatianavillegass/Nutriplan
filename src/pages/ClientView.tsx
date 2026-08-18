@@ -340,6 +340,7 @@ export function ClientView() {
           porciones[mealId],
           foods,
           alimento,
+          dayType.meals.find((m) => m.id === mealId)?.slot,
         );
     }
     guardar({ porciones: marcarAlimento(porciones, mealId, foodId, cuantas) });
