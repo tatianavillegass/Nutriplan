@@ -171,3 +171,20 @@ export function escalarMedida(medida: string, factor: number): string {
 
   return `${formatCantidad(total)} ${salida.join(' ')}`;
 }
+
+/**
+ * MEDIO HUEVO NO EXISTE
+ *
+ * Las porciones se mueven de media en media —media tostada, medio yogur—, pero
+ * si una porción entera es UNA pieza, la mitad es media pieza y eso no se
+ * puede echar a la sartén. Con dos lonchas por intercambio sí: media porción es
+ * una loncha, así que sólo se mira el caso de la pieza única.
+ */
+export function pasoDePorcion(alimento: {
+  medida_casera?: string;
+  gramos?: number;
+}): number {
+  const pieza = gramosPorPieza(alimento);
+  if (!pieza || !alimento.gramos) return 0.5;
+  return Math.round(alimento.gramos / pieza) === 1 ? 1 : 0.5;
+}

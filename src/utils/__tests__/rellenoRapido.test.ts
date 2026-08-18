@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { porcionesDeGolpe } from '../rellenoRapido';
 import { FOOD_CATALOG } from '../../data/foodCatalog';
+import { pasoDePorcion } from '../measures';
 import type { Alimento } from '../../types/food';
 
 /**
@@ -69,5 +70,27 @@ describe('Fuera de la comida y la cena', () => {
   it('y un lácteo tampoco se lleva el plato entero', () => {
     const yogur = FOOD_CATALOG.find((f) => f.grupo === 'lacteos_proteicos') as Alimento;
     expect(porcionesDeGolpe({ lacteos_proteicos: 3 }, undefined, FOOD_CATALOG, yogur, 'comida')).toBe(1);
+  });
+});
+
+/**
+ * MEDIO HUEVO NO EXISTE
+ *
+ * Las porciones se mueven de media en media, pero si una porción entera es UNA
+ * pieza, la mitad es media pieza y eso no se puede echar a la sartén.
+ */
+describe('El paso de cada pulsación', () => {
+  it('es entero en lo que viene de una pieza', () => {
+    const huevo = FOOD_CATALOG.find((f) => f.id === 'a-huevo') as Alimento;
+    expect(pasoDePorcion(huevo)).toBe(1);
+  });
+
+  it('y medio en lo que se pesa', () => {
+    expect(pasoDePorcion(pollo)).toBe(0.5);
+    expect(pasoDePorcion(aceite)).toBe(0.5);
+  });
+
+  it('con dos lonchas por porción, media porción es una loncha', () => {
+    expect(pasoDePorcion({ medida_casera: '2 lonchas', gramos: 30 })).toBe(0.5);
   });
 });

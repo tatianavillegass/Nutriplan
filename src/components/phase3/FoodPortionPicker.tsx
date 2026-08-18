@@ -1,3 +1,4 @@
+import { pasoDePorcion } from '../../utils/measures';
 import { useMemo, useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { DayType, Meal } from '../../types/plan';
@@ -28,11 +29,11 @@ interface Props {
   acciones?: React.ReactNode;
 }
 
-/**
- * Cuánto sube o baja cada pulsación. Medio intercambio, que es la unidad con
- * la que se pauta: media tostada, medio yogur, media pieza de fruta.
+/*
+ * Cuánto sube o baja cada pulsación lo decide el alimento (`pasoDePorcion`):
+ * medio intercambio en general —media tostada, medio yogur— y entero en lo que
+ * viene de una pieza, porque medio huevo no se puede echar a la sartén.
  */
-const PASO_PORCION = 0.5;
 
 /** «1», «1½»: como se dice en la consulta, no como lo escribe un ordenador. */
 function enPorciones(n: number): string {
@@ -354,7 +355,7 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, a
                           */}
                           <div className="flex shrink-0 items-center gap-1 rounded-lg bg-white/70 px-1 py-0.5">
                             <button
-                              onClick={() => onMarcar(meal.id, f.id, -PASO_PORCION)}
+                              onClick={() => onMarcar(meal.id, f.id, -pasoDePorcion(f))}
                               className="h-7 w-7 rounded text-base leading-none text-brand-700 transition hover:bg-brand-100"
                               aria-label={`Quitar media porción de ${f.nombre}`}
                             >
@@ -364,7 +365,7 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, a
                               {enPorciones(n)}
                             </span>
                             <button
-                              onClick={() => onMarcar(meal.id, f.id, PASO_PORCION)}
+                              onClick={() => onMarcar(meal.id, f.id, pasoDePorcion(f))}
                               className="h-7 w-7 rounded text-base leading-none text-brand-700 transition hover:bg-brand-100"
                               aria-label={`Añadir media porción de ${f.nombre}`}
                             >
