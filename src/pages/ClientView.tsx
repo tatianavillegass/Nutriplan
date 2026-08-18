@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
 import { useAuthStore } from "../store/useAuthStore";
@@ -248,6 +248,18 @@ export function ClientView() {
    * enviado. Cada una se arregla de una manera y quien mira la pantalla no
    * tenía forma de saber cuál era — ni de reintentar.
    */
+  /**
+   * EL CLIENTE SIEMPRE A SU FICHA
+   *
+   * La pantalla lleva la ficha en la dirección, así que un enlace guardado en
+   * la pantalla de inicio del móvil —o el que le pasaron por WhatsApp cuando
+   * su ficha era otra— le llevaba a una ficha que no es la suya. La app le
+   * decía «no encontramos tu ficha» teniéndola delante. Se le lleva a la suya
+   * en vez de dejarle en una pantalla vacía.
+   */
+  if (perfil?.rol === "cliente" && perfil.clientId && perfil.clientId !== id)
+    return <Navigate to={`/clientes/${perfil.clientId}/vista`} replace />;
+
   if (!client || !plan || !dayType) {
     if (fallo)
       return (
