@@ -15,11 +15,12 @@ afterEach(cleanup);
  * intercambio.
  */
 const rellenarNutrientes = () => {
-  const cajas = screen.getAllByRole('spinbutton');
+  // Las casillas de la etiqueta admiten coma, así que ya no son «spinbutton».
+  const cajas = document.querySelectorAll('input[inputmode="decimal"]');
   // kcal, hc, proteína, grasa, fibra, azúcares
-  fireEvent.change(cajas[1], { target: { value: '41.5' } });
-  fireEvent.change(cajas[2], { target: { value: '30.6' } });
-  fireEvent.change(cajas[3], { target: { value: '16.8' } });
+  fireEvent.change(cajas[1], { target: { value: '41,5' } });
+  fireEvent.change(cajas[2], { target: { value: '30,6' } });
+  fireEvent.change(cajas[3], { target: { value: '16,8' } });
   fireEvent.change(cajas[4], { target: { value: '25' } });
 };
 
@@ -80,7 +81,7 @@ describe('El panel de «gasta más de un intercambio»', () => {
     fireEvent.change(screen.getByPlaceholderText('Avena en copos'), {
       target: { value: 'Pechuga de pollo' },
     });
-    const cajas = screen.getAllByRole('spinbutton');
+    const cajas = document.querySelectorAll('input[inputmode="decimal"]');
     fireEvent.change(cajas[2], { target: { value: '23' } });
     fireEvent.change(cajas[3], { target: { value: '2' } });
 

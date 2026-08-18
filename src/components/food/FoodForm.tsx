@@ -11,6 +11,7 @@ import { calcularPorcion, sugerirSubgrupo, subgruposDeBucket, hcNeto } from '../
 import { exchangesToMacros } from '../../utils/exchanges';
 import { kcalFromMacros } from '../../utils/macros';
 import { Button, Field, Input, Select, fmt } from '../common/ui';
+import { NumeroConComa } from '../common/NumeroConComa';
 
 const BUCKETS: [MacroBucket, string][] = [
   ['carbohidrato', 'Carbohidrato'],
@@ -99,8 +100,28 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const ajustado =
     gramosManual != null && calculada != null && Math.abs(gramosManual - calculada.gramos) > 0.5;
 
-  const setNut = (k: keyof Nutrientes100, v: string) =>
-    setN((prev) => ({ ...prev, [k]: v === '' ? undefined : Number(v) } as Nutrientes100));
+  /**
+   * Lo tecleado se guarda tal cual —«14,» mientras se escribe— y aparte se
+   * traduce a número. Si sólo se guardara el número, la coma desaparecería al
+   * teclearla y no habría manera de escribir 14,4.
+   */
+  const [textos, setTextos] = useState<Partial<Record<keyof Nutrientes100, string>>>({});
+
+  const setNut = (k: keyof Nutrientes100, v: string) => {
+    setTextos((prev) => ({ ...prev, [k]: v }));
+    const limpio = v.replace(',', '.');
+    const num = Number(limpio);
+    setN(
+      (prev) =>
+        ({
+          ...prev,
+          [k]: limpio === '' || !Number.isFinite(num) ? undefined : num,
+        }) as Nutrientes100,
+    );
+  };
+
+  const textoDe = (k: keyof Nutrientes100) =>
+    textos[k] ?? (n[k] == null ? '' : String(n[k]).replace('.', ','));
 
   const kcalCalculadas = n.hc * 4 + n.proteina * 4 + n.grasa * 9;
   const kcalDeclaradas = n.kcal;
@@ -198,12 +219,14 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
           ).map(([k, label]) => (
             <label key={k} className="block">
               <span className="mb-0.5 block text-[10px] text-slate-500">{label}</span>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                value={n[k] ?? ''}
-                onChange={(e) => setNut(k, e.target.value)}
+              {/*
+                La etiqueta pone «14,4». Con type="number" el navegador tira el
+                valor al teclear la coma y la casilla se queda vacía: parecía
+                que la app no dejaba poner decimales.
+              */}
+              <NumeroConComa
+                value={textoDe(k)}
+                onChange={(t) => setNut(k, t)}
                 className="w-full text-sm"
               />
             </label>
@@ -423,7 +446,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
                   onChange={(e) =>
                     setEquivale((prev) => ({
                       ...prev,
-                      [g]: e.target.value === '' ? 0 : Number(e.target.value),
+                      [g]: e.target.value === '' ? 0 : Number(e.target.value.replace(',', '.')) || 0,
                     }))
                   }
                   className="w-20 text-sm"

@@ -58,3 +58,27 @@ describe('Duplicar una receta', () => {
     expect(useAppStore.getState().recipes.some((r) => r.id === receta.id)).toBe(true);
   });
 });
+
+/**
+ * LA ETIQUETA PONE «14,4»
+ *
+ * Con type="number" el navegador tira el valor al teclear la coma: la casilla
+ * se quedaba vacía y parecía que la app no dejaba poner decimales. Le pasaba a
+ * la clienta al copiar la etiqueta de su yogur, que es justo cuando no tiene a
+ * nadie al lado para explicárselo.
+ */
+describe('Los números de la etiqueta', () => {
+  it('se pueden escribir con coma', () => {
+    const onGuardar = vi.fn();
+    render(<FoodForm onGuardar={onGuardar} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Avena en copos'), {
+      target: { value: 'Yogur de marca' },
+    });
+
+    const casillas = document.querySelectorAll('input[inputmode="decimal"]');
+    expect(casillas.length).toBeGreaterThan(0);
+    fireEvent.change(casillas[0], { target: { value: '14,4' } });
+    expect((casillas[0] as HTMLInputElement).value).toBe('14,4');
+  });
+});
