@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
+import { porcionesDeGolpe } from "../utils/rellenoRapido";
 import { useAuthStore } from "../store/useAuthStore";
 import { MealOptionsBoard } from "../components/phase2/MealOptionsBoard";
 import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
@@ -323,8 +324,26 @@ export function ClientView() {
   /** Lo escogido por subgrupo: es la base del presupuesto del día. */
   const porGrupo = seleccionPorGrupo(porciones, foods);
 
-  const marcarPorcion = (mealId: string, foodId: string, delta: number) =>
-    guardar({ porciones: marcarAlimento(porciones, mealId, foodId, delta) });
+  /**
+   * El primer toque en un alimento mete lo que falta de su macro en esa
+   * comida: el pollo se lleva casi toda la proteína y pulsar cuatro veces era
+   * trabajo inventado. Los siguientes suman de una en una. Ver `rellenoRapido`.
+   */
+  const marcarPorcion = (mealId: string, foodId: string, delta: number) => {
+    let cuantas = delta;
+    const yaPuestas = porciones[mealId]?.[foodId] ?? 0;
+    if (delta === 1 && yaPuestas === 0 && dayType) {
+      const alimento = foods.find((f) => f.id === foodId);
+      if (alimento)
+        cuantas = porcionesDeGolpe(
+          dayType.grid[mealId] ?? {},
+          porciones[mealId],
+          foods,
+          alimento,
+        );
+    }
+    guardar({ porciones: marcarAlimento(porciones, mealId, foodId, cuantas) });
+  };
 
   /** Fase 2: al pulsar una opción sustituye lo que hubiera de ese macro. */
   const elegirOpcionComida = (
