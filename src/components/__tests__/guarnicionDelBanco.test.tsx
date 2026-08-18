@@ -93,3 +93,32 @@ describe('Un acompañamiento del banco', () => {
     expect(puestos[0]).toMatchObject({ foodId: arroz.id, gramos: 100 });
   });
 });
+
+/**
+ * SE VE QUÉ SE HA PUESTO, NO SÓLO QUE SE HA PUESTO ALGO
+ *
+ * Un acompañamiento del banco entra con varios ingredientes. En una lista
+ * corrida eran cuatro filas de gramos sin nombre encima: la nutricionista
+ * sabía que había añadido algo, no qué.
+ */
+describe('Lo puesto en el panel', () => {
+  it('sale agrupado bajo el nombre del acompañamiento', () => {
+    render(
+      <AjustarCantidades
+        receta={PLATO}
+        requeridos={{ proteicos_grasos: 3, almidones: 2 }}
+        foods={FOOD_CATALOG}
+        ajustes={{}}
+        recetas={[PLATO, GUARNICION]}
+        onGuardar={vi.fn()}
+        onCerrar={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Arroz de acompañar'));
+
+    // Su nombre encima de sus ingredientes, y sus ingredientes con nombre.
+    expect(screen.getAllByText('Arroz de acompañar').length).toBeGreaterThan(1);
+    expect(screen.getByText('Arroz cocido')).toBeTruthy();
+  });
+});

@@ -150,6 +150,26 @@ export function AjustarCantidades({
     setAcompanamientos((prev) => [...prev, ...nuevos]);
   };
 
+  /**
+   * Lo puesto, agrupado por el acompañamiento del que salió. Los sueltos —un
+   * yogur, un café— son un grupo de uno y se ven igual que antes.
+   */
+  const grupos = useMemo(() => {
+    const out: { clave: string; receta?: Receta; suyos: Acompanamiento[] }[] = [];
+    for (const a of acompanamientos) {
+      const clave = a.deReceta ?? a.id;
+      const ya = out.find((g) => g.clave === clave);
+      if (ya) ya.suyos.push(a);
+      else
+        out.push({
+          clave,
+          receta: a.deReceta ? recetas.find((r) => r.id === a.deReceta) : undefined,
+          suyos: [a],
+        });
+    }
+    return out;
+  }, [acompanamientos, recetas]);
+
   /** Lo que no está enlazado no cuenta, y callárselo sería mentir. */
   const sueltos = (r: Receta) => r.ingredientes.filter((i) => !i.foodId).length;
 
@@ -250,8 +270,44 @@ export function AjustarCantidades({
         </p>
 
         {acompanamientos.length > 0 && (
-          <ul className="mb-2 space-y-1">
-            {acompanamientos.map((a) => (
+          <div className="mb-2 space-y-2">
+            {/*
+              LO PUESTO, AGRUPADO POR DE DÓNDE VIENE
+              ======================================
+              Un acompañamiento del banco entra con varios ingredientes. En una
+              lista corrida se veían cuatro filas de gramos sin saber que eran
+              «la salsa de yogur»: se sabía que había añadido algo, no qué.
+            */}
+            {grupos.map((g) => (
+              <div key={g.clave} className="rounded-lg bg-white p-1.5">
+                {g.receta && (
+                  <div className="mb-1 flex items-center gap-2 px-0.5">
+                    {g.receta.foto_url ? (
+                      <img
+                        src={g.receta.foto_url}
+                        alt=""
+                        className="h-6 w-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="h-6 w-6 rounded-full bg-brand-100" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-brand-900">
+                      {g.receta.nombre}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setAcompanamientos((prev) =>
+                          prev.filter((x) => (x.deReceta ?? x.id) !== g.clave),
+                        )
+                      }
+                      className="text-[11px] text-slate-400 transition hover:text-red-600"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )}
+                <ul className="space-y-1">
+                  {g.suyos.map((a) => (
               <li key={a.id} className="rounded bg-white px-2 py-1.5">
                 {/*
                   El nombre arriba y entero. En una sola fila, con tres o cuatro
@@ -298,8 +354,11 @@ export function AjustarCantidades({
                 </button>
                 </div>
               </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
 
         <div className="flex flex-wrap items-end gap-2">
