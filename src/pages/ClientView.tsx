@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
+import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
 import { useAuthStore } from "../store/useAuthStore";
 import { MealOptionsBoard } from "../components/phase2/MealOptionsBoard";
 import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
@@ -151,6 +152,14 @@ export function ClientView() {
   const soyElCliente = useAuthStore(
     (s) => s.perfil?.rol === "cliente" && s.perfil?.clientId === id,
   );
+  const perfil = useAuthStore((s) => s.perfil);
+
+  /** Si la carga tropezó, hay que poder decirlo en vez de callar. */
+  const [fallo, setFallo] = useState<string | null>(ultimoFallo());
+  useEffect(() => {
+    observarFallo(setFallo);
+    return () => observarFallo(null);
+  }, []);
 
   const [fecha, setFecha] = useState(claveFecha(new Date()));
   const [interactivo, setInteractivo] = useState(true);
@@ -231,8 +240,42 @@ export function ClientView() {
     [dayType, registro, catalogo],
   );
 
-  if (!client || !plan || !dayType)
-    return <EmptyState title="Plan no disponible" />;
+  /**
+   * CUANDO NO HAY NADA QUE ENSEÑAR, DECIR POR QUÉ
+   *
+   * «Plan no disponible» servía para tres cosas distintas: que no se hayan
+   * podido leer los datos, que la ficha no aparezca y que el plan no esté
+   * enviado. Cada una se arregla de una manera y quien mira la pantalla no
+   * tenía forma de saber cuál era — ni de reintentar.
+   */
+  if (!client || !plan || !dayType) {
+    if (fallo)
+      return (
+        <EmptyState title="No hemos podido cargar tu plan">
+          <span className="block">
+            Puede ser la conexión. Vuelve a intentarlo; si sigue igual, avisa a tu nutricionista y
+            enséñale esto: <span className="text-slate-400">{fallo}</span>
+          </span>
+          <span className="mt-3 block">
+            <Button onClick={() => window.location.reload()}>Reintentar</Button>
+          </span>
+        </EmptyState>
+      );
+
+    if (!client)
+      return (
+        <EmptyState title="No encontramos tu ficha">
+          Entraste con {perfil?.email ?? 'este correo'}, y no hay ninguna ficha con él. Avisa a tu
+          nutricionista para que lo revise.
+        </EmptyState>
+      );
+
+    return (
+      <EmptyState title="Tu plan todavía se está preparando">
+        En cuanto tu nutricionista lo envíe, aparecerá aquí con las comidas del día.
+      </EmptyState>
+    );
+  }
 
   // Hasta que la nutricionista lo envía, aquí no hay nada que ver.
   if (!plan.envio) {

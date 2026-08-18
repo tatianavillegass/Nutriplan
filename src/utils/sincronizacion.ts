@@ -61,6 +61,31 @@ function avisar(e: Estado) {
   alCambiarEstado?.(e);
 }
 
+/**
+ * POR QUÉ NO SE PUDO CARGAR
+ *
+ * «Plan no disponible» no distingue entre «tu nutricionista aún no te lo ha
+ * enviado» y «no he podido leer tus datos». Con veinte participantes en un
+ * reto, esa diferencia es una hora de llamadas: hay que poder decirle a quien
+ * mira la pantalla qué ha pasado y darle un botón para reintentar.
+ */
+let fallo: string | null = null;
+let alFallar: ((m: string | null) => void) | null = null;
+
+export function observarFallo(fn: ((m: string | null) => void) | null): void {
+  alFallar = fn;
+  fn?.(fallo);
+}
+
+export function ultimoFallo(): string | null {
+  return fallo;
+}
+
+function ponerFallo(m: string | null) {
+  fallo = m;
+  alFallar?.(m);
+}
+
 /** El estado completo, incluidas las plantillas, que viven aparte. */
 export function fotoActual(): Foto {
   const s = useAppStore.getState();
@@ -143,9 +168,11 @@ export async function cargarDesdeNube(perfil: Perfil): Promise<void> {
         guardarOmitidos(foto.alimentosOmitidos);
       });
     }
+    ponerFallo(null);
     avisar("al-dia");
   } catch (e) {
     console.error("[nube] no se pudo cargar", e);
+    ponerFallo(e instanceof Error ? e.message : String(e));
     avisar("error");
   }
 }
