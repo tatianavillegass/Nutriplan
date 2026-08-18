@@ -197,7 +197,12 @@ export const LABEL_ACOMPANAMIENTO: Record<TipoAcompanamiento, string> = {
  */
 export interface Acompanamiento {
   id: string;
-  foodId: string;
+  /**
+   * Vacío cuando no está en el catálogo: la sal, el eneldo, un chorrito de
+   * limón. Se enseñan igual —forman parte de lo que hay que echarle— y suman
+   * cero, que es lo que aportan.
+   */
+  foodId?: string;
   /** Copia del nombre, por si el alimento se renombra o se borra. */
   nombre: string;
   gramos: number;
@@ -209,6 +214,8 @@ export interface Acompanamiento {
    * pierde la foto y la preparación: no sabe que eso era una receta.
    */
   deReceta?: string;
+  /** Copia del nombre, para poder decir «de la salsa de yogur» sin el banco. */
+  deRecetaNombre?: string;
 }
 
 /** Lo que Tats le haya puesto al lado a esa receta en esa comida. */

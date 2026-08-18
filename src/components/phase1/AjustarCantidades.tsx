@@ -131,17 +131,22 @@ export function AjustarCantidades({
   const guarniciones = useMemo(() => recetas.filter((r) => r.acompanamiento), [recetas]);
 
   const ponerGuarnicion = (r: Receta) => {
-    const nuevos = r.ingredientes
-      .filter((i) => i.foodId && (i.cantidad_base ?? 0) > 0)
-      .map((i) => ({
-        id: uid('ac_'),
-        foodId: i.foodId as string,
-        nombre: i.nombre,
-        gramos: i.cantidad_base as number,
-        unidad: i.unidad || 'g',
-        tipo: 'acompanamiento' as TipoAcompanamiento,
-        deReceta: r.id,
-      }));
+    /*
+     * Entran TODOS sus ingredientes, también la sal y el eneldo. No hay que
+     * meterlos en la base de datos para que se vean: sin alimento enlazado
+     * salen «al gusto» y suman cero, que es exactamente lo que aportan.
+     */
+    const nuevos = r.ingredientes.map((i) => ({
+      id: uid('ac_'),
+      foodId: i.foodId,
+      nombre: i.nombre,
+      gramos: i.cantidad_base ?? 0,
+      unidad: i.unidad || 'g',
+      // El tipo elegido arriba: así un café con leche entra como «Café».
+      tipo,
+      deReceta: r.id,
+      deRecetaNombre: r.nombre,
+    }));
     setAcompanamientos((prev) => [...prev, ...nuevos]);
   };
 
@@ -247,11 +252,27 @@ export function AjustarCantidades({
         {acompanamientos.length > 0 && (
           <ul className="mb-2 space-y-1">
             {acompanamientos.map((a) => (
-              <li key={a.id} className="flex items-center gap-2 rounded bg-white px-2 py-1">
-                <span className="w-24 shrink-0 text-[10px] text-brand-700">
+              <li key={a.id} className="rounded bg-white px-2 py-1.5">
+                {/*
+                  El nombre arriba y entero. En una sola fila, con tres o cuatro
+                  puestos, se quedaba en «Yogur grie…» y no se sabía cuál se
+                  estaba editando.
+                */}
+                <p className="mb-1 flex flex-wrap items-baseline gap-1.5 text-xs text-slate-700">
+                  <span className="font-medium">{a.nombre}</span>
+                  {a.deRecetaNombre && (
+                    <span className="text-[10px] text-slate-400">de {a.deRecetaNombre}</span>
+                  )}
+                  {!a.foodId && (
+                    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-500">
+                      al gusto · no cuenta
+                    </span>
+                  )}
+                </p>
+                <div className="flex items-center gap-2">
+                <span className="w-20 shrink-0 text-[10px] text-brand-700">
                   {LABEL_ACOMPANAMIENTO[a.tipo]}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-xs text-slate-700">{a.nombre}</span>
                 <Input
                   type="number"
                   min="0"
@@ -270,11 +291,12 @@ export function AjustarCantidades({
                   onClick={() =>
                     setAcompanamientos((prev) => prev.filter((x) => x.id !== a.id))
                   }
-                  className="text-slate-300 transition hover:text-red-600"
+                  className="ml-auto text-slate-300 transition hover:text-red-600"
                   aria-label={`Quitar ${a.nombre}`}
                 >
                   ×
                 </button>
+                </div>
               </li>
             ))}
           </ul>

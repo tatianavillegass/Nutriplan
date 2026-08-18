@@ -451,16 +451,15 @@ export function scaleRecipe(
    * gramos por intercambio de su alimento.
    */
   for (const a of acompanamientos) {
-    const food = porId.get(a.foodId);
-    if (!food || !a.gramos) continue;
+    const food = a.foodId ? porId.get(a.foodId) : undefined;
 
     /*
      * Lo que no gasta intercambios —una gelatina, la bebida de almendras, un
      * café— se pone igual y suma cero. Antes se descartaba sin más y ni
      * siquiera aparecía en la lista: la clienta no veía lo que se iba a tomar.
      */
-    const gpi = food.grupo ? gramosPorIntercambio(food) : 0;
-    if (food.grupo && gpi) {
+    const gpi = food?.grupo ? gramosPorIntercambio(food) : 0;
+    if (food?.grupo && gpi && a.gramos) {
       const aporte = aporteDeAlimento(food, a.gramos / gpi);
       for (const [gid, n] of Object.entries(aporte) as [ExchangeGroupId, number][]) {
         if (!n || EXCHANGE_GROUPS[gid]?.ilimitado) continue;
@@ -468,19 +467,22 @@ export function scaleRecipe(
       }
     }
 
+    const unidad = a.unidad ?? food?.unidad ?? 'g';
+
     ingredientes.push({
       id: a.id,
       nombre: a.nombre,
       foodId: a.foodId,
-      cantidad_base: a.gramos,
-      cantidad_final: a.gramos,
-      unidad: a.unidad ?? food.unidad ?? 'g',
+      cantidad_base: a.gramos || null,
+      cantidad_final: a.gramos || null,
+      unidad,
       // Sin subgrupo es un alimento libre: cuenta como condimento, o sea, cero.
-      grupo: food.grupo ?? 'condimento',
+      grupo: food?.grupo ?? 'condimento',
       escalable: false,
       opcional: false,
       factor: 1,
-      display: `${a.gramos} ${a.unidad ?? food.unidad ?? 'g'}`,
+      // La sal y el eneldo van «al gusto»: ponerles gramos sería inventárselos.
+      display: a.gramos ? `${a.gramos} ${unidad}` : 'al gusto',
       acompanamiento: a.tipo,
       deReceta: a.deReceta,
     });

@@ -99,3 +99,38 @@ describe('Un acompañamiento en la ficha de la clienta', () => {
     expect(screen.getByText(/Hervir el arroz/)).toBeTruthy();
   });
 });
+
+/**
+ * LA SAL Y EL ENELDO NO SE METEN EN LA BASE DE DATOS
+ *
+ * No están en el catálogo y no hace falta que estén: no aportan nada que
+ * contar. Pero sí forman parte de lo que hay que echarle a la salsa, así que
+ * se enseñan «al gusto». Antes se caían por el camino y la salsa de yogur
+ * llegaba a la clienta con un solo ingrediente.
+ */
+describe('Un ingrediente que no está en el catálogo', () => {
+  it('se enseña al gusto y no cuenta', () => {
+    render(
+      <ScaledRecipeView
+        receta={PLATO}
+        requeridos={{ proteicos_grasos: 3, almidones: 2 }}
+        foods={FOOD_CATALOG}
+        acompanamientos={[
+          ...PUESTO,
+          {
+            id: 'ac2',
+            nombre: 'Eneldo',
+            gramos: 0,
+            tipo: 'acompanamiento',
+            deReceta: GUARNICION.id,
+          },
+        ]}
+        recetas={[PLATO, GUARNICION]}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Arroz al vapor'));
+    expect(screen.getByText('Eneldo')).toBeTruthy();
+    expect(document.body.textContent).toContain('al gusto');
+  });
+});
