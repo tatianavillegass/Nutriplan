@@ -36,6 +36,44 @@ export type PorcionesMarcadas = Record<string, Record<string, number>>;
  * Mezclarlos haría que el resumen del desvío contara como exceso la comida
  * entera.
  */
+/** Un ingrediente de una receta suya, con lo que echa a la olla. */
+export interface IngredientePropio {
+  id: string;
+  /** Del catálogo o de sus propios alimentos, para leer sus macros. */
+  foodId?: string;
+  nombre: string;
+  gramos: number;
+}
+
+/**
+ * UNA RECETA SUYA, Y QUÉ SALE DE ELLA
+ *
+ * Hay dos casos y la app tiene que servir para los dos:
+ *
+ *  · **Una ración**: el mugcake es lo que se come, entero. Se apunta «uno».
+ *  · **Una tanda**: del banana bread salen diez rebanadas, o un kilo del que
+ *    mañana se sirve 50 g. Lo que hace falta ahí no es la receta entera, sino
+ *    cuánto lleva CADA cien gramos.
+ *
+ * Con `raciones` se sabe cuánto pesa una; con `gramosFinales`, cuánto lleva
+ * cada gramo. Se pueden dar las dos: son la misma receta contada de dos
+ * maneras y cada una sirve para un momento distinto.
+ */
+export interface RecetaPropia {
+  id: string;
+  nombre: string;
+  ingredientes: IngredientePropio[];
+  /** Cuántas salen: rebanadas, pancakes, tarritos. */
+  raciones?: number;
+  /**
+   * Lo que pesa el resultado ya hecho. Manda sobre la suma de los
+   * ingredientes: al horno se va el agua y el pan pesa menos de lo que entró,
+   * así que contar sobre el peso crudo dejaría cada rebanada corta.
+   */
+  gramosFinales?: number;
+  creada: string;
+}
+
 export interface Bocado {
   id: string;
   nombre: string;
@@ -142,6 +180,19 @@ export interface RegistroDia {
    */
   comidasGuardadas?: ComidaGuardada[];
   comidasBorradas?: string[];
+  /**
+   * SUS RECETAS, CON LO QUE SALE DE ELLAS
+   *
+   * En fase 4 mucha gente cocina lo suyo: un mugcake que es una ración, o un
+   * banana bread del que se sirve 50 g cada mañana. Los dos casos son la misma
+   * receta con un rendimiento distinto, y por eso se guarda qué sale de ella
+   * —raciones, gramos finales o las dos cosas— y no sólo los ingredientes.
+   *
+   * Viven aquí por lo mismo que las comidas guardadas: el registro es lo único
+   * que sube el cliente.
+   */
+  recetasPropias?: RecetaPropia[];
+  recetasBorradas?: string[];
   /**
    * Reto: lo que hizo antes de empezar —medirse, la foto, leerse la guía—. Va
    * aquí por lo mismo que todo lo demás que escribe ella: el registro es lo

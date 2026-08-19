@@ -3,6 +3,8 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
 import { porcionesDeGolpe } from "../utils/rellenoRapido";
+import { alimentosDeSusRecetas, recetasPropiasDe } from "../utils/recetasPropias";
+import { MisRecetas } from "../components/phase4/MisRecetas";
 import { useAuthStore } from "../store/useAuthStore";
 import { MealOptionsBoard } from "../components/phase2/MealOptionsBoard";
 import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
@@ -317,8 +319,17 @@ export function ClientView() {
   const foods = useMemo(() => {
     const propios = new Map<string, Alimento>();
     for (const r of mios) for (const a of r.alimentosPropios ?? []) propios.set(a.id, a);
-    return [...catalogo, ...propios.values()];
+    const base = [...catalogo, ...propios.values()];
+    /**
+     * Y sus recetas, convertidas en alimentos con sus macros por 100 g: así se
+     * apuntan desde el mismo buscador que todo lo demás, sin pantalla aparte
+     * ni cuentas nuevas. Ver `utils/recetasPropias.ts`.
+     */
+    return [...base, ...alimentosDeSusRecetas(mios, base)];
   }, [catalogo, mios]);
+
+  /** Las que ha escrito ella, juntando todos sus días. */
+  const misRecetas = useMemo(() => recetasPropiasDe(mios), [mios]);
 
   const porciones = registro?.porciones ?? {};
   /** Lo escogido por subgrupo: es la base del presupuesto del día. */
@@ -1067,6 +1078,36 @@ export function ClientView() {
                   const m = dayType.meals.find((x) => x.id === mealId);
                   return m ? atajosDeComida(m) : null;
                 }}
+              />
+            )}
+
+            {plan.fase === 4 && soyElCliente && (
+              <MisRecetas
+                recetas={misRecetas}
+                foods={foods}
+                /**
+                 * Guardar es volver a escribirla en el día de hoy: el registro
+                 * es lo único que sube el cliente, y la lista se junta leyendo
+                 * todos sus días quedándose con la versión más nueva.
+                 */
+                onGuardar={(receta) =>
+                  guardar({
+                    recetasPropias: [
+                      ...(registro?.recetasPropias ?? []).filter(
+                        (r) => r.id !== receta.id,
+                      ),
+                      receta,
+                    ],
+                  })
+                }
+                onBorrar={(id) =>
+                  guardar({
+                    recetasBorradas: [...(registro?.recetasBorradas ?? []), id],
+                    recetasPropias: (registro?.recetasPropias ?? []).filter(
+                      (r) => r.id !== id,
+                    ),
+                  })
+                }
               />
             )}
 
