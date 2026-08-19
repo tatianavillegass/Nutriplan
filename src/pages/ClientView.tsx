@@ -4,6 +4,13 @@ import { useAppStore } from "../store/useAppStore";
 import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
 import { porcionesDeGolpe } from "../utils/rellenoRapido";
 import { alimentosDeSusRecetas, recetasPropiasDe } from "../utils/recetasPropias";
+import { postresDelBanco, costeDelPostre } from "../utils/postres";
+import type { Receta } from "../types/recipe";
+import type { ExchangeGroupId } from "../data/exchangeGroups";
+import { exchangesToMacros } from "../utils/exchanges";
+import { kcalFromMacros } from "../utils/macros";
+import { uid } from "../utils/storage";
+import { AlgoDulce } from "../components/client/AlgoDulce";
 import { MisRecetas } from "../components/phase4/MisRecetas";
 import { useAuthStore } from "../store/useAuthStore";
 import { MealOptionsBoard } from "../components/phase2/MealOptionsBoard";
@@ -372,6 +379,75 @@ export function ClientView() {
     for (const a of aportes)
       out = fijarAlimento(out, mealId, a.foodId, a.intercambios);
     guardar({ porciones: out });
+  };
+
+  /**
+   * ALGO DULCE
+   *
+   * Los postres del banco, con los que le cuadran hoy delante. Ver
+   * `utils/postres.ts`: se enseñan todos, sólo cambia el orden.
+   */
+  const postres = useMemo(
+    () => postresDelBanco(recipes, dayType, porGrupo),
+    [recipes, dayType, porGrupo],
+  );
+
+  /**
+   * Dónde cae un postre que se cuenta en el plan: en la comida de picoteo si
+   * la tiene, y si no en la última del día. En fase 3 manda el total, así que
+   * lo que importa es que gaste sus porciones, no en qué casilla cae.
+   */
+  const comidaParaElPostre = () =>
+    dayType?.meals.find((m) => m.slot === "extra") ??
+    dayType?.meals[dayType.meals.length - 1];
+
+  /** Lo que cuesta el postre, repartido entre sus ingredientes enlazados. */
+  const contarPostreEnElPlan = (postre: Receta) => {
+    const meal = comidaParaElPostre();
+    if (!meal) return;
+
+    let out = porciones;
+    for (const [grupo, n] of Object.entries(costeDelPostre(postre)) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
+      const ing = postre.ingredientes.find((i) => i.grupo === grupo && i.foodId);
+      if (!ing?.foodId || !n) continue;
+      out = marcarAlimento(out, meal.id, ing.foodId, n);
+    }
+    guardar({ porciones: out });
+  };
+
+  /** Y en fase 4, donde no hay porciones, entra como lo que se ha comido. */
+  const contarPostreEnGramos = (postre: Receta) => {
+    const macros = exchangesToMacros(costeDelPostre(postre));
+    const meal = comidaParaElPostre();
+    guardar({
+      bocados: [
+        ...(registro?.bocados ?? []),
+        {
+          id: uid("bo_"),
+          nombre: postre.nombre,
+          cantidad: 1,
+          unidad: "ración",
+          macros,
+          kcal: kcalFromMacros(macros),
+          momento: meal?.id,
+          hora: new Date().toISOString().slice(11, 16),
+        },
+      ],
+    });
+  };
+
+  const apuntarPostreComoExtra = (postre: Receta) => {
+    const macros = exchangesToMacros(costeDelPostre(postre));
+    anadirExtra({
+      id: uid("ex_"),
+      nombre: postre.nombre,
+      macros,
+      kcal: kcalFromMacros(macros),
+      momento: comidaParaElPostre()?.id,
+    });
   };
 
   const alternarCumplida = (mealId: string) => {
@@ -1080,6 +1156,25 @@ export function ClientView() {
                 }}
               />
             )}
+
+            {/*
+              ALGO DULCE, EN CUALQUIER FASE
+              =============================
+              Fuera de las comidas a propósito: el antojo no tiene hora, y
+              meterlo dentro de la merienda sería decirle cuándo le toca
+              querer algo dulce. En fase 1 sólo cabe como extra: ahí las
+              recetas son cerradas y no hay porciones que gastar.
+            */}
+            <AlgoDulce
+              postres={postres}
+              soloExtra={plan.fase === 1}
+              onEnPlan={(postre) =>
+                plan.fase === 4
+                  ? contarPostreEnGramos(postre)
+                  : contarPostreEnElPlan(postre)
+              }
+              onComoExtra={apuntarPostreComoExtra}
+            />
 
             {plan.fase === 4 && soyElCliente && (
               <MisRecetas

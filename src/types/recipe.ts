@@ -56,6 +56,15 @@ export interface Receta {
    * golpe, que es como se eligen.
    */
   acompanamiento?: boolean;
+  /**
+   * UN POSTRE ES UNA IDEA, NO UNA COMIDA
+   *
+   * «Si te apetece algo dulce, aquí tienes unas cuantas». Se escriben una vez
+   * para toda la consulta y la clienta los añade cuando quiere, contándolos en
+   * su plan si le caben o como extra si ya ha comido. Como los
+   * acompañamientos, viven en su carpeta y no compiten por ser la cena.
+   */
+  postre?: boolean;
   tags: string[];
   /** Alérgenos declarados a mano, para recetas sin ingredientes enlazados. */
   alergenos?: Alergeno[];

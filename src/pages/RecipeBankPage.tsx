@@ -17,7 +17,7 @@ const SLOTS: MealSlot[] = ['desayuno', 'almuerzo', 'comida', 'merienda', 'cena',
 
 /** Las carpetas del banco. El orden es el del día. */
 const CARPETAS: {
-  id: MealSlot | 'todas' | 'sin_clasificar' | 'acompanamientos';
+  id: MealSlot | 'todas' | 'sin_clasificar' | 'acompanamientos' | 'postres';
   nombre: string;
 }[] = [
   { id: 'todas', nombre: 'Todas' },
@@ -28,6 +28,7 @@ const CARPETAS: {
   { id: 'cena', nombre: 'Cenas' },
   { id: 'extra', nombre: 'Extras' },
   { id: 'acompanamientos', nombre: 'Acompañamientos' },
+  { id: 'postres', nombre: 'Postres' },
   { id: 'sin_clasificar', nombre: 'Sin clasificar' },
 ];
 
@@ -74,7 +75,7 @@ export function RecipeBankPage() {
    * puede estar en varias carpetas, porque una tortilla vale de cena y de
    * almuerzo, y eso es lo que dicen sus categorías.
    */
-  const [carpeta, setCarpeta] = useState<MealSlot | 'todas' | 'sin_clasificar' | 'acompanamientos'>('todas');
+  const [carpeta, setCarpeta] = useState<MealSlot | 'todas' | 'sin_clasificar' | 'acompanamientos' | 'postres'>('todas');
 
   /**
    * El formulario sale arriba del todo, y las recetas se editan desde su
@@ -125,7 +126,8 @@ export function RecipeBankPage() {
      * busca «un desayuno» y aparecen cuatro ensaladas de guarnición.
      */
     if (carpeta === 'acompanamientos') return !!r.acompanamiento;
-    if (r.acompanamiento) return false;
+    if (carpeta === 'postres') return !!r.postre;
+    if (r.acompanamiento || r.postre) return false;
     if (carpeta === 'todas') return true;
     // Las que no tienen categoría se pierden: hay que poder encontrarlas.
     if (carpeta === 'sin_clasificar') return !r.categorias.length;
@@ -239,7 +241,21 @@ export function RecipeBankPage() {
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Field label="Qué es" className="sm:col-span-2">
               <button
-                onClick={() => setDraft({ ...draft, acompanamiento: !draft.acompanamiento })}
+                onClick={() =>
+                  setDraft({ ...draft, postre: !draft.postre, acompanamiento: false })
+                }
+                className={`mr-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                  draft.postre
+                    ? 'border-brand-500 bg-brand-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                }`}
+              >
+                {draft.postre ? 'Es un postre ✓' : 'Es un postre'}
+              </button>
+              <button
+                onClick={() =>
+                  setDraft({ ...draft, acompanamiento: !draft.acompanamiento, postre: false })
+                }
                 className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                   draft.acompanamiento
                     ? 'border-brand-500 bg-brand-600 text-white'
@@ -249,8 +265,9 @@ export function RecipeBankPage() {
                 {draft.acompanamiento ? 'Es un acompañamiento ✓' : 'Es un acompañamiento'}
               </button>
               <p className="mt-1 text-[11px] leading-snug text-slate-500">
-                Va al lado de un plato, no en su lugar: una ensalada, un puré, un pan de la cesta.
-                Se guarda en su propia carpeta y no se ofrece como opción de comida.
+                El acompañamiento va al lado de un plato —una ensalada, un puré—; el postre es una
+                idea para cuando le apetece algo dulce, y ella lo añade a su día contándolo en el
+                plan o como extra. Los dos van a su carpeta y no se ofrecen como opción de comida.
               </p>
             </Field>
 
@@ -519,7 +536,9 @@ export function RecipeBankPage() {
           const n = recipes.filter((r) =>
             c.id === 'acompanamientos'
               ? !!r.acompanamiento
-              : r.acompanamiento
+              : c.id === 'postres'
+                ? !!r.postre
+                : r.acompanamiento || r.postre
                 ? false
                 : c.id === 'todas'
                   ? true
@@ -556,14 +575,28 @@ export function RecipeBankPage() {
           eligen: de aquí sale la ensalada que acompaña al salmón, no la cena entera.
         </p>
       )}
+      {carpeta === 'postres' && (
+        <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs leading-snug text-brand-900">
+          Ideas para cuando le apetece algo dulce. Las escribes una vez y las tienen todas tus
+          clientas: en su día eligen si lo cuentan en el plan —si les cabe— o como extra.
+        </p>
+      )}
 
       {visibles.length === 0 ? (
-        <EmptyState title={carpeta === 'acompanamientos' ? 'Sin acompañamientos' : 'Sin recetas'} />
+        <EmptyState
+          title={
+            carpeta === 'acompanamientos'
+              ? 'Sin acompañamientos'
+              : carpeta === 'postres'
+                ? 'Sin postres'
+                : 'Sin recetas'
+          }
+        />
       ) : (
         <div
           className={
             /* Los acompañamientos, en pequeño: se eligen mirando muchos a la vez. */
-            carpeta === 'acompanamientos'
+            carpeta === 'acompanamientos' || carpeta === 'postres'
               ? 'grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
               : 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3'
           }
@@ -575,7 +608,7 @@ export function RecipeBankPage() {
                   src={r.foto_url}
                   alt={r.nombre}
                   className={`w-full object-cover ${
-                    carpeta === 'acompanamientos' ? 'h-20' : 'h-36'
+                    carpeta === 'acompanamientos' || carpeta === 'postres' ? 'h-20' : 'h-36'
                   }`}
                 />
               ) : (
