@@ -63,6 +63,12 @@ describe('Mis recetas', () => {
         onBorrar={vi.fn()}
       />,
     );
+
+    // Plegada de entrada: sólo el nombre de la sección y cuántas hay.
+    expect(document.body.textContent).not.toContain('100 g cada una');
+    expect(screen.getByText('1')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Mis recetas'));
     expect(document.body.textContent).toContain('100 g cada una');
   });
 });

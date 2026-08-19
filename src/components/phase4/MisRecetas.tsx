@@ -28,14 +28,36 @@ interface Props {
 export function MisRecetas({ recetas, foods, onGuardar, onBorrar }: Props) {
   const [abierta, setAbierta] = useState(false);
   const [editando, setEditando] = useState<RecetaPropia | null>(null);
+  /**
+   * PLEGADA, PORQUE APUNTAR NO PASA POR AQUÍ
+   *
+   * Sus recetas se apuntan desde el buscador de cada comida, así que esta
+   * lista no hace falta para comer: es para escribirlas y retocarlas. Con
+   * quince recetas abiertas, el contador del día —que es lo que se mira— se
+   * iría media pantalla más abajo.
+   */
+  const [desplegada, setDesplegada] = useState(false);
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">Mis recetas</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          onClick={() => setDesplegada((v) => !v)}
+          aria-expanded={desplegada}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <span className="text-sm font-semibold text-slate-800">Mis recetas</span>
+          {recetas.length > 0 && (
+            <span className="tnum rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+              {recetas.length}
+            </span>
+          )}
+          <span className="text-xs text-slate-400">{desplegada ? '▾' : '▸'}</span>
+        </button>
         <button
           onClick={() => {
             setEditando(null);
+            setDesplegada(true);
             setAbierta((v) => !v);
           }}
           className="text-xs font-medium text-brand-700 hover:underline"
@@ -43,10 +65,12 @@ export function MisRecetas({ recetas, foods, onGuardar, onBorrar }: Props) {
           {abierta ? 'Cerrar' : '+ Nueva receta'}
         </button>
       </div>
-      <p className="mt-1 text-xs leading-snug text-slate-500">
-        Lo que cocinas tú. Escríbela una vez con lo que le echas y lo que sale, y luego apúntala
-        como cualquier alimento.
-      </p>
+      {(desplegada || abierta) && (
+        <p className="mt-1 text-xs leading-snug text-slate-500">
+          Lo que cocinas tú. Escríbela una vez con lo que le echas y lo que sale, y luego apúntala
+          como cualquier alimento.
+        </p>
+      )}
 
       {abierta && (
         <Formulario
@@ -65,7 +89,7 @@ export function MisRecetas({ recetas, foods, onGuardar, onBorrar }: Props) {
         />
       )}
 
-      {recetas.length > 0 && (
+      {desplegada && recetas.length > 0 && (
         <ul className="mt-3 space-y-1.5">
           {recetas.map((r) => {
             const { peso, gramosPorRacion, totales } = macrosDeReceta(r, foods);
