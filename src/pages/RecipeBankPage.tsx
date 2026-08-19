@@ -264,6 +264,37 @@ export function RecipeBankPage() {
               >
                 {draft.acompanamiento ? 'Es un acompañamiento ✓' : 'Es un acompañamiento'}
               </button>
+              {/*
+                Los ingredientes de un postre se escriben para el molde entero,
+                así que hay que saber cuántas salen: si no, comerse un trozo le
+                costaría el bizcocho.
+              */}
+              {draft.postre && (
+                <label className="mt-2 block max-w-[16rem]">
+                  <span className="mb-0.5 block text-[11px] text-slate-600">
+                    Cuántas raciones salen de la receta
+                  </span>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={draft.raciones ?? ''}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        raciones: e.target.value === '' ? undefined : Number(e.target.value),
+                      })
+                    }
+                    placeholder="12 trozos"
+                    className="w-full text-sm"
+                  />
+                  <span className="mt-0.5 block text-[10px] leading-snug text-slate-500">
+                    Los ingredientes se escriben para la receta entera. Si sale una sola ración,
+                    déjalo vacío.
+                  </span>
+                </label>
+              )}
+
               <p className="mt-1 text-[11px] leading-snug text-slate-500">
                 El acompañamiento va al lado de un plato —una ensalada, un puré—; el postre es una
                 idea para cuando le apetece algo dulce, y ella lo añade a su día contándolo en el

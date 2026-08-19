@@ -86,3 +86,23 @@ describe('La lista de postres', () => {
     expect(postresDelBanco([cena], DIA, {})).toEqual([]);
   });
 });
+
+/**
+ * DE UN BIZCOCHO SALEN DOCE TROZOS
+ *
+ * Y sus ingredientes están escritos para el molde entero. Sin repartirlo,
+ * comerse un trozo le costaría el bizcocho: doce almidones de golpe por una
+ * merienda.
+ */
+describe('Un postre del que salen varias raciones', () => {
+  const bizcocho = { ...postre('b', { almidones: 6, grasas: 3 }), raciones: 12 };
+
+  it('cuesta lo que cuesta UNA', () => {
+    expect(costeDelPostre(bizcocho)).toEqual({ almidones: 0.5, grasas: 0.25 });
+  });
+
+  it('y por eso cuadra en un día en el que el molde entero no cabría', () => {
+    expect(cabeHoy(bizcocho, DIA, {}).cabe).toBe(true);
+    expect(cabeHoy({ ...bizcocho, raciones: 1 }, DIA, {}).cabe).toBe(false);
+  });
+});

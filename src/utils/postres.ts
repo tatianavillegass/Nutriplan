@@ -25,12 +25,18 @@ import { presupuestoDelDia, type SeleccionGrupos } from './dailyBudget';
  * apetece algo dulce —eso es un extra, y el día dirá si el desvío importa—.
  */
 
-/** Lo que cuesta el postre, en porciones por subgrupo. La verdura no cuenta. */
+/**
+ * Lo que cuesta UNA ración, en porciones por subgrupo. La verdura no cuenta.
+ *
+ * De un bizcocho salen doce trozos y sus ingredientes están escritos para el
+ * molde entero: sin repartirlo, comerse un trozo le costaría el bizcocho.
+ */
 export function costeDelPostre(postre: Receta): Partial<Record<ExchangeGroupId, number>> {
+  const entre = postre.raciones && postre.raciones > 0 ? postre.raciones : 1;
   const out: Partial<Record<ExchangeGroupId, number>> = {};
   for (const [g, n] of Object.entries(postre.base ?? {}) as [ExchangeGroupId, number][]) {
     if (!n || EXCHANGE_GROUPS[g]?.ilimitado) continue;
-    out[g] = n;
+    out[g] = n / entre;
   }
   return out;
 }

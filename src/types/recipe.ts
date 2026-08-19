@@ -65,6 +65,16 @@ export interface Receta {
    * acompañamientos, viven en su carpeta y no compiten por ser la cena.
    */
   postre?: boolean;
+  /**
+   * CUÁNTAS SALEN DE LA RECETA ENTERA
+   *
+   * De un bizcocho salen doce trozos, y sus ingredientes están escritos para
+   * el bizcocho entero. Sin esto, la app le contaría a la clienta el molde
+   * completo por comerse un trozo. Se usa en los postres, que es donde se
+   * cocina una vez y se come de a poco; en un plato normal la receta ya está
+   * escrita para una persona y se escala a lo pautado.
+   */
+  raciones?: number;
   tags: string[];
   /** Alérgenos declarados a mano, para recetas sin ingredientes enlazados. */
   alergenos?: Alergeno[];

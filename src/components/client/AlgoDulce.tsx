@@ -138,23 +138,44 @@ function Detalle({
   onComoExtra: (r: Receta) => void;
 }) {
   const { postre, cabe } = entrada;
+  const sale = postre.raciones && postre.raciones > 1 ? postre.raciones : 1;
   const coste = costeDelPostre(postre);
   const macros = exchangesToMacros(coste);
   const kcal = kcalFromMacros(macros);
 
+  /*
+   * Repartir un bizcocho entre doce deja decimales feos —0,08 almidones— que
+   * no dicen nada. Se redondea a media porción, que es la unidad con la que se
+   * pauta y el margen con el que se pintan los anillos.
+   */
   const enPorciones = (Object.entries(coste) as [keyof typeof EXCHANGE_GROUPS, number][])
-    .map(([g, n]) => `${n} ${EXCHANGE_GROUPS[g].nombre.toLowerCase()}`)
+    .map(([g, n]) => {
+      const redondeado = Math.round(n * 2) / 2;
+      return `${fmt(redondeado, redondeado % 1 ? 1 : 0)} ${EXCHANGE_GROUPS[
+        g
+      ].nombre.toLowerCase()}`;
+    })
     .join(' · ');
 
   return (
     <div className="mt-3 rounded-xl bg-slate-50 p-3">
       <p className="text-sm font-medium text-slate-800">{postre.nombre}</p>
       <p className="tnum mt-0.5 text-xs text-slate-600">
+        {/*
+          Lo que cuesta UNA ración, que es lo que se come. Los ingredientes de
+          abajo son los de la receta entera y por eso se dice.
+        */}
+        {sale > 1 ? 'Una ración: ' : ''}
         {enPorciones || 'Sin porciones que gastar'} · {fmt(kcal, 0)} kcal
       </p>
 
       {postre.ingredientes.length > 0 && (
-        <ul className="mt-2 space-y-0.5">
+        <p className="mt-2 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+          {sale > 1 ? `Para las ${sale} raciones` : 'Lleva'}
+        </p>
+      )}
+      {postre.ingredientes.length > 0 && (
+        <ul className="mt-1 space-y-0.5">
           {postre.ingredientes.map((i) => (
             <li key={i.id} className="flex items-baseline gap-2 text-xs text-slate-600">
               <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400" />
