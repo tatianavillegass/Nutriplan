@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { cabeHoy, costeDelPostre, postresDelBanco } from '../postres';
 import type { Receta } from '../../types/recipe';
 import type { DayType } from '../../types/plan';
+import type { RegistroDia } from '../../types/diary';
+import { registroVacio } from '../../types/diary';
+import { balanceDelDia } from '../diary';
+import { exchangesToMacros } from '../exchanges';
 
 /**
  * ALGO DULCE
@@ -104,5 +108,56 @@ describe('Un postre del que salen varias raciones', () => {
   it('y por eso cuadra en un día en el que el molde entero no cabría', () => {
     expect(cabeHoy(bizcocho, DIA, {}).cabe).toBe(true);
     expect(cabeHoy({ ...bizcocho, raciones: 1 }, DIA, {}).cabe).toBe(false);
+  });
+});
+
+/**
+ * CAMBIAR LA MERIENDA POR EL BIZCOCHO
+ *
+ * En fase 1 no hay porciones que gastar, así que la única forma de que un
+ * postre no se sume encima del día es dejarse otra cosa. Si el día siguiera
+ * contando la merienda, el total diría que se ha pasado cuando lo que ha hecho
+ * es cambiar una cosa por otra.
+ */
+describe('Una comida cambiada por un postre', () => {
+  const registro = (patch: Partial<RegistroDia>): RegistroDia =>
+    ({ ...registroVacio('c1', '2026-08-19', 'r1'), ...patch }) as RegistroDia;
+
+  it('deja de contar en lo que se ha comido del plan', () => {
+    const entero = balanceDelDia(DIA, registro({}), [], { asumirPlanCumplido: true });
+    const cambiado = balanceDelDia(
+      DIA,
+      registro({ cambiadasPorPostre: { m2: 'p1' } }),
+      [],
+      { asumirPlanCumplido: true },
+    );
+
+    expect(cambiado.delPlan.hc).toBeLessThan(entero.delPlan.hc);
+    // Lo pautado no se toca: es lo que su cuerpo necesitaba.
+    expect(cambiado.pautado.hc).toBe(entero.pautado.hc);
+  });
+
+  it('y con el postre encima, el día vuelve a acercarse a lo pautado', () => {
+    const cena = exchangesToMacros(DIA.grid.m2);
+    const cambiado = balanceDelDia(
+      DIA,
+      registro({
+        cambiadasPorPostre: { m2: 'p1' },
+        extras: [
+          {
+            id: 'e1',
+            nombre: 'Bizcocho',
+            macros: cena,
+            kcal: 0,
+            momento: 'm2',
+          },
+        ],
+      }),
+      [],
+      { asumirPlanCumplido: true },
+    );
+
+    // Cambiar una cosa por otra del mismo tamaño deja el día donde estaba.
+    expect(cambiado.total.hc).toBeCloseTo(cambiado.pautado.hc, 1);
   });
 });

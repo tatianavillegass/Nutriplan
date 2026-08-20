@@ -16,10 +16,19 @@ export interface PostreConEstado {
 
 interface Props {
   postres: PostreConEstado[];
-  /** En fase 1 no hay porciones que gastar: sólo cabe apuntarlo como extra. */
+  /**
+   * En fase 1 no hay porciones que gastar, así que en vez de «contarlo en el
+   * plan» lo que cabe es cambiar una comida por él.
+   */
   soloExtra?: boolean;
+  /** Las comidas de hoy, para poder cambiar una por el postre. */
+  comidas?: { id: string; nombre: string }[];
+  /** Cuál está ya cambiada, para poder deshacerlo. */
+  cambiadas?: Record<string, string>;
   onEnPlan: (postre: Receta) => void;
   onComoExtra: (postre: Receta) => void;
+  onEnLugarDe?: (postre: Receta, mealId: string) => void;
+  onDeshacerCambio?: (mealId: string) => void;
 }
 
 /**
@@ -41,7 +50,16 @@ interface Props {
  * después de haber cenado es un extra, y el día dirá si el desvío importa.
  * Las dos son verdad y sólo ella sabe cuál es la suya.
  */
-export function AlgoDulce({ postres, soloExtra = false, onEnPlan, onComoExtra }: Props) {
+export function AlgoDulce({
+  postres,
+  soloExtra = false,
+  comidas = [],
+  cambiadas = {},
+  onEnPlan,
+  onComoExtra,
+  onEnLugarDe,
+  onDeshacerCambio,
+}: Props) {
   const [abierto, setAbierto] = useState(false);
   const [elegido, setElegido] = useState<string | null>(null);
 
@@ -69,6 +87,32 @@ export function AlgoDulce({ postres, soloExtra = false, onEnPlan, onComoExtra }:
           <p className="mt-1 text-xs leading-snug text-slate-500">
             Ideas de tu nutricionista. Puedes contarlas en tu plan o apuntarlas como un extra.
           </p>
+
+          {Object.keys(cambiadas).length > 0 && onDeshacerCambio && (
+            <ul className="mt-2 space-y-1">
+              {Object.entries(cambiadas).map(([mealId, recetaId]) => {
+                const nombre =
+                  postres.find((p) => p.postre.id === recetaId)?.postre.nombre ?? 'un postre';
+                const comida = comidas.find((c) => c.id === mealId)?.nombre ?? 'una comida';
+                return (
+                  <li
+                    key={mealId}
+                    className="flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                  >
+                    <span className="min-w-0 flex-1">
+                      Hoy cambias {comida.toLowerCase()} por {nombre.toLowerCase()}
+                    </span>
+                    <button
+                      onClick={() => onDeshacerCambio(mealId)}
+                      className="font-medium underline"
+                    >
+                      Deshacer
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {postres.map(({ postre, cabe, seLePasa }) => (
@@ -110,6 +154,7 @@ export function AlgoDulce({ postres, soloExtra = false, onEnPlan, onComoExtra }:
             <Detalle
               entrada={postres.find((p) => p.postre.id === elegido)!}
               soloExtra={soloExtra}
+              comidas={comidas.filter((c) => !cambiadas[c.id])}
               onEnPlan={(r) => {
                 onEnPlan(r);
                 setElegido(null);
@@ -118,6 +163,14 @@ export function AlgoDulce({ postres, soloExtra = false, onEnPlan, onComoExtra }:
                 onComoExtra(r);
                 setElegido(null);
               }}
+              onEnLugarDe={
+                onEnLugarDe
+                  ? (r, mealId) => {
+                      onEnLugarDe(r, mealId);
+                      setElegido(null);
+                    }
+                  : undefined
+              }
             />
           )}
         </>
@@ -129,14 +182,19 @@ export function AlgoDulce({ postres, soloExtra = false, onEnPlan, onComoExtra }:
 function Detalle({
   entrada,
   soloExtra,
+  comidas,
   onEnPlan,
   onComoExtra,
+  onEnLugarDe,
 }: {
   entrada: PostreConEstado;
   soloExtra: boolean;
+  comidas: { id: string; nombre: string }[];
   onEnPlan: (r: Receta) => void;
   onComoExtra: (r: Receta) => void;
+  onEnLugarDe?: (r: Receta, mealId: string) => void;
 }) {
+  const [cambiando, setCambiando] = useState(false);
   const { postre, cabe } = entrada;
   const sale = postre.raciones && postre.raciones > 1 ? postre.raciones : 1;
   const coste = costeDelPostre(postre);
@@ -205,7 +263,38 @@ function Detalle({
         <Button variant="outline" onClick={() => onComoExtra(postre)}>
           Apuntarlo como extra
         </Button>
+        {/*
+          EN VEZ DE UNA COMIDA
+          ====================
+          En fase 1 no hay porciones que gastar, así que la única forma de que
+          el postre no se sume encima es dejarse otra cosa. Es lo que hace
+          cualquiera: hoy no meriendo, que he comido bizcocho.
+        */}
+        {onEnLugarDe && comidas.length > 0 && (
+          <Button variant="outline" onClick={() => setCambiando((v) => !v)}>
+            {cambiando ? 'Cancelar' : 'En vez de una comida'}
+          </Button>
+        )}
       </div>
+
+      {cambiando && onEnLugarDe && (
+        <div className="mt-2 rounded-lg bg-white p-2">
+          <p className="mb-1.5 text-[11px] text-slate-600">
+            ¿Qué te dejas hoy? Esa comida deja de contar en el día.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {comidas.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => onEnLugarDe(postre, c.id)}
+                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-700 transition hover:border-brand-400"
+              >
+                {c.nombre}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {!soloExtra && !cabe && (
         <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
           Contarlo en el plan hará que el día se pase un poco. No pasa nada: se ve y se sigue.

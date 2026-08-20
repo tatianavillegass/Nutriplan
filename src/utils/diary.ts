@@ -160,11 +160,37 @@ export function balanceDelDia(
     ? exchangesToMacros(gridTotals(dayType.grid, dayType.meals))
     : { ...CERO };
 
+  /**
+   * LO QUE CAMBIÓ POR UN POSTRE NO SE COME
+   *
+   * Si se ha dejado la merienda para comerse el bizcocho, el día no puede
+   * seguir contando la merienda: el postre entra como extra y el total diría
+   * que se ha pasado cuando lo que ha hecho es cambiar una cosa por otra.
+   *
+   * Lo pautado no se toca —es lo que su cuerpo necesitaba— y lo que baja es lo
+   * que se ha comido del plan. Así, si el postre pesa parecido, el día cuadra;
+   * si pesa más, se pasa; y si pesa menos, se queda corta. Que es la verdad.
+   */
+  const cambiadas = Object.keys(registro?.cambiadasPorPostre ?? {});
+  const delPlanEntero =
+    dayType && cambiadas.length
+      ? exchangesToMacros(
+          gridTotals(
+            dayType.grid,
+            dayType.meals.filter((m) => !cambiadas.includes(m.id)),
+          ),
+        )
+      : pautado;
+
   const marcado = registro ? macrosDePorciones(registro, foods) : { ...CERO };
   const hayMarcado = marcado.proteina + marcado.hc + marcado.grasa > 0;
 
   const delPlan =
-    hayMarcado || !opciones.asumirPlanCumplido ? (hayMarcado ? marcado : { ...CERO }) : pautado;
+    hayMarcado || !opciones.asumirPlanCumplido
+      ? hayMarcado
+        ? marcado
+        : { ...CERO }
+      : delPlanEntero;
 
   const extras = registro?.extras ?? [];
   const { macros: deExtras, kcal: kcalExtras } = totalExtras(extras);

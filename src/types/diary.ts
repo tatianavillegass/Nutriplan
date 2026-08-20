@@ -194,6 +194,19 @@ export interface RegistroDia {
   recetasPropias?: RecetaPropia[];
   recetasBorradas?: string[];
   /**
+   * CAMBIAR UNA COMIDA POR UN POSTRE
+   *
+   * En fase 1 no hay porciones que gastar, así que la única forma de que un
+   * postre no se sume encima del día es dejarse otra cosa: la merienda por el
+   * bizcocho. Aquí se apunta qué comida cambió y por cuál —mealId → recetaId—,
+   * y el día deja de contar esa comida.
+   *
+   * No es lo mismo que marcarla libre ni que no marcarla: no comerse la
+   * merienda porque se ha comido un postre es una decisión, y decirlo permite
+   * que las cuentas del día sigan siendo verdad.
+   */
+  cambiadasPorPostre?: Record<string, string>;
+  /**
    * Reto: lo que hizo antes de empezar —medirse, la foto, leerse la guía—. Va
    * aquí por lo mismo que todo lo demás que escribe ella: el registro es lo
    * único que sube su app. Se junta leyendo sus días.

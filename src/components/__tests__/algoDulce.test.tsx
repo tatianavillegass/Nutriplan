@@ -73,3 +73,51 @@ describe('Algo dulce', () => {
     expect(screen.getByText('Brownie de boniato')).toBeTruthy();
   });
 });
+
+/**
+ * En fase 1 no hay porciones que gastar, así que para que el postre no se sume
+ * encima del día la única salida es dejarse otra cosa: hoy no meriendo, que he
+ * comido bizcocho.
+ */
+describe('En fase 1, cambiar una comida por el postre', () => {
+  it('deja elegir cuál se deja', () => {
+    const onEnLugarDe = vi.fn();
+    render(
+      <AlgoDulce
+        postres={[{ postre: brownie, cabe: true, seLePasa: [] }]}
+        soloExtra
+        comidas={[{ id: 'm3', nombre: 'Merienda' }]}
+        onEnPlan={vi.fn()}
+        onComoExtra={vi.fn()}
+        onEnLugarDe={onEnLugarDe}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('¿Algo dulce?'));
+    fireEvent.click(screen.getByText('Brownie de boniato'));
+    fireEvent.click(screen.getByText('En vez de una comida'));
+    fireEvent.click(screen.getByText('Merienda'));
+
+    expect(onEnLugarDe).toHaveBeenCalledWith(brownie, 'm3');
+  });
+
+  it('y lo ya cambiado se puede deshacer', () => {
+    const onDeshacerCambio = vi.fn();
+    render(
+      <AlgoDulce
+        postres={[{ postre: brownie, cabe: true, seLePasa: [] }]}
+        soloExtra
+        comidas={[{ id: 'm3', nombre: 'Merienda' }]}
+        cambiadas={{ m3: brownie.id }}
+        onEnPlan={vi.fn()}
+        onComoExtra={vi.fn()}
+        onDeshacerCambio={onDeshacerCambio}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('¿Algo dulce?'));
+    expect(document.body.textContent).toContain('Hoy cambias merienda por');
+    fireEvent.click(screen.getByText('Deshacer'));
+    expect(onDeshacerCambio).toHaveBeenCalledWith('m3');
+  });
+});

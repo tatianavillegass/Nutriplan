@@ -1168,12 +1168,49 @@ export function ClientView() {
             <AlgoDulce
               postres={postres}
               soloExtra={plan.fase === 1}
+              comidas={dayType.meals.map((m) => ({ id: m.id, nombre: m.nombre }))}
+              cambiadas={registro?.cambiadasPorPostre ?? {}}
               onEnPlan={(postre) =>
                 plan.fase === 4
                   ? contarPostreEnGramos(postre)
                   : contarPostreEnElPlan(postre)
               }
               onComoExtra={apuntarPostreComoExtra}
+              /**
+               * Cambiar una comida por el postre: se apunta el postre y esa
+               * comida deja de contar en el día. Ver `balanceDelDia`.
+               */
+              onEnLugarDe={(postre, mealId) => {
+                const macros = exchangesToMacros(costeDelPostre(postre));
+                guardar({
+                  extras: [
+                    ...(registro?.extras ?? []),
+                    {
+                      id: uid("ex_"),
+                      nombre: postre.nombre,
+                      macros,
+                      kcal: kcalFromMacros(macros),
+                      momento: mealId,
+                    },
+                  ],
+                  cambiadasPorPostre: {
+                    ...(registro?.cambiadasPorPostre ?? {}),
+                    [mealId]: postre.id,
+                  },
+                });
+              }}
+              onDeshacerCambio={(mealId) => {
+                const { [mealId]: quitado, ...resto } =
+                  registro?.cambiadasPorPostre ?? {};
+                const postre = recipes.find((r) => r.id === quitado);
+                guardar({
+                  cambiadasPorPostre: resto,
+                  // Y se lleva por delante el postre que se apuntó con él.
+                  extras: (registro?.extras ?? []).filter(
+                    (e) => !(e.momento === mealId && e.nombre === postre?.nombre),
+                  ),
+                });
+              }}
             />
 
             {plan.fase === 4 && soyElCliente && (
@@ -1282,6 +1319,7 @@ export function ClientView() {
                   const receta =
                     opciones.find((r) => r.id === elegida) ?? opciones[0];
                   const hecha = cumplida(m.id);
+                  const cambiadaPor = registro?.cambiadasPorPostre?.[m.id];
 
                   return (
                     <div
@@ -1289,6 +1327,17 @@ export function ClientView() {
                       id={`comida-${m.id}`}
                       className="scroll-mt-20"
                     >
+                      {/*
+                        Si hoy se la ha cambiado por un postre, se dice aquí y
+                        no en otra pantalla: es donde va a venir a buscarla.
+                      */}
+                      {cambiadaPor && (
+                        <p className="mb-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                          Hoy la cambias por{' '}
+                          {recipes.find((r) => r.id === cambiadaPor)?.nombre ?? 'un postre'}.
+                          Esta comida no cuenta en tu día.
+                        </p>
+                      )}
                       <MealCard
                         meal={m}
                         receta={receta}
