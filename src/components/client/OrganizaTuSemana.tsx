@@ -11,7 +11,8 @@ import {
   ponerEnDias,
   ponerTipoDeDia,
 } from '../../utils/menuSemana';
-import { listaDeLaCompra, vecesPorReceta } from '../../utils/listaCompra';
+import { listaDeLaCompra, vecesPorReceta, SECCIONES } from '../../utils/listaCompra';
+import { alternarComprado } from '../../utils/menuSemana';
 import { fmt } from '../common/ui';
 
 interface Props {
@@ -61,6 +62,11 @@ export function OrganizaTuSemana({
     () => listaDeLaCompra(menu, plan, recetas, foods),
     [menu, plan, recetas, foods],
   );
+  const pendientes = useMemo(
+    () => lista.lineas.filter((l) => !(menu.comprados ?? []).includes(l.clave)).length,
+    [lista, menu.comprados],
+  );
+
   const repetidas = useMemo(
     () => vecesPorReceta(menu, recetas).filter((r) => r.veces > 1),
     [menu, recetas],
@@ -198,35 +204,86 @@ export function OrganizaTuSemana({
           {/* ── Lo que hay que comprar ──────────────────── */}
           {lista.lineas.length > 0 && (
             <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50/40 p-3">
-              <p className="text-sm font-semibold text-brand-900">Tu lista de la compra</p>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-sm font-semibold text-brand-900">Tu lista de la compra</p>
+                <p className="tnum text-[11px] text-slate-600">
+                  {pendientes} por comprar
+                </p>
+              </div>
               <p className="mt-0.5 text-[11px] text-slate-600">
-                Para las {lista.comidas} comidas que has organizado.
+                Para las {lista.comidas} comidas que has organizado. Toca lo que vayas echando al
+                carro.
               </p>
 
-              <ul className="mt-2 space-y-1">
-                {lista.lineas.map((l) => (
-                  <li
-                    key={`${l.foodId ?? l.nombre}-${l.alGusto ? 'g' : 'p'}`}
-                    className="flex items-baseline gap-2 rounded bg-white px-2 py-1 text-sm"
-                  >
-                    <span className="min-w-0 flex-1 text-slate-700">
-                      {l.nombre}
-                      {l.sinEnlazar && (
-                        <span className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] text-amber-800">
-                          compruébalo
-                        </span>
-                      )}
-                    </span>
-                    <span className="tnum shrink-0 text-xs font-medium text-brand-800">
-                      {l.alGusto
-                        ? `al gusto · ${l.veces} ${l.veces === 1 ? 'comida' : 'comidas'}`
-                        : l.piezas
-                          ? `${l.piezas} ${l.piezas === 1 ? 'ud' : 'uds'}`
-                          : `${fmt(l.cantidad, 0)} ${l.unidad}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {/*
+                POR SECCIONES DEL SUPERMERCADO
+                ==============================
+                Ordenada por nombre obliga a dar cuatro vueltas: el aguacate al
+                principio, el pollo en medio y el brócoli al final. Agrupada se
+                recorre una vez.
+              */}
+              {SECCIONES.map((seccion) => {
+                const suyas = lista.lineas.filter((l) => l.seccion === seccion);
+                if (!suyas.length) return null;
+
+                return (
+                  <div key={seccion} className="mt-3">
+                    <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+                      {seccion}
+                    </p>
+                    <ul className="space-y-1">
+                      {suyas.map((l) => {
+                        const comprado = (menu.comprados ?? []).includes(l.clave);
+                        return (
+                          <li key={l.clave}>
+                            <button
+                              onClick={() => onCambiar(alternarComprado(menu, l.clave))}
+                              aria-pressed={comprado}
+                              className={`flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left text-sm transition ${
+                                comprado ? 'bg-slate-100' : 'bg-white'
+                              }`}
+                            >
+                              <span
+                                aria-hidden
+                                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                                  comprado
+                                    ? 'border-brand-500 bg-brand-600 text-white'
+                                    : 'border-slate-300 bg-white'
+                                }`}
+                              >
+                                {comprado ? '✓' : ''}
+                              </span>
+                              <span
+                                className={`min-w-0 flex-1 ${
+                                  comprado ? 'text-slate-400 line-through' : 'text-slate-700'
+                                }`}
+                              >
+                                {l.nombre}
+                                {l.sinEnlazar && !comprado && (
+                                  <span className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] text-amber-800">
+                                    compruébalo
+                                  </span>
+                                )}
+                              </span>
+                              <span
+                                className={`tnum shrink-0 text-xs font-medium ${
+                                  comprado ? 'text-slate-400 line-through' : 'text-brand-800'
+                                }`}
+                              >
+                                {l.alGusto
+                                  ? `al gusto · ${l.veces} ${l.veces === 1 ? 'comida' : 'comidas'}`
+                                  : l.piezas
+                                    ? `${l.piezas} ${l.piezas === 1 ? 'ud' : 'uds'}`
+                                    : `${fmt(l.cantidad, 0)} ${l.unidad}`}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
 
               <p className="mt-2 text-[11px] leading-snug text-slate-500">
                 Las cantidades son de lo que hay que comprar, no de lo que se sirve en el plato.

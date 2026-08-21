@@ -145,3 +145,24 @@ export function comidasPuestas(menu: MenuSemana | undefined): number {
     0,
   );
 }
+
+/** Tachar (o destachar) una línea de la lista de la compra. */
+export function alternarComprado(menu: MenuSemana, clave: string): MenuSemana {
+  const ya = menu.comprados ?? [];
+  return {
+    ...menu,
+    comprados: ya.includes(clave) ? ya.filter((c) => c !== clave) : [...ya, clave],
+  };
+}
+
+/**
+ * Al cambiar el menú, lo tachado de lo que ya no está sobra. Si no, quitar una
+ * receta y volver a ponerla dejaba su pollo tachado sin haberlo comprado.
+ */
+export function limpiarComprados(menu: MenuSemana, claves: string[]): MenuSemana {
+  const vivas = new Set(claves);
+  const comprados = (menu.comprados ?? []).filter((c) => vivas.has(c));
+  return comprados.length === (menu.comprados ?? []).length
+    ? menu
+    : { ...menu, comprados };
+}

@@ -90,6 +90,12 @@ export interface MenuSemana {
   inicio: string;
   /** fecha ISO → lo de ese día. */
   dias: Record<string, DiaDelMenu>;
+  /**
+   * Lo que ya ha echado al carro. Se guarda porque la compra se hace de pie en
+   * el pasillo y con una mano: si al bloquear el móvil se destachara todo, la
+   * lista no serviría para comprar, sólo para mirarla en casa.
+   */
+  comprados?: string[];
 }
 
 export interface Bocado {

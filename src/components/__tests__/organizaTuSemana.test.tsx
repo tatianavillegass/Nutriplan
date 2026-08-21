@@ -2,7 +2,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { OrganizaTuSemana } from '../client/OrganizaTuSemana';
-import { menuVacio, lunesDe, diasDeLaSemana } from '../../utils/menuSemana';
+import { menuVacio, lunesDe, diasDeLaSemana, ponerEnDias } from '../../utils/menuSemana';
+import { FOOD_CATALOG } from '../../data/foodCatalog';
 import type { Plan } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { MenuSemana } from '../../types/diary';
@@ -100,5 +101,84 @@ describe('Organiza tu semana', () => {
     const texto = document.body.textContent ?? '';
     expect(texto).not.toMatch(/incumpl|obligator|te falta/i);
     expect(texto).toContain('esto es un plan, no una obligación');
+  });
+});
+
+/**
+ * LA COMPRA SE HACE DE PIE Y CON UNA MANO
+ *
+ * Por secciones para no dar cuatro vueltas al supermercado, y tachando lo que
+ * ya está en el carro. Y lo tachado se guarda: si al bloquear el móvil se
+ * destachara todo, la lista serviría para mirarla en casa y no para comprar.
+ */
+describe('La lista de la compra', () => {
+  const conCena = () => {
+    let menu = menuVacio(LUNES);
+    menu = ponerEnDias(menu, 'desayuno', PAN.id, [diasDeLaSemana(LUNES)[0]]);
+    return menu;
+  };
+
+  it('va por secciones del supermercado', () => {
+    const receta: Receta = {
+      ...PAN,
+      ingredientes: [
+        {
+          id: 'i1',
+          nombre: 'Huevo',
+          foodId: 'a-huevo',
+          cantidad_base: 110,
+          unidad: 'g',
+          grupo: 'proteicos_grasos',
+          escalable: true,
+          opcional: false,
+        },
+      ],
+    };
+    render(
+      <OrganizaTuSemana
+        menu={ponerEnDias(menuVacio(LUNES), 'desayuno', PAN.id, [diasDeLaSemana(LUNES)[0]])}
+        plan={PLAN}
+        comidas={[{ meal: { id: 'desayuno', nombre: 'Desayuno' }, opciones: [receta] }]}
+        recetas={[receta]}
+        foods={FOOD_CATALOG}
+        onCambiar={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Organiza tu semana'));
+    expect(document.body.textContent).toContain('Carnes, pescados y huevos');
+  });
+
+  it('y al tachar algo se guarda con el menú', () => {
+    const receta: Receta = {
+      ...PAN,
+      ingredientes: [
+        {
+          id: 'i1',
+          nombre: 'Huevo',
+          foodId: 'a-huevo',
+          cantidad_base: 110,
+          unidad: 'g',
+          grupo: 'proteicos_grasos',
+          escalable: true,
+          opcional: false,
+        },
+      ],
+    };
+    const onCambiar = vi.fn();
+    render(
+      <OrganizaTuSemana
+        menu={conCena()}
+        plan={PLAN}
+        comidas={[{ meal: { id: 'desayuno', nombre: 'Desayuno' }, opciones: [receta] }]}
+        recetas={[receta]}
+        foods={FOOD_CATALOG}
+        onCambiar={onCambiar}
+      />,
+    );
+    fireEvent.click(screen.getByText('Organiza tu semana'));
+    fireEvent.click(screen.getByText('Huevo'));
+
+    const nuevo = onCambiar.mock.calls[0][0] as MenuSemana;
+    expect(nuevo.comprados).toHaveLength(1);
   });
 });

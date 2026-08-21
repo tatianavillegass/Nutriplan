@@ -5,6 +5,7 @@ import type { Receta } from '../types/recipe';
 import { scaleRecipe } from './recipeScaling';
 import { diasDeLaSemana } from './menuSemana';
 import { gramosPorPieza } from './measures';
+import type { ExchangeGroupId } from '../data/exchangeGroups';
 
 /**
  * LA LISTA DE LA COMPRA
@@ -28,7 +29,56 @@ import { gramosPorPieza } from './measures';
  *     cuántas comidas hace falta y no se inventa una cantidad.
  */
 
+/**
+ * LAS SECCIONES DEL SUPERMERCADO
+ *
+ * Una lista ordenada alfabéticamente obliga a dar cuatro vueltas al
+ * supermercado: el aguacate al principio, el pollo en medio y el brócoli al
+ * final. Agrupada por sección se recorre una vez.
+ *
+ * No es una clasificación nutricional —eso ya lo hacen los subgrupos— sino el
+ * mapa de la tienda, que es otra cosa: el yogur y la leche van juntos aunque
+ * uno sea proteico y el otro no.
+ */
+export const SECCIONES = [
+  'Carnes, pescados y huevos',
+  'Lácteos',
+  'Frutas',
+  'Verduras',
+  'Cereales, pan y tubérculos',
+  'Legumbres',
+  'Aceites y frutos secos',
+  'Otros',
+] as const;
+
+export type Seccion = (typeof SECCIONES)[number];
+
+const POR_GRUPO: Partial<Record<ExchangeGroupId, Seccion>> = {
+  proteicos_magros: 'Carnes, pescados y huevos',
+  proteicos_semigrasos: 'Carnes, pescados y huevos',
+  proteicos_grasos: 'Carnes, pescados y huevos',
+  lacteos_desnatados: 'Lácteos',
+  lacteos_semi: 'Lácteos',
+  lacteos_enteros: 'Lácteos',
+  lacteos_proteicos: 'Lácteos',
+  fruta: 'Frutas',
+  verduras: 'Verduras',
+  almidones: 'Cereales, pan y tubérculos',
+  legumbres: 'Legumbres',
+  grasas: 'Aceites y frutos secos',
+  frutos_secos: 'Aceites y frutos secos',
+  azucares: 'Otros',
+};
+
+export function seccionDe(grupo?: string): Seccion {
+  return POR_GRUPO[grupo as ExchangeGroupId] ?? 'Otros';
+}
+
 export interface LineaCompra {
+  /** Identidad estable de la línea, para poder tacharla y que siga tachada. */
+  clave: string;
+  /** Por dónde cae en el supermercado. */
+  seccion: Seccion;
   /** El alimento del catálogo, cuando se pudo enlazar. */
   foodId?: string;
   nombre: string;
@@ -75,7 +125,16 @@ export function listaDeLaCompra(
   const porId = new Map(foods.map((f) => [f.id, f]));
   const acumulado = new Map<
     string,
-    { nombre: string; foodId?: string; gramos: number; veces: number; unidad: string; sinEnlazar?: boolean; alGusto?: boolean }
+    {
+      nombre: string;
+      foodId?: string;
+      grupo?: string;
+      gramos: number;
+      veces: number;
+      unidad: string;
+      sinEnlazar?: boolean;
+      alGusto?: boolean;
+    }
   >();
   let comidas = 0;
 
@@ -110,6 +169,7 @@ export function listaDeLaCompra(
           acumulado.set(clave, {
             nombre: food?.nombre ?? ing.nombre,
             foodId: ing.foodId,
+            grupo: ing.grupo,
             gramos: 0,
             veces: (ya?.veces ?? 0) + 1,
             unidad: '',
@@ -134,6 +194,7 @@ export function listaDeLaCompra(
         acumulado.set(clave, {
           nombre: food?.nombre ?? ing.nombre,
           foodId: food?.id,
+          grupo: ing.grupo,
           gramos: (ya?.gramos ?? 0) + gramos,
           veces: (ya?.veces ?? 0) + 1,
           unidad: ing.unidad || food?.unidad || 'g',
@@ -143,9 +204,14 @@ export function listaDeLaCompra(
     }
   }
 
-  const lineas: LineaCompra[] = [...acumulado.values()].map((v) => {
+  const lineas: LineaCompra[] = [...acumulado.entries()].map(([clave, v]) => {
+    const food = v.foodId ? porId.get(v.foodId) : undefined;
+    const seccion = seccionDe(food?.grupo ?? v.grupo);
+
     if (v.alGusto)
       return {
+        clave,
+        seccion,
         foodId: v.foodId,
         nombre: v.nombre,
         cantidad: 0,
@@ -154,10 +220,11 @@ export function listaDeLaCompra(
         alGusto: true,
       };
 
-    const food = v.foodId ? porId.get(v.foodId) : undefined;
     const pieza = food ? gramosPorPieza(food) : undefined;
     const { cantidad, piezas } = redondearCompra(v.gramos, pieza);
     return {
+      clave,
+      seccion,
       foodId: v.foodId,
       nombre: v.nombre,
       cantidad,
@@ -175,6 +242,8 @@ export function listaDeLaCompra(
   lineas.sort((a, b) => {
     const orden = (l: LineaCompra) => (l.sinEnlazar ? 2 : l.alGusto ? 1 : 0);
     if (orden(a) !== orden(b)) return orden(a) - orden(b);
+    if (a.seccion !== b.seccion)
+      return SECCIONES.indexOf(a.seccion) - SECCIONES.indexOf(b.seccion);
     return a.nombre.localeCompare(b.nombre);
   });
 
