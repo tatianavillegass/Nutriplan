@@ -74,6 +74,24 @@ export interface RecetaPropia {
   creada: string;
 }
 
+/** Lo que tiene pensado comer un día: comida → receta, y qué tipo de día es. */
+export interface DiaDelMenu {
+  comidas: Record<string, string>;
+  /**
+   * Qué tipo de día toca. Es lo que hace que las cantidades se adapten solas:
+   * la misma receta escalada a un día de entreno o a uno de descanso. Se dice
+   * una vez a la semana en vez de cada mañana.
+   */
+  dayTypeId?: string;
+}
+
+export interface MenuSemana {
+  /** El lunes de la semana, en ISO. */
+  inicio: string;
+  /** fecha ISO → lo de ese día. */
+  dias: Record<string, DiaDelMenu>;
+}
+
 export interface Bocado {
   id: string;
   nombre: string;
@@ -206,6 +224,17 @@ export interface RegistroDia {
    * que las cuentas del día sigan siendo verdad.
    */
   cambiadasPorPostre?: Record<string, string>;
+  /**
+   * EL MENÚ DE LA SEMANA
+   *
+   * Vive en el registro del LUNES de esa semana. Sin saber qué va a comer el
+   * jueves no hay lista de la compra ni forma de cocinar una vez para tres
+   * días, y en fase 1 y 2 eso no se sabe hasta que llega el jueves.
+   *
+   * Es una propuesta, no un contrato: si ese día le apetece otra cosa, cambia
+   * la receta y no pasa nada. Ver `utils/menuSemana.ts`.
+   */
+  menuSemana?: MenuSemana;
   /**
    * Reto: lo que hizo antes de empezar —medirse, la foto, leerse la guía—. Va
    * aquí por lo mismo que todo lo demás que escribe ella: el registro es lo

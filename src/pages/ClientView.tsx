@@ -5,6 +5,8 @@ import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
 import { porcionesDeGolpe } from "../utils/rellenoRapido";
 import { alimentosDeSusRecetas, recetasPropiasDe } from "../utils/recetasPropias";
 import { postresDelBanco, costeDelPostre } from "../utils/postres";
+import { lunesDe, menuDeLaSemana, menuVacio } from "../utils/menuSemana";
+import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
 import type { Receta } from "../types/recipe";
 import type { ExchangeGroupId } from "../data/exchangeGroups";
 import { exchangesToMacros } from "../utils/exchanges";
@@ -773,6 +775,17 @@ export function ClientView() {
    */
   const comidas = comidasConPauta(dayType);
 
+  /**
+   * EL MENÚ DE LA SEMANA
+   *
+   * Vive en el registro del lunes, así que se lee y se escribe ahí y no en el
+   * día que esté mirando. Ver `utils/menuSemana.ts`.
+   */
+  const menu = useMemo(
+    () => menuDeLaSemana(mios, fecha) ?? menuVacio(fecha),
+    [mios, fecha],
+  );
+
   return (
     <>
       <div className="screen-only space-y-5 pb-24 sm:pb-0">
@@ -1154,6 +1167,30 @@ export function ClientView() {
                   const m = dayType.meals.find((x) => x.id === mealId);
                   return m ? atajosDeComida(m) : null;
                 }}
+              />
+            )}
+
+            {/*
+              ORGANIZA TU SEMANA
+              ==================
+              Sólo en fase 1 y 2: son las fases en las que hay recetas fijas
+              entre las que elegir, y por tanto en las que se puede saber qué
+              va a comer el jueves. En fase 3 y 4 elige alimentos sueltos, así
+              que la lista de la compra sería un invento.
+            */}
+            {(plan.fase === 1 || plan.fase === 2) && soyElCliente && (
+              <OrganizaTuSemana
+                menu={menu}
+                plan={plan}
+                comidas={comidas.map((m) => ({
+                  meal: { id: m.id, nombre: m.nombre },
+                  opciones: opcionesDeComida(m),
+                }))}
+                recetas={recipes}
+                foods={foods}
+                onCambiar={(nuevo) =>
+                  upsertRegistro(client.id, lunesDe(fecha), { menuSemana: nuevo })
+                }
               />
             )}
 
