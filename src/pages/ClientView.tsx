@@ -5,7 +5,13 @@ import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
 import { porcionesDeGolpe } from "../utils/rellenoRapido";
 import { alimentosDeSusRecetas, recetasPropiasDe } from "../utils/recetasPropias";
 import { postresDelBanco, costeDelPostre } from "../utils/postres";
-import { lunesDe, menuDeLaSemana, menuVacio } from "../utils/menuSemana";
+import {
+  lunesDe,
+  menuDeLaSemana,
+  menuDelDia,
+  menuVacio,
+  tipoDeDiaPlaneado,
+} from "../utils/menuSemana";
 import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
 import type { Receta } from "../types/recipe";
 import type { ExchangeGroupId } from "../data/exchangeGroups";
@@ -231,13 +237,36 @@ export function ClientView() {
   /** Su preparación del reto: cada paso pudo marcarlo un día distinto. */
   const preparacion = useMemo(() => preparacionDe(mios), [mios]);
 
+  /**
+   * EL MENÚ DE LA SEMANA
+   *
+   * Vive en el registro del lunes, así que se lee y se escribe ahí y no en el
+   * día que esté mirando. Ver `utils/menuSemana.ts`.
+   */
+  const menu = useMemo(
+    () => menuDeLaSemana(mios, fecha) ?? menuVacio(fecha),
+    [mios, fecha],
+  );
+
+  /** Lo que tenía pensado comer hoy cuando organizó la semana. */
+  const delMenu = useMemo(() => menuDelDia(menu, fecha), [menu, fecha]);
+
   const dayType = useMemo(() => {
     if (!plan) return undefined;
+    /*
+     * Manda lo que haya elegido hoy; si no ha tocado nada, el tipo de día que
+     * puso en su semana. Decir «entreno los lunes» una vez y que la app lo
+     * recuerde cada lunes es la mitad de la gracia de organizarla.
+     *
+     * Y si hoy lo cambia, sólo cambian las cantidades: la receta que tenía
+     * puesta ese día se queda, escalada a lo que toque.
+     */
     return (
       plan.dayTypes.find((d) => d.id === registro?.dayTypeId) ??
+      plan.dayTypes.find((d) => d.id === tipoDeDiaPlaneado(menu, fecha)) ??
       plan.dayTypes[0]
     );
-  }, [plan, registro?.dayTypeId]);
+  }, [plan, registro?.dayTypeId, menu, fecha]);
 
   const balance = useMemo(
     () =>
@@ -517,7 +546,18 @@ export function ClientView() {
      */
     const ordenadas = puntuadas.map((p) => p.receta);
     const vistas = new Set(ordenadas.map((r) => r.id));
-    return [...ordenadas, ...suyas.filter((r) => !vistas.has(r.id))];
+    const todas = [...ordenadas, ...suyas.filter((r) => !vistas.has(r.id))];
+
+    /**
+     * Y por delante de todo, la que puso en su semana. Si el martes decidió
+     * tostada con aguacate, el martes lo primero que tiene que ver es la
+     * tostada con aguacate: cambiarla sigue estando a un toque, pero la
+     * decisión ya la tomó y la app no la hace tomarla otra vez.
+     */
+    const deHoy = delMenu[m.id];
+    if (!deHoy) return todas;
+    const puesta = todas.find((r) => r.id === deHoy);
+    return puesta ? [puesta, ...todas.filter((r) => r.id !== deHoy)] : todas;
   };
 
   /**
@@ -774,17 +814,6 @@ export function ClientView() {
    * merienda, no se enseña ni cuenta para el «3 de 3 hechas».
    */
   const comidas = comidasConPauta(dayType);
-
-  /**
-   * EL MENÚ DE LA SEMANA
-   *
-   * Vive en el registro del lunes, así que se lee y se escribe ahí y no en el
-   * día que esté mirando. Ver `utils/menuSemana.ts`.
-   */
-  const menu = useMemo(
-    () => menuDeLaSemana(mios, fecha) ?? menuVacio(fecha),
-    [mios, fecha],
-  );
 
   return (
     <>
@@ -1351,8 +1380,16 @@ export function ClientView() {
                   const opciones = opcionesDeComida(m);
                   if (!opciones.length) return null;
 
+                  /*
+                   * Manda lo que haya elegido hoy; si no ha tocado nada, la
+                   * que puso en su semana. Organizar la semana y luego tener
+                   * que volver a elegirla cada día sería hacer el trabajo dos
+                   * veces.
+                   */
                   const elegida =
-                    registro?.recetaElegida?.[m.id] ?? opciones[0].id;
+                    registro?.recetaElegida?.[m.id] ??
+                    delMenu[m.id] ??
+                    opciones[0].id;
                   const receta =
                     opciones.find((r) => r.id === elegida) ?? opciones[0];
                   const hecha = cumplida(m.id);
