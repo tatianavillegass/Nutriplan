@@ -295,7 +295,39 @@ export async function refrescarRegistros(): Promise<void> {
  * cada pocos minutos. **No se tocan los registros**: los del servidor pueden ir
  * por detrás de lo que acaba de marcar, y traerlos le borraría el día.
  */
+/**
+ * Cada cuánto vuelve a leer su plan. Cinco minutos cuando ya lo tiene —no hay
+ * prisa por un cambio— y cada medio minuto mientras no tenga nada que ver: es
+ * el rato en que la nutricionista está al otro lado dándole a enviar.
+ */
 const REPASO_DEL_PLAN_MS = 5 * 60_000;
+const REPASO_SIN_PLAN_MS = 30_000;
+
+/** Lo pone la pantalla del cliente: si tiene plan o si sigue esperándolo. */
+let esperandoPlan = false;
+
+export function esperaSuPlan(espera: boolean): void {
+  if (espera === esperandoPlan) return;
+  esperandoPlan = espera;
+  // Se reprograma con el ritmo que toca.
+  if (repasoDelPlan) {
+    clearInterval(repasoDelPlan);
+    repasoDelPlan = setInterval(
+      () => void repasarPlan(),
+      espera ? REPASO_SIN_PLAN_MS : REPASO_DEL_PLAN_MS,
+    );
+  }
+}
+
+/**
+ * Vuelve a leer su plan del servidor. Se llama sola cada poco y al volver a la
+ * app, pero también desde el botón de «volver a comprobar»: cuando la
+ * nutricionista acaba de enviarlo, esperar cinco minutos mirando una pantalla
+ * que dice «se está preparando» es innecesario y desconcierta.
+ */
+export async function repasarPlanAhora(): Promise<void> {
+  await repasarPlan();
+}
 
 async function repasarPlan(): Promise<void> {
   const perfil = perfilActivo;

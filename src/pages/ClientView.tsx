@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
-import { observarFallo, ultimoFallo } from "../utils/sincronizacion";
+import {
+  esperaSuPlan,
+  observarFallo,
+  repasarPlanAhora,
+  ultimoFallo,
+} from "../utils/sincronizacion";
 import { porcionesDeGolpe } from "../utils/rellenoRapido";
 import { alimentosDeSusRecetas, recetasPropiasDe } from "../utils/recetasPropias";
 import { postresDelBanco, costeDelPostre } from "../utils/postres";
@@ -266,6 +271,17 @@ export function ClientView() {
     [plan],
   );
 
+  /**
+   * Mientras no tenga plan que ver, su app pregunta cada medio minuto en vez
+   * de cada cinco: es justo el rato en que la nutricionista está al otro lado
+   * dándole a enviar.
+   */
+  const sinPlanQueVer = !plan?.envio;
+  useEffect(() => {
+    esperaSuPlan(soyElCliente && sinPlanQueVer);
+    return () => esperaSuPlan(false);
+  }, [soyElCliente, sinPlanQueVer]);
+
   /** El check-in de esta quincena, si está sin contestar. */
   const pendiente = useMemo(() => checkInPendiente(donde, mios), [donde, mios]);
 
@@ -360,7 +376,17 @@ export function ClientView() {
 
     return (
       <EmptyState title="Tu plan todavía se está preparando">
-        En cuanto tu nutricionista lo envíe, aparecerá aquí con las comidas del día.
+        <span className="block">
+          En cuanto tu nutricionista lo envíe, aparecerá aquí con las comidas del día.
+        </span>
+        {/*
+          Su app relee el plan sola cada pocos minutos, pero si ella acaba de
+          enviarlo esperar mirando esta pantalla desconcierta. Con el botón se
+          comprueba al momento.
+        */}
+        <span className="mt-3 block">
+          <Button onClick={() => void repasarPlanAhora()}>Volver a comprobar</Button>
+        </span>
       </EmptyState>
     );
   }
