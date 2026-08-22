@@ -37,9 +37,9 @@ export default function App() {
   const recuperando = useAuthStore((s) => s.recuperando);
   const arrancar = useAuthStore((s) => s.arrancar);
   const cerrar = useAuthStore((s) => s.salir);
-  const [guardado, setGuardado] = useState<"al-dia" | "guardando" | "error">(
-    "al-dia",
-  );
+  const [guardado, setGuardado] = useState<
+    "al-dia" | "guardando" | "reintentando" | "sin-red" | "error"
+  >("al-dia");
 
   // Al abrir la app se mira si quedaba una sesión abierta en el servidor.
   useEffect(() => {
@@ -134,23 +134,36 @@ export default function App() {
             {hayNube && (
               <span
                 className={`text-[11px] ${
-                  guardado === "error"
+                  guardado === "error" || guardado === "sin-red"
                     ? "text-amber-600"
-                    : guardado === "guardando"
+                    : guardado === "guardando" || guardado === "reintentando"
                       ? "text-slate-400"
                       : "text-slate-300"
                 }`}
                 title={
-                  guardado === "error"
-                    ? "No se ha podido guardar en el servidor. Se reintenta solo."
-                    : "Los cambios se guardan solos."
+                  guardado === "sin-red"
+                    ? "No hay red. En cuanto vuelva se guarda solo; mientras tanto no cierres la pestaña."
+                    : guardado === "error"
+                      ? "El servidor lleva un rato sin aceptar los cambios. Se sigue intentando; no cierres la pestaña."
+                      : guardado === "reintentando"
+                        ? "El servidor está tardando. Se vuelve a intentar solo."
+                        : "Los cambios se guardan solos."
                 }
               >
-                {guardado === "error"
+                {/*
+                 * «Sin conexión» sólo cuando no hay red de verdad. Que el
+                 * servidor tarde en despertar no es quedarse sin wifi, y
+                 * decírselo así la manda a mirar el router.
+                 */}
+                {guardado === "sin-red"
                   ? "Sin conexión"
-                  : guardado === "guardando"
-                    ? "Guardando…"
-                    : "Guardado"}
+                  : guardado === "error"
+                    ? "Sin guardar"
+                    : guardado === "reintentando"
+                      ? "Reintentando…"
+                      : guardado === "guardando"
+                        ? "Guardando…"
+                        : "Guardado"}
               </span>
             )}
             <span className="text-xs text-slate-500">

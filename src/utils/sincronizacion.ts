@@ -51,8 +51,14 @@ let desuscribirPlantillas: (() => void) | null = null;
 let perfilActivo: Perfil | null = null;
 let pendiente = false;
 
-/** Se avisa a la app de si hay algo por guardar, para poder enseñarlo. */
-type Estado = "al-dia" | "guardando" | "error";
+/**
+ * Se avisa a la app de si hay algo por guardar, para poder enseñarlo.
+ *
+ * «Sin conexión» sólo cuando de verdad no hay red. Que el servidor tarde
+ * veinte segundos —el plan gratuito se duerme y despertarlo cuesta— no es
+ * quedarse sin wifi, y decírselo así la mandaba a mirar el router.
+ */
+type Estado = "al-dia" | "guardando" | "reintentando" | "sin-red" | "error";
 let alCambiarEstado: ((e: Estado) => void) | null = null;
 
 export function observarSincronizacion(fn: ((e: Estado) => void) | null): void {
@@ -383,13 +389,22 @@ export function arrancarSincronizacion(perfil: Perfil): void {
   // Si se cierra la pestaña con algo a medias, se intenta un último envío.
   if (typeof window !== "undefined") {
     window.addEventListener("beforeunload", alSalirDeLaPagina);
+    // Y en cuanto vuelva el wifi, sin esperar al siguiente reintento.
+    window.addEventListener("online", alVolverLaRed);
   }
+}
+
+function alVolverLaRed() {
+  fallos = 0;
+  if (pendiente) void empujar();
 }
 
 export function pararSincronizacion(): void {
   olvidarLoEnviado();
   if (reintento) clearTimeout(reintento);
   reintento = null;
+  subiendo = false;
+  fallos = 0;
   if (temporizador) clearTimeout(temporizador);
   temporizador = null;
   desuscribir?.();
@@ -409,6 +424,7 @@ export function pararSincronizacion(): void {
   pendiente = false;
   if (typeof window !== "undefined") {
     window.removeEventListener("beforeunload", alSalirDeLaPagina);
+    window.removeEventListener("online", alVolverLaRed);
   }
 }
 
@@ -453,10 +469,29 @@ async function pasarFotosAlAlmacen(perfil: Perfil): Promise<void> {
   }
 }
 
+/**
+ * UN GUARDADO CADA VEZ
+ *
+ * El guardado sale 1,5 segundos después de dejar de teclear, pero contra un
+ * servidor dormido tarda veinte o treinta. Sin esta cerradura, escribir un
+ * nombre despacio lanzaba cinco envíos a la vez, todos con los mismos datos,
+ * peleándose por el mismo servidor: iban aún más lentos y bastaba con que uno
+ * fallara para pintar «Sin conexión».
+ *
+ * Ahora se manda uno y lo que llegue mientras tanto se apunta y sale detrás.
+ */
+let subiendo = false;
+
 /** Sube lo que toque según quién esté dentro. */
 export async function empujar(): Promise<void> {
   const perfil = perfilActivo;
   if (!perfil || !hayNube) return;
+  if (subiendo) {
+    // Hay uno en camino: que lo de ahora salga cuando aquél termine.
+    pendiente = true;
+    return;
+  }
+  subiendo = true;
   pendiente = false;
 
   try {
@@ -470,11 +505,21 @@ export async function empujar(): Promise<void> {
       await pasarFotosAlAlmacen(perfil);
       await subirTodo(perfil, fotoActual());
     }
-    avisar("al-dia");
+    fallos = 0;
+    subiendo = false;
+    // Si mientras subía ella siguió tocando cosas, eso sale ahora.
+    if (pendiente) {
+      avisar("guardando");
+      void empujar();
+    } else {
+      avisar("al-dia");
+    }
   } catch (e) {
     console.error("[nube] no se pudo guardar", e);
+    subiendo = false;
     pendiente = true;
-    avisar("error");
+    fallos++;
+    avisar(comoDecirlo());
     /*
      * Y se vuelve a intentar solo. Antes, si fallaba y ella dejaba de teclear,
      * el cambio se quedaba esperando a que tocara cualquier otra cosa: el
@@ -484,14 +529,39 @@ export async function empujar(): Promise<void> {
   }
 }
 
-/** Cada cuánto se reintenta cuando el servidor ha dicho que no. */
+/**
+ * QUÉ SE LE DICE CUANDO FALLA
+ *
+ * Sin red es sin red: no hay nada que hacer más que esperar. Pero si hay wifi
+ * y el que tarda es el servidor, decir «Sin conexión» es mentirle y mandarla a
+ * reiniciar el router. Mientras se reintenta se dice eso, y sólo si tras
+ * varios intentos sigue sin entrar se pone el aviso serio.
+ */
+const FALLOS_PARA_ALARMAR = 3;
+let fallos = 0;
+
+function hayRed(): boolean {
+  return typeof navigator === "undefined" || navigator.onLine !== false;
+}
+
+function comoDecirlo(): Estado {
+  if (!hayRed()) return "sin-red";
+  return fallos >= FALLOS_PARA_ALARMAR ? "error" : "reintentando";
+}
+
+/**
+ * Cada cuánto se reintenta. Va creciendo: si el servidor está despertando,
+ * insistirle cada ocho segundos con todo el envío sólo lo entretiene más.
+ */
 const REINTENTO_MS = 8000;
+const REINTENTO_TOPE_MS = 60_000;
 let reintento: ReturnType<typeof setTimeout> | null = null;
 
 function reintentarLuego(): void {
   if (reintento) clearTimeout(reintento);
+  const espera = Math.min(REINTENTO_MS * 2 ** (fallos - 1), REINTENTO_TOPE_MS);
   reintento = setTimeout(() => {
     reintento = null;
     if (pendiente) void empujar();
-  }, REINTENTO_MS);
+  }, espera);
 }
