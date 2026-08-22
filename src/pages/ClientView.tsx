@@ -62,7 +62,10 @@ import {
   retoDe,
   textoDelDia,
 } from "../utils/retos";
-import { diaCerrado } from "../utils/racha";
+import { calcularRacha, diaCerrado } from "../utils/racha";
+import { comoVaElMes, dondeVa } from "../utils/programa";
+import type { RegistroDia } from "../types/diary";
+import { TuPrograma } from "../components/client/TuPrograma";
 import { preparacionDe } from "../utils/preparacion";
 import { Preparacion } from "../components/client/Preparacion";
 import { RetoDelDia } from "../components/client/RetoDelDia";
@@ -250,6 +253,33 @@ export function ClientView() {
 
   /** Lo que tenía pensado comer hoy cuando organizó la semana. */
   const delMenu = useMemo(() => menuDelDia(menu, fecha), [menu, fecha]);
+
+  /** Su programa: RESET 90 y los que vengan. */
+  const programa = client?.programa;
+  const donde = useMemo(() => dondeVa(programa, fecha), [programa, fecha]);
+
+  const tipoDelDia = useMemo(
+    () => (r: RegistroDia) =>
+      plan?.dayTypes.find((d) => d.id === r.dayTypeId) ?? plan?.dayTypes[0],
+    [plan],
+  );
+
+  const delMes = useMemo(
+    () => comoVaElMes(donde, mios, fecha, tipoDelDia),
+    [donde, mios, fecha, tipoDelDia],
+  );
+
+  /** Qué días de este mes cerró, para pintar la tira. */
+  const cerradosDelMes = useMemo(() => {
+    const out = new Set<string>();
+    if (!donde) return out;
+    const porFecha = new Map(mios.map((r) => [r.fecha, r]));
+    for (const f of donde.diasDelMes) {
+      const r = porFecha.get(f);
+      if (r && diaCerrado(r, tipoDelDia(r))) out.add(f);
+    }
+    return out;
+  }, [donde, mios, tipoDelDia]);
 
   const dayType = useMemo(() => {
     if (!plan) return undefined;
@@ -1043,6 +1073,24 @@ export function ClientView() {
                   {client.cita.donde ? ` · ${client.cita.donde}` : ""}
                 </span>
               </p>
+            )}
+
+            {/*
+              SU PROGRAMA, SI TIENE UNO
+              =========================
+              RESET 90 y los que vengan: consulta de siempre con principio y
+              final. Va arriba porque es el marco de todo lo demás, y por meses
+              para que el horizonte sea corto. Ver `utils/programa.ts`.
+            */}
+            {programa && donde && (
+              <TuPrograma
+                programa={programa}
+                donde={donde}
+                mes={delMes}
+                mejorRacha={calcularRacha(mios, plan.dayTypes, fecha).mejor}
+                cerrados={cerradosDelMes}
+                hoy={fecha}
+              />
             )}
 
             <MetasDiarias

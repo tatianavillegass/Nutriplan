@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { hayCambiosSinEnviar } from "../types/plan";
+import { dondeVa } from "../utils/programa";
+import { claveFecha } from "../types/diary";
 import { useAuthStore } from "../store/useAuthStore";
 import {
   OBJETIVO_LABELS,
@@ -83,6 +85,8 @@ function ClientRow({
     s.plans.find((p) => p.clientId === client.id && !p.archivado),
   );
   const sinEnviar = !!plan && hayCambiosSinEnviar(plan);
+  /** Por dónde va su programa, si tiene uno. */
+  const donde = dondeVa(client.programa, claveFecha(new Date()));
   return (
     <tr
       onClick={() => navigate(`/clientes/${client.id}`)}
@@ -91,8 +95,20 @@ function ClientRow({
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <div>
-            <div className="text-sm font-medium text-slate-800">
-              {client.nombre || "Sin nombre"}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-medium text-slate-800">
+                {client.nombre || "Sin nombre"}
+              </span>
+              {/*
+                El chip del programa: es lo que distingue de un vistazo a las
+                de RESET 90 de las de consulta normal, que era el problema.
+              */}
+              {client.programa?.nombre && (
+                <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-800">
+                  {client.programa.nombre}
+                  {donde ? ` · mes ${donde.mes}` : ""}
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-slate-400">
               {client.email ?? OBJETIVO_LABELS[client.objetivo]}

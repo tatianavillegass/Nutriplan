@@ -3,6 +3,15 @@ import type { Alergeno } from './food';
 
 export type Objetivo = 'perder_peso' | 'mantenimiento' | 'ganancia_muscular';
 
+/** Un programa con fecha de inicio y fin: RESET 90 y los que vengan. */
+export interface Programa {
+  nombre: string;
+  /** Fecha ISO en la que empieza. */
+  inicio: string;
+  /** Cuántos días dura: 90 en RESET 90. */
+  dias: number;
+}
+
 export interface Client {
   id: string;
   nombre: string;
@@ -75,6 +84,16 @@ export interface Client {
   recursos?: string[];
   /** Costumbres que se marcan cada día: 10.000 pasos, 2 l de agua. */
   metas?: Meta[];
+  /**
+   * UN RETO CONSIGO MISMA
+   *
+   * RESET 90 y los que vengan: consulta individual de siempre, pero con un
+   * principio, un final y la sensación de estar recorriendo algo. No es un
+   * `Reto` —no hay grupo, ni muro, ni recetas compartidas— sino tres datos en
+   * su ficha de los que sale todo: el chip para distinguirla en la lista, el
+   * contador por meses en su app y los hitos. Ver `utils/programa.ts`.
+   */
+  programa?: Programa;
   /** La siguiente cita, para que las dos la tengan delante. */
   cita?: Cita;
   /** Lo que tiene contratado. Sólo lo ve la nutricionista. */

@@ -162,6 +162,59 @@ export function ClientForm({ inicial, titulo, textoBoton, onGuardar, onCancelar 
         </div>
       </div>
 
+      {/*
+        UN RETO CONSIGO MISMA
+        =====================
+        RESET 90 es consulta individual, pero con principio y final. De estos
+        tres datos salen el chip de la lista y el contador de su app.
+      */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field label="Programa" hint="RESET 90, por ejemplo. Vacío si es consulta normal">
+          <Input
+            value={form.programa?.nombre ?? ''}
+            onChange={(e) =>
+              set(
+                'programa',
+                e.target.value
+                  ? {
+                      nombre: e.target.value,
+                      inicio: form.programa?.inicio ?? new Date().toISOString().slice(0, 10),
+                      dias: form.programa?.dias ?? 90,
+                    }
+                  : undefined,
+              )
+            }
+            placeholder="RESET 90"
+          />
+        </Field>
+        {form.programa && (
+          <>
+            <Field label="Empieza">
+              <Input
+                type="date"
+                value={form.programa.inicio}
+                onChange={(e) =>
+                  set('programa', { ...form.programa!, inicio: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="Días que dura">
+              <Input
+                type="number"
+                min="1"
+                value={form.programa.dias}
+                onChange={(e) =>
+                  set('programa', {
+                    ...form.programa!,
+                    dias: Number(e.target.value) || 90,
+                  })
+                }
+              />
+            </Field>
+          </>
+        )}
+      </div>
+
       <Field label="Notas" className="mt-3">
         <Input
           value={form.notas ?? ''}
