@@ -98,6 +98,25 @@ export interface MenuSemana {
   comprados?: string[];
 }
 
+/**
+ * Lo que contesta cada dos semanas. Sin nota ni media a propósito: son cinco
+ * cosas para hablarlas, no un examen que aprobar.
+ */
+export interface CheckIn {
+  /** El 1 es el de la primera quincena, el 2 el de la segunda… */
+  numero: number;
+  fecha: string;
+  respuestas: {
+    energia: number;
+    digestion: number;
+    sueno: number;
+    hambre: number;
+    antojos: number;
+  };
+  /** Lo que quiera contar. Suele ser lo más útil de todo. */
+  nota?: string;
+}
+
 export interface Bocado {
   id: string;
   nombre: string;
@@ -241,6 +260,17 @@ export interface RegistroDia {
    * la receta y no pasa nada. Ver `utils/menuSemana.ts`.
    */
   menuSemana?: MenuSemana;
+  /**
+   * EL CHECK-IN DE CADA DOS SEMANAS
+   *
+   * Cinco cosas que ella siente —energía, digestión, sueño, hambre, antojos— y
+   * una línea libre. Treinta segundos para ella y el material de la próxima
+   * consulta para la nutricionista, con histórico.
+   *
+   * Va en el registro por lo mismo que todo lo que escribe ella: es lo único
+   * que sube su app. Se juntan leyendo sus días. Ver `utils/checkin.ts`.
+   */
+  checkins?: CheckIn[];
   /**
    * Reto: lo que hizo antes de empezar —medirse, la foto, leerse la guía—. Va
    * aquí por lo mismo que todo lo demás que escribe ella: el registro es lo

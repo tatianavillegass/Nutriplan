@@ -64,6 +64,8 @@ import {
 } from "../utils/retos";
 import { calcularRacha, diaCerrado } from "../utils/racha";
 import { comoVaElMes, dondeVa } from "../utils/programa";
+import { checkInPendiente } from "../utils/checkin";
+import { CheckInQuincenal } from "../components/client/CheckInQuincenal";
 import type { RegistroDia } from "../types/diary";
 import { TuPrograma } from "../components/client/TuPrograma";
 import { preparacionDe } from "../utils/preparacion";
@@ -263,6 +265,9 @@ export function ClientView() {
       plan?.dayTypes.find((d) => d.id === r.dayTypeId) ?? plan?.dayTypes[0],
     [plan],
   );
+
+  /** El check-in de esta quincena, si está sin contestar. */
+  const pendiente = useMemo(() => checkInPendiente(donde, mios), [donde, mios]);
 
   const delMes = useMemo(
     () => comoVaElMes(donde, mios, fecha, tipoDelDia),
@@ -1090,6 +1095,20 @@ export function ClientView() {
                 mejorRacha={calcularRacha(mios, plan.dayTypes, fecha).mejor}
                 cerrados={cerradosDelMes}
                 hoy={fecha}
+              />
+            )}
+
+            {/*
+              El check-in de cada dos semanas: aparece cuando toca, se queda
+              hasta el siguiente y no bloquea nada. Ver `utils/checkin.ts`.
+            */}
+            {soyElCliente && pendiente && (
+              <CheckInQuincenal
+                numero={pendiente}
+                fecha={fecha}
+                onGuardar={(checkin) =>
+                  guardar({ checkins: [...(registro?.checkins ?? []), checkin] })
+                }
               />
             )}
 

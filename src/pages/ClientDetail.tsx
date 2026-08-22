@@ -22,6 +22,7 @@ import {
 } from "../components/planning/RecursosYMetas";
 import { PlanHistory } from "../components/client/PlanHistory";
 import { FollowUpPanel } from "../components/client/FollowUpPanel";
+import { CheckInsDelPrograma } from "../components/client/CheckInsDelPrograma";
 import { DiaEnVivo } from "../components/client/DiaEnVivo";
 import {
   NewPlanWizard,
@@ -302,6 +303,12 @@ export function ClientDetail() {
             registros={registrosCliente}
             mediciones={medicionesCliente}
           />
+          {/*
+            Lo que te cuenta cada dos semanas. Va aquí arriba porque es lo que
+            se mira antes de una consulta: lo que ella siente no sale de ningún
+            otro sitio de la app.
+          */}
+          <CheckInsDelPrograma registros={registrosCliente} />
           <AdherenceTab
             client={client}
             plan={plan}
