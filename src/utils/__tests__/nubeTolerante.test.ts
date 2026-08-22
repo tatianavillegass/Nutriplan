@@ -63,7 +63,7 @@ vi.mock('../supabase', () => ({
   }),
 }));
 
-const { bajar, subirTodo } = await import('../nube');
+const { bajar, subirTodo, olvidarLoEnviado } = await import('../nube');
 
 const PERFIL = {
   rol: 'nutricionista' as const,
@@ -89,6 +89,12 @@ const FOTO = {
 
 beforeEach(() => {
   upserts.length = 0;
+  /*
+   * La subida se salta lo que no ha cambiado, así que entre pruebas hay que
+   * olvidar lo enviado: si no, la segunda llamada con la misma foto no manda
+   * nada y parece que falla algo.
+   */
+  olvidarLoEnviado();
   falloDeRecursos = true;
 
   CONSULTAS.nutricionistas = {

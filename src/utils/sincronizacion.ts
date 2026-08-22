@@ -6,6 +6,7 @@ import {
   bajarPlanDelCliente,
   bajarRegistros,
   subirTodo,
+  olvidarLoEnviado,
   subirRegistros,
   type Foto,
   type Perfil,
@@ -313,6 +314,11 @@ function alVolverAlaApp() {
 
 /** A partir de aquí, cada cambio se sube solo. */
 export function arrancarSincronizacion(perfil: Perfil): void {
+  /*
+   * Lo que se recuerda como «ya enviado» es de la sesión anterior: al entrar
+   * otra persona —o la misma tras cerrar— hay que mandar todo de nuevo.
+   */
+  olvidarLoEnviado();
   if (!hayNube) return;
   pararSincronizacion();
   perfilActivo = perfil;
@@ -344,6 +350,7 @@ export function arrancarSincronizacion(perfil: Perfil): void {
 }
 
 export function pararSincronizacion(): void {
+  olvidarLoEnviado();
   if (temporizador) clearTimeout(temporizador);
   temporizador = null;
   desuscribir?.();

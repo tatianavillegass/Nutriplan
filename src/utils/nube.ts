@@ -296,6 +296,38 @@ function leerColumna<T>(
  * apuntando qué cambió: son unos pocos kilobytes y evita que un fallo de
  * red deje mitad de un plan arriba y mitad abajo.
  */
+/**
+ * LO ÚLTIMO QUE SE ENVIÓ, PARA NO REPETIRLO
+ *
+ * La app guarda sola cada vez que se deja de teclear, y antes cada guardado
+ * mandaba TODO: el banco de recetas con sus fotos dentro, el catálogo, las
+ * plantillas y la ficha de cada clienta. Cambiar un gramo de una receta
+ * reenviaba varios megas de fotos, y dar de alta a alguien reenviaba también
+ * las de todas las demás. De ahí que fuera lento.
+ *
+ * Ahora se recuerda lo enviado y se salta lo que no ha cambiado. Es una copia
+ * del texto, no un truco raro: si algo se toca, su texto cambia y se manda.
+ */
+const enviado = new Map<string, string>();
+
+/** Se olvida al cambiar de cuenta: lo de una nutricionista no vale para otra. */
+export function olvidarLoEnviado(): void {
+  enviado.clear();
+}
+
+/**
+ * ¿Ha cambiado desde la última vez? Si no, no hace falta enviarlo.
+ *
+ * Apuntar que se ha enviado se hace DESPUÉS, y sólo si el servidor dijo que
+ * sí: si se apuntara antes y el envío fallara, el siguiente guardado se lo
+ * saltaría por «ya enviado» y ese cambio se perdería para siempre.
+ */
+function cambio(clave: string, valor: unknown): { hayQue: boolean; hecho: () => void } {
+  const texto = JSON.stringify(valor);
+  if (enviado.get(clave) === texto) return { hayQue: false, hecho: () => {} };
+  return { hayQue: true, hecho: () => enviado.set(clave, texto) };
+}
+
 export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
   if (perfil.rol !== "nutricionista") return;
   const sb = nube();
@@ -334,12 +366,24 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
     ["retos", foto.retos],
   ];
 
-  for (let cuantos = extras.length; cuantos >= 0; cuantos--) {
+  const loSuyo = cambio("nutri", [
+    suyo.nombre,
+    foto.recipes,
+    foto.foods,
+    suyo.plantillas,
+    foto.recursos,
+    foto.retos,
+  ]);
+
+  for (let cuantos = loSuyo.hayQue ? extras.length : -1; cuantos >= 0; cuantos--) {
     const fila = { ...suyo, ...Object.fromEntries(extras.slice(0, cuantos)) };
     const { error } = await sb
       .from("nutricionistas")
       .upsert(fila, { onConflict: "id" });
-    if (!error) break;
+    if (!error) {
+      loSuyo.hecho();
+      break;
+    }
     if (cuantos === 0) throw new Error(`No se pudo guardar: ${error.message}`);
     console.warn(
       `[nube] falta la columna «${extras[cuantos - 1][0]}»; se reintenta sin ella`,
@@ -354,13 +398,22 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
    */
   await publicarRetos(perfil.nutriId, foto.retos);
 
-  const filas = aFilas(perfil.nutriId, foto).map((f) => ({
-    ...f,
-    actualizado: new Date().toISOString(),
-  }));
+  /**
+   * Y de las fichas, sólo las que se hayan tocado. Con veinte clientas, subir
+   * las veinte por cambiar una era mandar veinte veces lo mismo.
+   */
+  const cambiadas = aFilas(perfil.nutriId, foto)
+    .map((f) => ({ fila: f, marca: cambio(`cliente:${f.id}`, f) }))
+    .filter((x) => x.marca.hayQue);
 
-  if (filas.length)
-    await sb.from("clientes").upsert(filas, { onConflict: "id" });
+  if (cambiadas.length) {
+    const { error } = await sb.from("clientes").upsert(
+      cambiadas.map((x) => ({ ...x.fila, actualizado: new Date().toISOString() })),
+      { onConflict: "id" },
+    );
+    if (error) throw new Error(`No se pudieron guardar las fichas: ${error.message}`);
+    for (const x of cambiadas) x.marca.hecho();
+  }
 
   // Lo que ya no está en la app se va también del servidor: si no, un
   // cliente borrado seguiría entrando en su plan desde su móvil.
