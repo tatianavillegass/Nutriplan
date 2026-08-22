@@ -350,3 +350,44 @@ create policy "muro_del_grupo" on public.muro
       where r.id = muro.reto_id and r.nutri_id = auth.uid()
     )
   );
+
+-- ============================================================
+--  LAS FOTOS DE LAS RECETAS, FUERA DE LOS DATOS
+-- ============================================================
+-- Hasta ahora cada foto viajaba dentro del jsonb, escrita como texto. Eso
+-- hacía que la app de una clienta se descargara el banco entero —con TODAS las
+-- fotos— antes de poder enseñarle su plan: varios megas por la conexión de su
+-- móvil, y una pantalla en blanco mientras tanto.
+--
+-- Con esto la foto se guarda como archivo y en los datos queda un enlace. Los
+-- datos pasan de megas a kilobytes.
+--
+-- Es público a propósito: son fotos de platos, y así el móvil de la clienta
+-- las pide sin pedir permiso a nadie. Los nombres llevan un identificador
+-- imposible de adivinar y el listado está cerrado. LAS FOTOS DE PROGRESO DE
+-- LAS CLIENTAS NO VAN AQUÍ: ésas son personales y siguen dentro de su registro,
+-- que sólo pueden leer ella y su nutricionista.
+
+insert into storage.buckets (id, name, public)
+values ('recetas', 'recetas', true)
+on conflict (id) do nothing;
+
+drop policy if exists "fotos_de_recetas_las_ve_cualquiera" on storage.objects;
+create policy "fotos_de_recetas_las_ve_cualquiera"
+  on storage.objects for select
+  using (bucket_id = 'recetas');
+
+drop policy if exists "fotos_de_recetas_las_sube_la_nutri" on storage.objects;
+create policy "fotos_de_recetas_las_sube_la_nutri"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'recetas');
+
+drop policy if exists "fotos_de_recetas_las_cambia_la_nutri" on storage.objects;
+create policy "fotos_de_recetas_las_cambia_la_nutri"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'recetas');
+
+drop policy if exists "fotos_de_recetas_las_borra_la_nutri" on storage.objects;
+create policy "fotos_de_recetas_las_borra_la_nutri"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'recetas');

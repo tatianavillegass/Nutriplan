@@ -1,5 +1,6 @@
 import { useAppStore } from "../store/useAppStore";
 import { storage } from "./storage";
+import { esDataUrl, guardarFoto } from "./almacen";
 import { hayNube, nube } from "./supabase";
 import {
   bajar,
@@ -391,6 +392,35 @@ function programarSubida(): void {
   temporizador = setTimeout(() => void empujar(), ESPERA_MS);
 }
 
+/**
+ * LAS FOTOS QUE TODAVÍA VIVEN DENTRO DE LOS DATOS
+ *
+ * Las de siempre y las que se acaban de subir desde el formulario. Se pasan al
+ * almacén de una en una, antes de guardar, y en los datos queda el enlace.
+ *
+ * Se hacen de a poco —tres por guardado— para no bloquear nada: si hay
+ * cuarenta recetas viejas, se irán moviendo solas en los siguientes guardados
+ * sin que ella note ninguna espera. Y si el almacén no está creado, se quedan
+ * como están y la app sigue funcionando igual que hasta ahora.
+ */
+const FOTOS_POR_VEZ = 3;
+
+async function pasarFotosAlAlmacen(perfil: Perfil): Promise<void> {
+  if (perfil.rol !== "nutricionista") return;
+
+  const conFoto = useAppStore
+    .getState()
+    .recipes.filter((r) => esDataUrl(r.foto_url))
+    .slice(0, FOTOS_POR_VEZ);
+  if (!conFoto.length) return;
+
+  for (const receta of conFoto) {
+    const enlace = await guardarFoto(receta.foto_url as string, perfil.nutriId, receta.id);
+    // Sin enlace no se toca nada: la foto sigue donde estaba y se reintenta.
+    if (enlace) useAppStore.getState().updateRecipe(receta.id, { foto_url: enlace });
+  }
+}
+
 /** Sube lo que toque según quién esté dentro. */
 export async function empujar(): Promise<void> {
   const perfil = perfilActivo;
@@ -404,6 +434,8 @@ export async function empujar(): Promise<void> {
         .registros.filter((r) => r.clientId === perfil.clientId);
       await subirRegistros(mios);
     } else {
+      // Primero las fotos: así lo que se guarda ya lleva enlaces y no fotos.
+      await pasarFotosAlAlmacen(perfil);
       await subirTodo(perfil, fotoActual());
     }
     avisar("al-dia");
