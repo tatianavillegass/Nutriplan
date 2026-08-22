@@ -11,7 +11,8 @@ import {
   ponerEnDias,
   ponerTipoDeDia,
 } from '../../utils/menuSemana';
-import { listaDeLaCompra, vecesPorReceta, SECCIONES } from '../../utils/listaCompra';
+import { listaDeLaCompra, SECCIONES } from '../../utils/listaCompra';
+import { queCocinar, DIAS_QUE_AGUANTA } from '../../utils/batchCooking';
 import { alternarComprado } from '../../utils/menuSemana';
 import { fmt } from '../common/ui';
 
@@ -67,9 +68,10 @@ export function OrganizaTuSemana({
     [lista, menu.comprados],
   );
 
-  const repetidas = useMemo(
-    () => vecesPorReceta(menu, recetas).filter((r) => r.veces > 1),
-    [menu, recetas],
+  /** Qué poner al fuego, por ingrediente y partido por tandas. */
+  const cocinar = useMemo(
+    () => queCocinar(menu, plan, recetas, foods),
+    [menu, plan, recetas, foods],
   );
 
   /** Los tipos de día que tenga su plan: entreno, descanso… */
@@ -292,22 +294,45 @@ export function OrganizaTuSemana({
           )}
 
           {/* ── Lo que puedes cocinar de una vez ─────────── */}
-          {repetidas.length > 0 && (
+          {cocinar.length > 0 && (
             <div className="mt-3 rounded-xl bg-slate-50 p-3">
-              <p className="text-sm font-semibold text-slate-800">Cocina una vez</p>
-              <ul className="mt-1.5 space-y-0.5">
-                {repetidas.map(({ receta, veces }) => (
-                  <li key={receta.id} className="text-xs text-slate-700">
-                    {receta.nombre}
-                    <span className="tnum ml-1.5 font-medium text-brand-800">×{veces}</span>
+              <p className="text-sm font-semibold text-slate-800">Cocina de una vez</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                Lo cocinado aguanta unos {DIAS_QUE_AGUANTA} o 4 días en la nevera, así que va
+                partido en tandas: cada una se hace el primer día que la necesitas.
+              </p>
+
+              <ul className="mt-2 space-y-2">
+                {cocinar.map((c) => (
+                  <li key={c.foodId ?? c.nombre} className="rounded-lg bg-white p-2">
+                    <p className="flex flex-wrap items-baseline gap-1.5 text-sm text-slate-800">
+                      <span className="font-medium">{c.nombre}</span>
+                      <span className="tnum text-xs text-slate-500">
+                        {c.veces} comidas · {fmt(c.total, 0)} {c.unidad}
+                        {c.enCrudo ? ' en crudo' : ''}
+                      </span>
+                    </p>
+
+                    <ul className="mt-1 space-y-1">
+                      {c.tandas.map((t) => (
+                        <li key={t.desde} className="text-xs text-slate-600">
+                          <span className="font-medium text-brand-800">
+                            {c.tandas.length > 1 ? `${nombreDelDia(t.desde)}: ` : ''}
+                            cocina {t.piezas ? `${t.piezas} uds` : `${fmt(t.gramos, 0)} ${c.unidad}`}
+                          </span>
+                          <span className="text-slate-500">
+                            {' '}
+                            — {t.usos.map((u) => `${u.dia} (${u.receta})`).join(', ')}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </li>
                 ))}
               </ul>
-              <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
-                Sale varias veces esta semana: puedes hacerlo de una vez y guardarlo.
-              </p>
             </div>
           )}
+
         </>
       )}
     </section>
