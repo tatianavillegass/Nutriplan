@@ -68,6 +68,7 @@ export function FoodCatalogPage() {
       equivale: v.equivale,
       nutrientes: v.nutrientes,
       equivalencia_cocido: v.equivalencia_cocido,
+      batch: v.batch,
       comidas_sugeridas: v.comidas_sugeridas,
       alergenos: v.alergenos,
       apto: v.apto,

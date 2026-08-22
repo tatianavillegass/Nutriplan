@@ -145,6 +145,8 @@ describe('La lista de la compra', () => {
       />,
     );
     fireEvent.click(screen.getByText('Organiza tu semana'));
+    // La compra vive en su pestaña: se toca en el supermercado, no el domingo.
+    fireEvent.click(screen.getByText(/^Compra/));
     expect(document.body.textContent).toContain('Carnes, pescados y huevos');
   });
 
@@ -176,6 +178,7 @@ describe('La lista de la compra', () => {
       />,
     );
     fireEvent.click(screen.getByText('Organiza tu semana'));
+    fireEvent.click(screen.getByText(/^Compra/));
     fireEvent.click(screen.getByText('Huevo'));
 
     const nuevo = onCambiar.mock.calls[0][0] as MenuSemana;

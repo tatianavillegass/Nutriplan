@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { queCocinar } from '../batchCooking';
+import { queCocinar, seCocinaEnTanda } from '../batchCooking';
 import { diasDeLaSemana, lunesDe, menuVacio, ponerEnDias } from '../menuSemana';
 import type { Plan } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
@@ -137,5 +137,39 @@ describe('Qué cocinar', () => {
   it('y lo que sale una sola vez tampoco: eso no es batch cooking, es cenar', () => {
     const menu = ponerEnDias(menuVacio(LUNES), 'comida', WOK.id, [lun]);
     expect(queCocinar(menu, PLAN, [WOK], FOODS)).toEqual([]);
+  });
+});
+
+/**
+ * NO TODO LO QUE ES PROTEÍNA SE COCINA EN TANDA
+ *
+ * El huevo revuelto y el queso feta son del mismo subgrupo que el pollo, pero
+ * no hay nada que adelantar: nadie se come unos huevos revueltos de cuatro
+ * días. Lo decide el alimento, y ella puede fijarlo si su cocina va de otra
+ * manera.
+ */
+describe('Qué se cocina en tanda', () => {
+  it('el arroz y el pollo sí', () => {
+    expect(seCocinaEnTanda({ nombre: 'Arroz blanco crudo', grupo: 'almidones' })).toBe(true);
+    expect(
+      seCocinaEnTanda({ nombre: 'Pechuga de pollo cruda', grupo: 'proteicos_magros' }),
+    ).toBe(true);
+  });
+
+  it('el huevo y el queso feta no', () => {
+    expect(seCocinaEnTanda({ nombre: 'Huevo', grupo: 'proteicos_grasos' })).toBe(false);
+    expect(seCocinaEnTanda({ nombre: 'Queso feta', grupo: 'proteicos_grasos' })).toBe(false);
+    expect(seCocinaEnTanda({ nombre: 'Yogur griego', grupo: 'lacteos_proteicos' })).toBe(false);
+  });
+
+  it('las verduras al horno sí, porque se adelantan', () => {
+    expect(seCocinaEnTanda({ nombre: 'Calabacín', grupo: 'verduras' })).toBe(true);
+  });
+
+  it('y lo que ella diga manda sobre todo lo anterior', () => {
+    expect(seCocinaEnTanda({ nombre: 'Huevo', grupo: 'proteicos_grasos', batch: true })).toBe(true);
+    expect(
+      seCocinaEnTanda({ nombre: 'Arroz blanco crudo', grupo: 'almidones', batch: false }),
+    ).toBe(false);
   });
 });

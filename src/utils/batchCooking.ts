@@ -29,10 +29,11 @@ import type { ExchangeGroupId } from '../data/exchangeGroups';
  *
  * QUÉ ENTRA
  * =========
- * Sólo lo que se cocina y se guarda: arroz, pasta, patata, legumbre, carne,
- * pescado, huevo. Ni la verdura —que se come fresca y va al gusto— ni el
- * aceite ni el yogur. Y sólo si sale al menos dos veces: cocinar una vez para
- * una comida no es batch cooking, es cenar.
+ * Sólo lo que pide fuego y se guarda: arroz, pasta, patata, legumbre, pollo,
+ * pescado, verduras al horno. Los huevos revueltos y el queso feta no, aunque
+ * sean del mismo subgrupo que el pollo: no hay nada que adelantar y nadie se
+ * come unos huevos de cuatro días. Y sólo si sale al menos dos veces: cocinar
+ * una vez para una comida no es batch cooking, es cenar.
  */
 
 const COCINABLES = new Set<ExchangeGroupId>([
@@ -41,7 +42,43 @@ const COCINABLES = new Set<ExchangeGroupId>([
   'proteicos_magros',
   'proteicos_semigrasos',
   'proteicos_grasos',
+  // La verdura entra sólo si la receta le pone gramos: un asado de bandeja sí
+  // se adelanta, pero la ensalada «al gusto» no se cocina.
+  'verduras',
 ]);
+
+/**
+ * Lo que se come tal cual, aunque sea del mismo subgrupo que algo que se
+ * cocina. Adelantar unos huevos revueltos el domingo para comérselos el jueves
+ * no es organizarse: es cenar huevos de cuatro días.
+ */
+const TAL_CUAL =
+  /(queso|feta|mozzarella|burgos|cottage|requesón|yogur|kéfir|jamón|fiambre|loncha|pavo en|lata|conserva|ahumad|pan\b|tostada|biscote|tortita|wrap|hummus|aguacate|fruta|nuez|nueces|almendra|anacardo|pistacho|semilla|aceite|mantequilla|leche|batido|proteína|whey|cereal|granola|barrita|huevo)/i;
+
+/**
+ * Lo que sí pide fuego. Si el alimento trae equivalencia de cocido ya lo dice
+ * por sí solo —sólo se guarda esa equivalencia de lo que se cuece—.
+ */
+const AL_FUEGO =
+  /(arroz|pasta|macarr|espagueti|fideo|quinoa|cuscús|couscous|bulgur|mijo|avena|patata|boniato|batata|yuca|lenteja|garbanzo|alubia|judía|frijol|soja|pollo|pavo|pechuga|muslo|ternera|vacuno|cerdo|lomo|solomillo|carne|pescado|salmón|merluza|bacalao|atún fresco|dorada|lubina|gamba|langostino|tofu|tempeh|seitán|calabaza|brócoli|coliflor|berenjena|calabacín|pimiento|champiñ|seta|puerro|zanahoria)/i;
+
+/**
+ * ¿Se cocina en tanda? Manda lo que diga la nutricionista en el alimento; si
+ * no ha dicho nada, se decide por lo que es: lo que se cuece trae equivalencia
+ * de cocido, y lo que se come tal cual se reconoce por el nombre.
+ */
+export function seCocinaEnTanda(alimento: {
+  nombre: string;
+  grupo?: string;
+  batch?: boolean;
+  equivalencia_cocido?: number;
+}): boolean {
+  if (alimento.batch != null) return alimento.batch;
+  if (!alimento.grupo || !COCINABLES.has(alimento.grupo as ExchangeGroupId)) return false;
+  if (TAL_CUAL.test(alimento.nombre)) return false;
+  if (alimento.equivalencia_cocido) return true;
+  return AL_FUEGO.test(alimento.nombre);
+}
 
 /** Lo cocinado aguanta tres o cuatro días; se parte por tres. */
 export const DIAS_QUE_AGUANTA = 3;
@@ -113,8 +150,16 @@ export function queCocinar(
       for (const ing of escalada.ingredientes) {
         const food = ing.foodId ? porId.get(ing.foodId) : undefined;
         const grupo = (food?.grupo ?? ing.grupo) as ExchangeGroupId | undefined;
-        if (!grupo || !COCINABLES.has(grupo)) continue;
         if (ing.cantidad_final == null || !(ing.cantidad_final > 0)) continue;
+        if (
+          !seCocinaEnTanda({
+            nombre: food?.nombre ?? ing.nombre,
+            grupo,
+            batch: food?.batch,
+            equivalencia_cocido: food?.equivalencia_cocido,
+          })
+        )
+          continue;
 
         /*
          * En crudo, que es lo que se pesa antes de echarlo a la olla. Si la

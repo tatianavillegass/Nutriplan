@@ -12,6 +12,7 @@ import { exchangesToMacros } from '../../utils/exchanges';
 import { kcalFromMacros } from '../../utils/macros';
 import { Button, Field, Input, Select, fmt } from '../common/ui';
 import { NumeroConComa } from '../common/NumeroConComa';
+import { seCocinaEnTanda } from '../../utils/batchCooking';
 
 const BUCKETS: [MacroBucket, string][] = [
   ['carbohidrato', 'Carbohidrato'],
@@ -45,6 +46,8 @@ export interface FoodFormValue {
   medida_casera: string;
   gramos?: number;
   equivalencia_cocido?: number;
+  /** Si sale en la guía de cocinar de una vez. */
+  batch?: boolean;
   comidas_sugeridas: MealSlot[];
   alergenos: Alergeno[];
   apto: Apto[];
@@ -71,6 +74,10 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   /** Gramos de la porción. Se rellena solo con el cálculo, pero se puede ajustar. */
   const [gramosManual, setGramosManual] = useState<number | undefined>(inicial?.gramos);
   const [cocido, setCocido] = useState<number | undefined>(inicial?.equivalencia_cocido);
+  /** Si sale en la guía de cocinar de una vez. Sin tocar, lo decide la app. */
+  const [batch, setBatch] = useState<boolean>(
+    inicial?.batch ?? seCocinaEnTanda({ nombre: inicial?.nombre ?? '', grupo: inicial?.grupo }),
+  );
   const [slots, setSlots] = useState<MealSlot[]>(inicial?.comidas_sugeridas ?? ['comida', 'cena']);
   const [alergenos, setAlergenos] = useState<Alergeno[]>(inicial?.alergenos ?? []);
   const [apto, setApto] = useState<Apto[]>(inicial?.apto ?? []);
@@ -381,7 +388,28 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/*
+        Lo que se pone al fuego una vez y se guarda. Lo decide sola por lo que
+        es —el arroz sí, el queso feta no—, pero eso depende de cada cocina, así
+        que se puede fijar aquí.
+      */}
+      <label className="mt-3 flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={batch}
+          onChange={(e) => setBatch(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span className="text-xs leading-snug text-slate-600">
+          Se cocina en tanda
+          <span className="block text-[11px] text-slate-500">
+            Sale en la guía de cocinar de una vez: arroz, pollo, legumbre, verduras al horno. Los
+            huevos revueltos o el queso no lo necesitan.
+          </span>
+        </span>
+      </label>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Field label="Equivalencia en cocido" hint="Sólo si el gramaje de arriba es en crudo">
           <Input
             type="number"
@@ -561,6 +589,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
               medida_casera: medida.trim() || `${gramosFinales} g`,
               gramos: gramosFinales,
               equivalencia_cocido: cocido,
+              batch,
               comidas_sugeridas: slots,
               alergenos,
               apto,

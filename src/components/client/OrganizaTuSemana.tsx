@@ -56,6 +56,14 @@ export function OrganizaTuSemana({
   onCambiar,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
+  /**
+   * TRES COSAS, TRES PESTAÑAS
+   *
+   * El menú se toca el domingo, la lista en el supermercado y la cocina con el
+   * delantal puesto. Todo junto en una columna obliga a bajar media pantalla
+   * para encontrar lo que se necesita en ese momento.
+   */
+  const [pestana, setPestana] = useState<'menu' | 'compra' | 'cocina'>('menu');
   const dias = diasDeLaSemana(menu.inicio);
   const puestas = comidasPuestas(menu);
 
@@ -100,8 +108,31 @@ export function OrganizaTuSemana({
             cosa, la cambias y ya: esto es un plan, no una obligación.
           </p>
 
+          <div className="mt-3 flex gap-1.5">
+            {(
+              [
+                ['menu', 'Menú'],
+                ['compra', `Compra${pendientes ? ` (${pendientes})` : ''}`],
+                ['cocina', `Cocina${cocinar.length ? ` (${cocinar.length})` : ''}`],
+              ] as const
+            ).map(([id, texto]) => (
+              <button
+                key={id}
+                onClick={() => setPestana(id)}
+                aria-pressed={pestana === id}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                  pestana === id
+                    ? 'border-brand-500 bg-brand-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                }`}
+              >
+                {texto}
+              </button>
+            ))}
+          </div>
+
           {/* ── Qué día es cada día ─────────────────────── */}
-          {tipos.length > 1 && (
+          {pestana === 'menu' && tipos.length > 1 && (
             <div className="mt-3">
               <p className="mb-1.5 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
                 Tus días
@@ -141,7 +172,8 @@ export function OrganizaTuSemana({
           )}
 
           {/* ── Qué comes, receta a receta ──────────────── */}
-          {comidas.map(({ meal, opciones }) => (
+          {pestana === 'menu' &&
+            comidas.map(({ meal, opciones }) => (
             <div key={meal.id} className="mt-4">
               <p className="mb-1.5 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
                 {meal.nombre}
@@ -200,11 +232,16 @@ export function OrganizaTuSemana({
                   );
                 })}
               </div>
-            </div>
-          ))}
+              </div>
+            ))}
 
           {/* ── Lo que hay que comprar ──────────────────── */}
-          {lista.lineas.length > 0 && (
+          {pestana === 'compra' && lista.lineas.length === 0 && (
+            <p className="mt-4 text-xs text-slate-500">
+              Organiza algún día en «Menú» y aquí te sale la lista.
+            </p>
+          )}
+          {pestana === 'compra' && lista.lineas.length > 0 && (
             <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50/40 p-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-semibold text-brand-900">Tu lista de la compra</p>
@@ -294,7 +331,13 @@ export function OrganizaTuSemana({
           )}
 
           {/* ── Lo que puedes cocinar de una vez ─────────── */}
-          {cocinar.length > 0 && (
+          {pestana === 'cocina' && cocinar.length === 0 && (
+            <p className="mt-4 text-xs leading-snug text-slate-500">
+              Nada que adelantar por ahora. Aquí sale lo que se cocina y se guarda —arroz, pollo,
+              legumbre, verduras al horno— cuando se repite en la semana.
+            </p>
+          )}
+          {pestana === 'cocina' && cocinar.length > 0 && (
             <div className="mt-3 rounded-xl bg-slate-50 p-3">
               <p className="text-sm font-semibold text-slate-800">Cocina de una vez</p>
               <p className="mt-0.5 text-[11px] leading-snug text-slate-500">

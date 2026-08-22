@@ -48,6 +48,17 @@ export interface Alimento {
   unidad?: 'g' | 'ml';
   /** Gramos en cocido, si el gramaje base es en crudo. */
   equivalencia_cocido?: number;
+  /**
+   * SE COCINA EN TANDA
+   *
+   * Lo que se pone al fuego una vez y se guarda: arroz, pasta, patata,
+   * legumbre, pollo, verduras al horno. El huevo revuelto y el queso feta no,
+   * aunque sean del mismo subgrupo: no hay nada que adelantar.
+   *
+   * Sin decir nada se decide sola (`seCocinaEnTanda`), pero se puede fijar aquí
+   * porque lo que se cocina o no depende de cada cocina y de cada producto.
+   */
+  batch?: boolean;
   /** Cuántos intercambios de su grupo aporta esa medida. */
   intercambios: number;
   /**
