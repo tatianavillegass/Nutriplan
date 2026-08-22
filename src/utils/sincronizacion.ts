@@ -309,7 +309,11 @@ async function repasarPlan(): Promise<void> {
 }
 
 function alVolverAlaApp() {
-  if (document.visibilityState === "visible") void repasarPlan();
+  if (document.visibilityState !== "visible") return;
+  void repasarPlan();
+  // Si algo se quedó sin guardar —se cayó el wifi en el metro—, al volver a
+  // mirar el móvil se intenta otra vez sin que ella tenga que hacer nada.
+  if (pendiente) void empujar();
 }
 
 /** A partir de aquí, cada cambio se sube solo. */
@@ -351,6 +355,8 @@ export function arrancarSincronizacion(perfil: Perfil): void {
 
 export function pararSincronizacion(): void {
   olvidarLoEnviado();
+  if (reintento) clearTimeout(reintento);
+  reintento = null;
   if (temporizador) clearTimeout(temporizador);
   temporizador = null;
   desuscribir?.();
@@ -405,5 +411,23 @@ export async function empujar(): Promise<void> {
     console.error("[nube] no se pudo guardar", e);
     pendiente = true;
     avisar("error");
+    /*
+     * Y se vuelve a intentar solo. Antes, si fallaba y ella dejaba de teclear,
+     * el cambio se quedaba esperando a que tocara cualquier otra cosa: el
+     * aviso decía «se reintenta solo» y no era verdad.
+     */
+    reintentarLuego();
   }
+}
+
+/** Cada cuánto se reintenta cuando el servidor ha dicho que no. */
+const REINTENTO_MS = 8000;
+let reintento: ReturnType<typeof setTimeout> | null = null;
+
+function reintentarLuego(): void {
+  if (reintento) clearTimeout(reintento);
+  reintento = setTimeout(() => {
+    reintento = null;
+    if (pendiente) void empujar();
+  }, REINTENTO_MS);
 }
