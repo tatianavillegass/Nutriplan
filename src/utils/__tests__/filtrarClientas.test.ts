@@ -129,3 +129,45 @@ describe('Saber si hay algo puesto', () => {
     expect(hayFiltro(con({ orden: 'nombre' }))).toBe(true);
   });
 });
+
+/**
+ * A QUIÉN HAY QUE LLAMAR PARA RENOVAR
+ *
+ * Antes había que abrir ficha por ficha para saberlo, y es justo la pregunta
+ * que se hace mirando esta lista.
+ */
+describe('El filtro de «toca renovar»', () => {
+  const conBono = (id: string, extra: Record<string, unknown>): Client =>
+    ({
+      id,
+      nombre: id,
+      peso: 60,
+      bonos: [
+        {
+          id: `${id}-b`,
+          nombre: 'Trimestral',
+          importe: 270,
+          inicio: '2026-06-01',
+          incluye: [{ id: 'l1', concepto: 'Consultas', cuantas: 3 }],
+          ...extra,
+        },
+      ],
+    }) as unknown as Client;
+
+  it('deja sólo a las que se les acaba o se les acabó', () => {
+    const vencida = conBono('vencida', { vence: '2026-07-01' });
+    const reciente = conBono('reciente', {});
+    const lista = filtrarClientas(
+      [vencida, reciente],
+      con({ soloRenovar: true }),
+      undefined,
+      HOY,
+    );
+    expect(nombres(lista)).toEqual(['vencida']);
+  });
+
+  it('y sin el filtro no esconde a nadie', () => {
+    const vencida = conBono('vencida', { vence: '2026-07-01' });
+    expect(filtrarClientas([vencida], FILTRO_VACIO, undefined, HOY)).toHaveLength(1);
+  });
+});

@@ -100,6 +100,10 @@ export interface Client {
   tarifa?: Tarifa;
   /** Lo que ha ido pagando. Sólo lo ve la nutricionista. */
   pagos?: Pago[];
+  /** Los bonos que ha contratado, del más viejo al más nuevo. */
+  bonos?: Bono[];
+  /** Las consultas y llamadas ya hechas. Se marcan a mano. */
+  sesiones?: Sesion[];
   createdAt: string;
   updatedAt: string;
 }
@@ -171,6 +175,78 @@ export interface Pago {
   importe: number;
   concepto?: string;
   metodo?: string;
+  /**
+   * De qué bono es este pago. Sin esto sólo se podía sumar lo cobrado en
+   * total; con esto se sabe cuánto falta de lo que contrató.
+   */
+  bonoId?: string;
+}
+
+/**
+ * UN BONO: LO QUE CONTRATÓ
+ *
+ * Hasta ahora había una tarifa —cuánto cuesta— y unos pagos sueltos, pero
+ * nadie sabía qué había comprado ni cuánto le quedaba. Y ésa es justo la
+ * pregunta de la consulta: «¿a ésta cuándo le toca renovar?».
+ *
+ * ESTO CAMBIA UNA REGLA ANTERIOR, Y A PROPÓSITO
+ * =============================================
+ * Estaba escrito que la app no calcularía deudas, porque no sabía qué se pactó
+ * de palabra y un «debe X» en rojo sería un número inventado. Con un bono ya
+ * no lo es: el importe lo escribe ella. «Faltan 90 €» es una resta.
+ *
+ * La regla vieja sigue valiendo para quien sólo tiene tarifa y pagos sueltos:
+ * ahí seguimos sin inventar nada.
+ */
+export interface Bono {
+  id: string;
+  /** Como se lo vende: «Online trimestral». */
+  nombre: string;
+  /** Lo que cuesta entero. Lo pagado sale de los pagos con este `bonoId`. */
+  importe: number;
+  moneda?: string;
+  /** Cuándo lo contrató. */
+  inicio: string; // YYYY-MM-DD
+  /**
+   * Hasta cuándo vale, si se pactó un plazo. Un bono de tres meses caduca
+   * aunque queden sesiones: lo que llegue antes es lo que manda.
+   */
+  vence?: string; // YYYY-MM-DD
+  /**
+   * Qué incluye, en las líneas que ella quiera: «3 consultas», «3 llamadas».
+   * No hay una lista cerrada de tipos porque cada quien vende lo suyo.
+   */
+  incluye: LineaDeBono[];
+  /** Se cierra a mano cuando se da por terminado, aunque sobre algo. */
+  cerrado?: boolean;
+  nota?: string;
+}
+
+export interface LineaDeBono {
+  id: string;
+  /** «Consulta», «Llamada», «Revisión de analítica»… */
+  concepto: string;
+  /** Cuántas incluye el bono. */
+  cuantas: number;
+}
+
+/**
+ * UNA SESIÓN HECHA
+ *
+ * Se marca a mano, al colgar. Se pensó en darla por consumida cuando pasara la
+ * fecha de la cita, pero entonces una cita anulada o movida contaría igual y
+ * el «2 de 3» mentiría — que es justo lo único que este contador no se puede
+ * permitir.
+ */
+export interface Sesion {
+  id: string;
+  /** YYYY-MM-DD */
+  fecha: string;
+  /** De qué bono se descuenta. Sin bono, es una sesión suelta. */
+  bonoId?: string;
+  /** Cuál de las líneas del bono consume. */
+  lineaId?: string;
+  nota?: string;
 }
 
 /** Las metas que hay que marcar hoy: las jubiladas no cuentan. */

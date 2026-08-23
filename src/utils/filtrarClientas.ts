@@ -1,4 +1,5 @@
 import { estadoAcceso, type Client } from "../types/client";
+import { tocaRenovar } from "./bonos";
 
 /**
  * ENCONTRAR A UNA CLIENTA
@@ -29,6 +30,8 @@ export interface Filtro {
   acceso: FiltroAcceso;
   /** Sólo las que tienen cambios en el plan sin mandar. */
   soloSinEnviar: boolean;
+  /** Sólo aquellas a las que se les acaba —o se les acabó— el bono. */
+  soloRenovar: boolean;
   orden: Orden;
 }
 
@@ -36,13 +39,18 @@ export const FILTRO_VACIO: Filtro = {
   texto: "",
   acceso: "todas",
   soloSinEnviar: false,
+  soloRenovar: false,
   orden: "alta",
 };
 
 /** Si no hay nada puesto, no se enseña el «quitar filtros». */
 export function hayFiltro(f: Filtro): boolean {
   return (
-    f.texto.trim() !== "" || f.acceso !== "todas" || f.soloSinEnviar || f.orden !== "alta"
+    f.texto.trim() !== "" ||
+    f.acceso !== "todas" ||
+    f.soloSinEnviar ||
+    f.soloRenovar ||
+    f.orden !== "alta"
   );
 }
 
@@ -75,6 +83,7 @@ export function filtrarClientas(
       if (estadoAcceso(c, hoy).estado !== filtro.acceso) return false;
     }
     if (filtro.soloSinEnviar && !sinEnviar(c)) return false;
+    if (filtro.soloRenovar && !tocaRenovar(c, hoy)) return false;
     return true;
   });
 

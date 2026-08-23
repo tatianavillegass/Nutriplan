@@ -16,6 +16,7 @@ import { AnthroTab } from "../components/anthro/AnthroTab";
 import { AdherenceTab } from "../components/client/AdherenceTab";
 import { SeguimientoResumen } from "../components/client/SeguimientoResumen";
 import { CitaPanel, PagosPanel } from "../components/client/AgendaPanel";
+import { BonosPanel } from "../components/client/BonosPanel";
 import {
   RecursosDeCliente,
   MetasDeCliente,
@@ -492,6 +493,15 @@ export function ClientDetail() {
       {tab === "agenda" && (
         <div className="space-y-5">
           <CitaPanel
+            client={client}
+            onChange={(patch) => updateClient(client.id, patch)}
+          />
+          {/*
+            Los bonos van antes que los pagos sueltos: es lo que se mira al
+            abrir la pestaña —cuánto le falta y cuántas consultas lleva— y lo
+            de abajo es el detalle.
+          */}
+          <BonosPanel
             client={client}
             onChange={(patch) => updateClient(client.id, patch)}
           />

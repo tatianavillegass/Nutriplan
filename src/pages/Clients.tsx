@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { hayCambiosSinEnviar } from "../types/plan";
 import { dondeVa } from "../utils/programa";
+import { bonoVigente, tocaRenovar } from "../utils/bonos";
 import { claveFecha } from "../types/diary";
 import { useAuthStore } from "../store/useAuthStore";
 import {
@@ -93,6 +94,9 @@ function ClientRow({
   const sinEnviar = !!plan && hayCambiosSinEnviar(plan);
   /** Por dónde va su programa, si tiene uno. */
   const donde = dondeVa(client.programa, claveFecha(new Date()));
+  /** Su bono en marcha, para avisar de la renovación. */
+  const bono = bonoVigente(client);
+  const renovar = tocaRenovar(client);
   return (
     <tr
       onClick={() => navigate(`/clientes/${client.id}`)}
@@ -129,6 +133,25 @@ function ClientRow({
                   {plan?.publicado || plan?.envio
                     ? "Cambios sin enviar"
                     : "Sin enviar todavía"}
+                </span>
+              </div>
+            )}
+            {/*
+              A quién hay que llamar. Se le acabaron las sesiones o se le pasa
+              el plazo: es la pregunta que se hace mirando esta lista, y hasta
+              ahora había que abrir ficha por ficha para contestarla.
+            */}
+            {bono && renovar && (
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-500" aria-hidden />
+                <span className="text-[11px] font-medium text-violet-700">
+                  {bono.estado === "vencido"
+                    ? "Bono vencido"
+                    : bono.estado === "terminado"
+                      ? "Bono terminado"
+                      : "Se le acaba el bono"}
+                  {bono.pendiente > 0 &&
+                    ` · faltan ${fmt(bono.pendiente, bono.pendiente % 1 ? 2 : 0)} ${bono.bono.moneda || "€"}`}
                 </span>
               </div>
             )}
@@ -239,6 +262,7 @@ export function Clients() {
   };
   const visibles = filtrarClientas(deConsulta, filtro, sinEnviarDe);
   const pendientes = deConsulta.filter(sinEnviarDe).length;
+  const porRenovar = deConsulta.filter((c) => tocaRenovar(c)).length;
 
   /** Borrar arrastra planes, mediciones y registros: por eso se avisa. */
   const borrar = (c: Client) => {
@@ -372,6 +396,22 @@ export function Clients() {
               }`}
             >
               Sin enviar ({pendientes})
+            </button>
+          )}
+
+          {porRenovar > 0 && (
+            <button
+              onClick={() =>
+                setFiltro({ ...filtro, soloRenovar: !filtro.soloRenovar })
+              }
+              aria-pressed={filtro.soloRenovar}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                filtro.soloRenovar
+                  ? "border-violet-400 bg-violet-100 text-violet-900"
+                  : "border-violet-200 text-violet-700 hover:bg-violet-50"
+              }`}
+            >
+              Toca renovar ({porRenovar})
             </button>
           )}
 
