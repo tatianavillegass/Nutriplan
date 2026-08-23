@@ -32,6 +32,23 @@ interface Props {
    * no el contador.
    */
   atajosDe?: (mealId: string) => React.ReactNode;
+  /**
+   * COMER FUERA TAMBIÉN EN FASE 4
+   *
+   * Marcar una comida como libre existía en las fases 1, 2 y 3, pero en la 4 no
+   * se pintaba: el contador se dibuja por otro camino y nadie le pasó el botón.
+   * Y contar gramos no cambia nada de lo de siempre —a una hamburguesa que no
+   * has cocinado tú no se le pone un número—, así que aquí hace más falta que
+   * en ninguna otra fase.
+   *
+   * Lo marcado se usa para dos cosas: no pedirle que apunte lo que no se va a
+   * contar, y explicar el hueco que deja en el total del día.
+   */
+  libres?: Record<string, { nota?: string }>;
+  /** El botón «Libre» de la cabecera. Lo pinta la pantalla, que es quien sabe. */
+  botonLibre?: (mealId: string, nombre: string) => React.ReactNode;
+  /** El formulario, o el aviso de que ya está marcada, bajo la comida. */
+  libreDe?: (mealId: string, nombre: string) => React.ReactNode;
   /** En la pantalla de la nutricionista sólo se mira. */
   soloLectura?: boolean;
 }
@@ -105,11 +122,20 @@ export function ContadorDia({
   onQuitar,
   onCantidad,
   atajosDe,
+  libres,
+  botonLibre,
+  libreDe,
   soloLectura = false,
 }: Props) {
   const objetivo = useMemo(() => objetivoDelDia(dayType), [dayType]);
   const total = useMemo(() => totalContado(bocados), [bocados]);
   const hayAlgo = bocados.length > 0;
+
+  /** Cuántas de las comidas de hoy se ha comido fuera. */
+  const cuantasLibres = useMemo(
+    () => dayType.meals.filter((m) => libres?.[m.id]).length,
+    [dayType.meals, libres],
+  );
 
   /** Qué comida tiene el formulario abierto. Sólo una a la vez. */
   const [anadiendo, setAnadiendo] = useState<string | null>(null);
@@ -165,6 +191,20 @@ export function ContadorDia({
       </p>
 
       {/*
+        Si ha comido fuera, las cifras de arriba se quedan cortas y sin esta
+        línea parece que le falta comida. No es que falte: es que esa comida no
+        se mide, y decirlo aquí evita que se le quede cara de haberlo hecho mal.
+      */}
+      {cuantasLibres > 0 && (
+        <p className="mt-1 text-xs leading-snug text-violet-700">
+          {cuantasLibres === 1
+            ? 'Una comida fuera, que no se cuenta.'
+            : `${cuantasLibres} comidas fuera, que no se cuentan.`}{' '}
+          Por eso el total de arriba se queda por debajo.
+        </p>
+      )}
+
+      {/*
         LO APUNTADO, POR COMIDAS
         ==============================================================
         El día se juzga entero —lo que manda es el total de arriba— pero la
@@ -192,7 +232,12 @@ export function ContadorDia({
               <span className="tnum text-xs text-slate-500">
                 {suyos.length ? `${fmt(suTotal.kcal)} kcal` : ''}
               </span>
-              {!soloLectura && (
+              {/*
+                A una comida marcada como libre no se le pide que apunte nada:
+                el «+ Añadir» desaparece. Poner gramos a algo que has comido
+                fuera es justo lo que la comida libre viene a evitar.
+              */}
+              {!soloLectura && !libres?.[meal.id] && (
                 <button
                   onClick={() => setAnadiendo(anadiendo === meal.id ? null : meal.id)}
                   aria-expanded={anadiendo === meal.id}
@@ -205,9 +250,14 @@ export function ContadorDia({
                   {anadiendo === meal.id ? 'Cerrar' : '+ Añadir'}
                 </button>
               )}
+              {!soloLectura && botonLibre?.(meal.id, meal.nombre)}
             </div>
 
-            {!soloLectura && atajosDe?.(meal.id)}
+            {/* Se pinta también en la vista de la nutricionista: que comiera
+                fuera es justo lo que ella quiere ver al abrir el día. */}
+            {libreDe?.(meal.id, meal.nombre)}
+
+            {!soloLectura && !libres?.[meal.id] && atajosDe?.(meal.id)}
 
             {suyos.length > 0 && (
               <ul className="mt-0.5 divide-y divide-slate-50">

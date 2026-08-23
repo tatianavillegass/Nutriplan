@@ -1289,6 +1289,30 @@ export function ClientView() {
                   const m = dayType.meals.find((x) => x.id === mealId);
                   return m ? atajosDeComida(m) : null;
                 }}
+                /*
+                 * Comer fuera también aquí. El botón y el formulario son los
+                 * mismos de las otras fases —no hay dos maneras de decir que
+                 * has comido fuera— y `libres` sólo lo usa el contador para
+                 * no pedir gramos de esa comida y explicar el hueco del día.
+                 */
+                libres={libres}
+                botonLibre={(mealId, nombre) =>
+                  libres[mealId] ? null : (
+                    <button
+                      onClick={() => setPidiendoLibre(mealId)}
+                      aria-pressed={pidiendoLibre === mealId}
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                        pidiendoLibre === mealId
+                          ? "border-violet-400 bg-violet-100 text-violet-900"
+                          : "border-violet-200 text-violet-700 hover:bg-violet-50"
+                      }`}
+                      title={`Marcar ${nombre.toLowerCase()} como comida libre`}
+                    >
+                      Libre
+                    </button>
+                  )
+                }
+                libreDe={libreDe}
               />
             )}
 

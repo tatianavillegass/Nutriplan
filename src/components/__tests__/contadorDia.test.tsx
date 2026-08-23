@@ -317,3 +317,62 @@ describe('Las recetas en fase 4', () => {
   });
 });
 
+
+/**
+ * COMER FUERA, TAMBIÉN CONTANDO GRAMOS
+ *
+ * Marcar una comida como libre existía en las otras fases y en la 4 no se
+ * pintaba. Y es justo donde más falta hace: a una hamburguesa que no has
+ * cocinado tú no se le ponen gramos, así que la única salida honesta es
+ * decir «he comido fuera» y que no se cuente.
+ */
+describe('Una comida fuera en fase 4', () => {
+  const props = {
+    dayType: DIA,
+    bocados: [] as Bocado[],
+    foods: [POLLO],
+    onAnadir: vi.fn(),
+    onQuitar: vi.fn(),
+    onCantidad: vi.fn(),
+  };
+
+  it('a la comida marcada no se le piden gramos', () => {
+    render(<ContadorDia {...props} libres={{ cena: {} }} />);
+
+    const cena = screen.getByText('Cena').closest('div')?.parentElement as HTMLElement;
+    expect(within(cena).queryByText('+ Añadir')).toBeNull();
+
+    // Y a las demás sí, que sólo se calla la que se comió fuera.
+    const comida = screen.getByText('Comida').closest('div')?.parentElement as HTMLElement;
+    expect(within(comida).getByText('+ Añadir')).toBeTruthy();
+  });
+
+  /**
+   * Sin esta línea, el total del día se queda corto y parece que le falta
+   * comida. No falta: es que esa comida no se mide.
+   */
+  it('y se explica por qué el día se queda corto', () => {
+    render(<ContadorDia {...props} libres={{ cena: {} }} />);
+    expect(screen.getByText(/Una comida fuera, que no se cuenta/i)).toBeTruthy();
+
+    cleanup();
+    render(<ContadorDia {...props} libres={{ cena: {}, comida: {} }} />);
+    expect(screen.getByText(/2 comidas fuera, que no se cuentan/i)).toBeTruthy();
+  });
+
+  it('sin ninguna comida fuera no se dice nada', () => {
+    render(<ContadorDia {...props} />);
+    expect(screen.queryByText(/no se cuenta/i)).toBeNull();
+  });
+
+  /** El botón lo pinta la pantalla, que es quien sabe guardar. */
+  it('el botón de la cabecera viene de fuera', () => {
+    render(
+      <ContadorDia
+        {...props}
+        botonLibre={(_id, nombre) => <button>Libre {nombre}</button>}
+      />,
+    );
+    expect(screen.getByText('Libre Cena')).toBeTruthy();
+  });
+});
