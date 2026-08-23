@@ -19,6 +19,12 @@ import {
   type DatosCliente,
 } from "../components/client/ClientForm";
 import { Button, EmptyState, fmt } from "../components/common/ui";
+import {
+  FILTRO_VACIO,
+  filtrarClientas,
+  hayFiltro,
+  type Filtro,
+} from "../utils/filtrarClientas";
 
 const fechaCorta = (iso?: string) => {
   if (!iso) return "—";
@@ -218,6 +224,22 @@ export function Clients() {
   const deConsulta = clients.filter((c) => !c.soloReto);
   const delReto = clients.length - deConsulta.length;
 
+  /**
+   * BUSCAR Y FILTRAR
+   *
+   * Los planes se leen aquí una sola vez para poder filtrar por «sin enviar»:
+   * cada fila ya mira el suyo, pero desde fuera no se puede preguntar fila a
+   * fila antes de pintarlas.
+   */
+  const [filtro, setFiltro] = useState<Filtro>(FILTRO_VACIO);
+  const planes = useAppStore((s) => s.plans);
+  const sinEnviarDe = (c: Client) => {
+    const p = planes.find((x) => x.clientId === c.id && !x.archivado);
+    return !!p && hayCambiosSinEnviar(p);
+  };
+  const visibles = filtrarClientas(deConsulta, filtro, sinEnviarDe);
+  const pendientes = deConsulta.filter(sinEnviarDe).length;
+
   /** Borrar arrastra planes, mediciones y registros: por eso se avisa. */
   const borrar = (c: Client) => {
     if (
@@ -290,9 +312,87 @@ export function Clients() {
         />
       )}
 
+      {/*
+        LA BARRA DE BUSCAR
+        ==================
+        Sólo aparece cuando hay clientas suficientes para que buscar tenga
+        sentido. Con cuatro en pantalla, una barra de filtros es ruido.
+      */}
+      {deConsulta.length > 5 && !editando && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand-100 bg-white px-3 py-2.5 shadow-sm no-print">
+          <input
+            value={filtro.texto}
+            onChange={(e) => setFiltro({ ...filtro, texto: e.target.value })}
+            placeholder="Buscar por nombre o correo…"
+            aria-label="Buscar clienta"
+            className="min-w-[12rem] flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-brand-400"
+          />
+
+          <select
+            value={filtro.acceso}
+            onChange={(e) =>
+              setFiltro({ ...filtro, acceso: e.target.value as Filtro["acceso"] })
+            }
+            aria-label="Filtrar por acceso"
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-400"
+          >
+            <option value="todas">Todo el acceso</option>
+            <option value="activo">Activas</option>
+            <option value="termina_pronto">Terminan pronto</option>
+            <option value="caducado">Caducadas</option>
+          </select>
+
+          <select
+            value={filtro.orden}
+            onChange={(e) =>
+              setFiltro({ ...filtro, orden: e.target.value as Filtro["orden"] })
+            }
+            aria-label="Ordenar"
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-400"
+          >
+            <option value="alta">Últimas de alta</option>
+            <option value="nombre">Por nombre</option>
+          </select>
+
+          {/*
+            El filtro que más falta hace: «¿a quién se me ha quedado un plan
+            sin mandar?». Sólo sale si hay alguno, para no enseñar un botón
+            que no haría nada.
+          */}
+          {pendientes > 0 && (
+            <button
+              onClick={() =>
+                setFiltro({ ...filtro, soloSinEnviar: !filtro.soloSinEnviar })
+              }
+              aria-pressed={filtro.soloSinEnviar}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                filtro.soloSinEnviar
+                  ? "border-amber-400 bg-amber-100 text-amber-900"
+                  : "border-amber-200 text-amber-800 hover:bg-amber-50"
+              }`}
+            >
+              Sin enviar ({pendientes})
+            </button>
+          )}
+
+          {hayFiltro(filtro) && (
+            <button
+              onClick={() => setFiltro(FILTRO_VACIO)}
+              className="text-xs text-slate-400 underline hover:text-slate-700"
+            >
+              Quitar filtros
+            </button>
+          )}
+        </div>
+      )}
+
       {deConsulta.length === 0 ? (
         <EmptyState title="Todavía no hay clientes">
           Crea el primero para calcular su GET y armar su plan.
+        </EmptyState>
+      ) : visibles.length === 0 ? (
+        <EmptyState title="Ninguna clienta con esos filtros">
+          Prueba a quitar alguno o a buscar otro nombre.
         </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-brand-100 bg-white shadow-sm">
@@ -313,7 +413,7 @@ export function Clients() {
               </tr>
             </thead>
             <tbody>
-              {deConsulta.map((c) => (
+              {visibles.map((c) => (
                 <ClientRow
                   key={c.id}
                   client={c}
