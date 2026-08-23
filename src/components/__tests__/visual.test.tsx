@@ -240,6 +240,6 @@ describe('Se me olvidó la contraseña', () => {
   it('se puede volver a la pantalla de entrar', () => {
     abrirOlvido();
     fireEvent.click(screen.getByText('← Volver'));
-    expect(screen.getByText('Entra en NutriPlan')).toBeTruthy();
+    expect(screen.getByText('Entra en TVS Nutrición')).toBeTruthy();
   });
 });

@@ -102,11 +102,11 @@ export default function App() {
       <header className="sticky top-0 z-30 border-b border-brand-100 bg-white/90 backdrop-blur no-print">
         <div className="mx-auto flex max-w-[1400px] items-center gap-6 px-6 py-3">
           <NavLink to={inicio} className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-700 text-sm font-bold text-white">
-              N
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-700 text-[10px] font-bold tracking-tight text-white">
+              TVS
             </span>
             <span className="text-sm font-semibold tracking-tight text-brand-900">
-              NutriPlan
+              TVS Nutrición
             </span>
           </NavLink>
 

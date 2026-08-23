@@ -81,7 +81,7 @@ export function citaComoIcs(cita: Cita, titulo: string): string {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//NutriPlan//ES",
+    "PRODID:-//TVS Nutricion//ES",
     "BEGIN:VEVENT",
     `UID:${comoUTC(inicio)}-nutriplan@local`,
     `DTSTAMP:${comoUTC(new Date())}`,

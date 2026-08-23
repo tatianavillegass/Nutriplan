@@ -86,7 +86,7 @@ export function AuthPage() {
   };
 
   const titulo = {
-    entrar: 'Entra en NutriPlan',
+    entrar: 'Entra en TVS Nutrición',
     registro: 'Crea tu cuenta',
     invitacion: `Bienvenida${cuenta?.nombre ? `, ${cuenta.nombre.split(' ')[0]}` : ''}`,
     olvido: 'Recupera tu contraseña',
@@ -108,10 +108,10 @@ export function AuthPage() {
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center">
       <div className="mb-5 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-sm font-bold text-white">
-          N
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-[11px] font-bold tracking-tight text-white">
+          TVS
         </span>
-        <span className="text-base font-semibold tracking-tight text-brand-900">NutriPlan</span>
+        <span className="text-base font-semibold tracking-tight text-brand-900">TVS Nutrición</span>
       </div>
 
       <div className="rounded-xl border border-brand-100 bg-white p-5 shadow-sm">

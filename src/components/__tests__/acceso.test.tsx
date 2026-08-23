@@ -38,7 +38,7 @@ describe('Pantalla de acceso', () => {
 
   it('arranca en "entrar" y deja pasar a crear cuenta', () => {
     render(<AuthPage />);
-    expect(screen.getByText('Entra en NutriPlan')).toBeTruthy();
+    expect(screen.getByText('Entra en TVS Nutrición')).toBeTruthy();
     fireEvent.click(screen.getByText('Crear una'));
     expect(screen.getByText('Crea tu cuenta')).toBeTruthy();
   });
