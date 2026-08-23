@@ -110,6 +110,7 @@ export function fotoActual(): Foto {
     alimentosOmitidos: leerOmitidos(),
     recursos: s.recursos,
     retos: s.retos,
+    gastos: s.gastos,
   };
 }
 

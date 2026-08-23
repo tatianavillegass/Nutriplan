@@ -8,6 +8,7 @@ import type { Medicion } from "../types/anthropometry";
 import type { RegistroDia } from "../types/diary";
 import type { Recurso } from "../types/recursos";
 import type { Reto } from "../types/reto";
+import type { Gasto } from "../types/finanzas";
 import { registroVacio } from "../types/diary";
 import { EXCHANGE_GROUPS, type ExchangeGroupId } from "../data/exchangeGroups";
 import { FOOD_CATALOG } from "../data/foodCatalog";
@@ -25,6 +26,8 @@ interface AppState {
   registros: RegistroDia[];
   recursos: Recurso[];
   retos: Reto[];
+  /** Los gastos de la consulta: sueltos y fijos. No son de ninguna clienta. */
+  gastos: Gasto[];
 
   // Clientes
   addClient: (c: Omit<Client, "id" | "createdAt" | "updatedAt">) => Client;
@@ -127,6 +130,10 @@ interface AppState {
   borrarRecurso: (id: string) => void;
   moverRecurso: (id: string, delta: number) => void;
 
+  // Gastos de la consulta
+  upsertGasto: (g: Gasto) => void;
+  borrarGasto: (id: string) => void;
+
   hidratar: (datos: {
     clients: Client[];
     plans: Plan[];
@@ -136,6 +143,7 @@ interface AppState {
     registros: RegistroDia[];
     recursos?: Recurso[];
     retos?: Reto[];
+    gastos?: Gasto[];
   }) => void;
 }
 
@@ -293,6 +301,7 @@ export const useAppStore = create<AppState>((set, get) => {
   const persistRecursos = (rs: Recurso[]) =>
     storage.set(STORAGE_KEYS.recursos, rs);
   const persistRetos = (rs: Reto[]) => storage.set(STORAGE_KEYS.retos, rs);
+  const persistGastos = (gs: Gasto[]) => storage.set(STORAGE_KEYS.gastos, gs);
 
   const mutatePlans = (fn: (plans: Plan[]) => Plan[]) => {
     set((s) => {
@@ -336,6 +345,7 @@ export const useAppStore = create<AppState>((set, get) => {
     registros: hydrate<RegistroDia[]>(STORAGE_KEYS.registros, []),
     recursos: hydrate<Recurso[]>(STORAGE_KEYS.recursos, []),
     retos: hydrate<Reto[]>(STORAGE_KEYS.retos, []),
+    gastos: hydrate<Gasto[]>(STORAGE_KEYS.gastos, []),
 
     addClient: (c) => {
       const client: Client = {
@@ -693,6 +703,24 @@ export const useAppStore = create<AppState>((set, get) => {
       set({ retos });
     },
 
+    upsertGasto: (g) => {
+      const gastos = get().gastos.some((x) => x.id === g.id)
+        ? get().gastos.map((x) => (x.id === g.id ? g : x))
+        : [...get().gastos, g];
+      persistGastos(gastos);
+      set({ gastos });
+    },
+
+    /**
+     * Borrar de verdad. Para dejar de pagar un fijo está `hasta`, que conserva
+     * los meses en que sí se pagó; esto es para el que se apuntó mal.
+     */
+    borrarGasto: (id) => {
+      const gastos = get().gastos.filter((g) => g.id !== id);
+      persistGastos(gastos);
+      set({ gastos });
+    },
+
     /**
      * Crea o reemplaza un recurso. Se ordenan a mano porque el orden es del
      * criterio de la nutricionista: primero lo que quiere que se lea antes.
@@ -760,9 +788,11 @@ export const useAppStore = create<AppState>((set, get) => {
        */
       const recursos = datos.recursos ?? get().recursos;
       const retos = datos.retos ?? get().retos;
+      const gastos = datos.gastos ?? get().gastos;
 
       persistRecursos(recursos);
       persistRetos(retos);
+      persistGastos(gastos);
 
       set({
         clients: datos.clients,
@@ -773,6 +803,7 @@ export const useAppStore = create<AppState>((set, get) => {
         registros: datos.registros,
         recursos,
         retos,
+        gastos,
       });
     },
   };

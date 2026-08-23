@@ -51,6 +51,7 @@ export const STORAGE_KEYS = {
   registros: 'registros',
   recursos: 'recursos',
   retos: 'retos',
+  gastos: 'gastos',
 } as const;
 
 export function uid(prefix = ''): string {

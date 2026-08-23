@@ -63,6 +63,7 @@ const foto = (): Foto => ({
     alimentosOmitidos: [],
   recursos: [],
   retos: [],
+    gastos: [],
 });
 
 describe('Repartir el estado en filas', () => {

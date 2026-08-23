@@ -33,6 +33,7 @@ const foto = (clients: Client[], recetas: unknown[] = []): Foto =>
     registros: [],
     recursos: [],
     retos: [],
+    gastos: [],
     plantillas: [],
     plantillasDia: [],
     plantillasReparto: [],

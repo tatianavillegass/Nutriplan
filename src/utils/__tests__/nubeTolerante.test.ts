@@ -50,7 +50,7 @@ vi.mock('../supabase', () => ({
         if (
           tabla === 'nutricionistas' &&
           falloDeRecursos &&
-          ('recursos' in fila || 'retos' in fila)
+          ('recursos' in fila || 'retos' in fila || 'gastos' in fila)
         ) {
           return Promise.resolve({
             error: { message: "column nutricionistas.recursos does not exist" },
@@ -85,6 +85,7 @@ const FOTO = {
     alimentosOmitidos: [],
   recursos: [{ id: 'rc1' }] as never,
   retos: [] as never,
+  gastos: [] as never,
 };
 
 beforeEach(() => {
@@ -172,10 +173,12 @@ describe('Guardar lo compartido', () => {
   it('quita primero la columna más nueva, no todas de golpe', async () => {
     await subirTodo(PERFIL, FOTO);
     const intentos = upserts.filter((u) => u.tabla === 'nutricionistas');
-    // 1º con todo, 2º sin «retos» pero con «recursos», 3º sin ninguna.
-    expect(intentos[0].datos.retos).toBeDefined();
-    expect(intentos[1].datos.retos).toBeUndefined();
-    expect(intentos[1].datos.recursos).toBeDefined();
+    // Se van cayendo de la más nueva a la más vieja: gastos, retos, recursos.
+    expect(intentos[0].datos.gastos).toBeDefined();
+    expect(intentos[1].datos.gastos).toBeUndefined();
+    expect(intentos[1].datos.retos).toBeDefined();
+    expect(intentos[2].datos.retos).toBeUndefined();
+    expect(intentos[2].datos.recursos).toBeDefined();
   });
 
   it('con las columnas puestas, se sube una sola vez', async () => {

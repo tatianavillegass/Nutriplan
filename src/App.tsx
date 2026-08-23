@@ -8,6 +8,7 @@ import { ClientView } from "./pages/ClientView";
 import { TemplatesPage } from "./pages/TemplatesPage";
 import { RecursosPage } from "./pages/RecursosPage";
 import { RetosPage } from "./pages/RetosPage";
+import { PerfilPage } from "./pages/PerfilPage";
 import { ApuntarsePage } from "./pages/ApuntarsePage";
 import { AuthPage } from "./pages/AuthPage";
 import { ClaveNueva } from "./components/common/ClaveNueva";
@@ -166,13 +167,28 @@ export default function App() {
                         : "Guardado"}
               </span>
             )}
-            <span className="text-xs text-slate-500">
-              {cuenta.nombre}
-              <span className="ml-1.5 text-slate-300">·</span>
-              <span className="ml-1.5 text-[11px] text-slate-400">
-                {esCliente ? "cliente" : "nutricionista"}
+            {/*
+              El nombre lleva a «Mi cuenta». Es donde cualquiera lo busca, y
+              así no hay que alargar la barra de pestañas con una más.
+            */}
+            {esCliente ? (
+              <span className="text-xs text-slate-500">
+                {cuenta.nombre}
+                <span className="ml-1.5 text-slate-300">·</span>
+                <span className="ml-1.5 text-[11px] text-slate-400">cliente</span>
               </span>
-            </span>
+            ) : (
+              <NavLink
+                to="/perfil"
+                className="rounded-lg px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+              >
+                {cuenta.nombre}
+                <span className="ml-1.5 text-slate-300">·</span>
+                <span className="ml-1.5 text-[11px] text-slate-400">
+                  nutricionista
+                </span>
+              </NavLink>
+            )}
             <button
               onClick={() => void cerrar()}
               className="rounded-lg px-2.5 py-1.5 text-xs text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
@@ -196,6 +212,7 @@ export default function App() {
               <Route path="/plantillas" element={<TemplatesPage />} />
               <Route path="/recursos" element={<RecursosPage />} />
               <Route path="/retos" element={<RetosPage />} />
+              <Route path="/perfil" element={<PerfilPage />} />
             </>
           )}
           {/* Cualquier otra ruta devuelve a lo suyo: el cliente no husmea. */}

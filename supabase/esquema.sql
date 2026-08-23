@@ -28,6 +28,8 @@ create table if not exists public.nutricionistas (
   recursos     jsonb,
   -- Retos: grupos que empiezan el mismo día y comparten recetas y recursos.
   retos        jsonb,
+  -- Gastos de la consulta: sueltos y fijos. No son de ninguna clienta.
+  gastos       jsonb,
   actualizado  timestamptz not null default now()
 );
 
@@ -39,6 +41,9 @@ alter table public.nutricionistas
 
 alter table public.nutricionistas
   add column if not exists retos jsonb;
+
+alter table public.nutricionistas
+  add column if not exists gastos jsonb;
 
 -- Un cliente. Conserva el id que ya usa la app (cl_xxxx) para no
 -- tener que reescribir los planes al subirlos.

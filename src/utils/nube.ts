@@ -10,6 +10,7 @@ import type { PlantillaDespensa, PlantillaDia } from "./plantillas";
 import type { PlantillaReparto } from "./repartos";
 import type { Recurso } from "../types/recursos";
 import type { Reto } from "../types/reto";
+import type { Gasto } from "../types/finanzas";
 import { publicarRetos } from "./solicitudes";
 
 /**
@@ -60,6 +61,8 @@ export interface Foto {
   recursos: Recurso[];
   /** Grupos que empiezan el mismo día. */
   retos: Reto[];
+  /** Lo que le cuesta tener la consulta abierta. */
+  gastos: Gasto[];
 }
 
 /**
@@ -68,9 +71,10 @@ export interface Foto {
  * y eso NO significa que no haya nada — significa que el servidor todavía no
  * sabe de ellas y hay que quedarse con lo del navegador.
  */
-export type FotoDelServidor = Omit<Foto, "recursos" | "retos"> & {
+export type FotoDelServidor = Omit<Foto, "recursos" | "retos" | "gastos"> & {
   recursos?: Recurso[];
   retos?: Reto[];
+  gastos?: Gasto[];
 };
 
 export interface FilaCliente {
@@ -275,6 +279,7 @@ export async function bajar(perfil: Perfil): Promise<FotoDelServidor> {
      */
     recursos: leerColumna<Recurso>(compartido.data, "recursos"),
     retos: leerColumna<Reto>(compartido.data, "retos"),
+    gastos: leerColumna<Gasto>(compartido.data, "gastos"),
   };
 }
 
@@ -364,6 +369,7 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
   const extras: [string, unknown][] = [
     ["recursos", foto.recursos],
     ["retos", foto.retos],
+    ["gastos", foto.gastos],
   ];
 
   const loSuyo = cambio("nutri", [
@@ -373,6 +379,7 @@ export async function subirTodo(perfil: Perfil, foto: Foto): Promise<void> {
     suyo.plantillas,
     foto.recursos,
     foto.retos,
+    foto.gastos,
   ]);
 
   for (let cuantos = loSuyo.hayQue ? extras.length : -1; cuantos >= 0; cuantos--) {
