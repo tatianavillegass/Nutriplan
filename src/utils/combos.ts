@@ -178,6 +178,55 @@ export function techoDeFamilia(
   );
 }
 
+/**
+ * EL MACRO MANDA, NO LA FAMILIA
+ *
+ * La regla vieja pedía que cada familia se cubriera con lo suyo: si el
+ * desayuno pautaba 1 almidón y 1 fruta, la combinación tenía que traer un
+ * almidón y una fruta. Pero eso contradice la primera regla del método —lo que
+ * tiene que cuadrar son las porciones del macro, de dónde salgan es cosa de la
+ * receta— que ya rige en el escalado, en la completitud y en el recomendador.
+ *
+ * Dos almidones donde había un almidón y una fruta son 28 g de hidrato en vez
+ * de 29 y dos calorías de diferencia. Bloquear eso era inventarse una regla
+ * que el resto de la app no aplica.
+ *
+ * Este objetivo junta todas las familias del macro en una sola bolsa. El techo
+ * sigue existiendo —por calorías, o por grasa donde manda la grasa— así que se
+ * puede cambiar de familia pero no inflar la comida.
+ */
+export function objetivoUnificado(objetivo: ObjetivoBucket): ObjetivoFamilia {
+  const counts = Object.fromEntries(objetivo.porSubgrupo) as ExchangeCounts;
+  const m = exchangesToMacros(counts);
+  /*
+   * El criterio se toma de la primera familia. Hoy no hay ningún macro que
+   * mezcle familias de grasa con familias de caloría —los lácteos ya viven
+   * dentro de «proteicos»— así que todas las del mismo macro miden igual.
+   */
+  const referencia = objetivo.familias[0].familia;
+  return {
+    familia: referencia,
+    bucket: objetivo.bucket,
+    porciones: objetivo.porciones,
+    kcalMaximas: objetivo.kcalMaximas,
+    topeMaximo: limitaLaGrasa(referencia) ? m.grasa : kcalFromMacros(m),
+    porSubgrupo: objetivo.porSubgrupo,
+  };
+}
+
+/** Si una familia pertenece al macro que se está cubriendo. */
+export function mismoMacro(familia: Familia, bucket: MacroBucket): boolean {
+  return Object.values(EXCHANGE_GROUPS).some(
+    (g) => g.familia === familia && g.bucket === bucket,
+  );
+}
+
+/** Gramos del macro de un reparto: es lo que de verdad hay que cubrir. */
+export function gramosDelMacro(bucket: MacroBucket, counts: ExchangeCounts): number {
+  const m = exchangesToMacros(counts);
+  return bucket === 'carbohidrato' ? m.hc : bucket === 'proteina' ? m.proteina : m.grasa;
+}
+
 /** Hidratos que arrastran los lácteos de una selección de proteína. */
 export function hcDeLosLacteos(counts: ExchangeCounts): number {
   let hc = 0;
@@ -205,10 +254,15 @@ function combosDeFamilia(
   objetivo: ObjetivoFamilia,
   despensa: Alimento[],
   { maxAlimentos = 2, tolerancia = TOLERANCIA_KCAL, paso = 1, limite = 6 }: OpcionesCombo,
+  /** Si se pasa, valen los alimentos de cualquiera de esas familias. */
+  familiasOk?: Set<Familia>,
 ): ComboFamilia[] {
-  const disponibles = despensa.filter(
-    (f) => !!f.grupo && EXCHANGE_GROUPS[f.grupo]?.familia === objetivo.familia && !!gramosPorIntercambio(f),
-  );
+  const disponibles = despensa.filter((f) => {
+    if (!f.grupo || !gramosPorIntercambio(f)) return false;
+    const fam = EXCHANGE_GROUPS[f.grupo]?.familia;
+    if (!fam) return false;
+    return familiasOk ? familiasOk.has(fam) : fam === objetivo.familia;
+  });
   if (!disponibles.length || objetivo.porciones <= 0) return [];
 
   const techo = techoDeFamilia(objetivo.familia, objetivo.topeMaximo, tolerancia);
@@ -270,7 +324,15 @@ const aOpcion = (items: ItemOpcion[], bucket: MacroBucket, unificada: boolean): 
   const cubre: ExchangeCounts = {};
   for (const it of items) cubre[it.grupo] = snapHalf((cubre[it.grupo] ?? 0) + it.intercambios);
   return {
-    id: items.map((i) => `${i.foodId}x${i.intercambios}`).join('+'),
+    /*
+     * El id se ordena para que «manzana + arroz» y «arroz + manzana» sean la
+     * misma opción. Sin esto, la misma combinación salía dos veces en la lista
+     * sólo porque los ingredientes venían en otro orden.
+     */
+    id: items
+      .map((i) => `${i.foodId}x${i.intercambios}`)
+      .sort()
+      .join('+'),
     bucket,
     items,
     texto: items
@@ -298,53 +360,95 @@ export function generarCombinaciones(
     combos: combosDeFamilia(f, despensa, opciones),
   }));
 
-  // Si alguna familia se queda sin candidatos, no hay opción válida.
-  if (porFamilia.some((f) => !f.combos.length)) return [];
+  /**
+   * Si a alguna familia no le queda ni un candidato —no hay fruta en la
+   * despensa— antes no salía NINGUNA opción y la comida se quedaba en blanco.
+   * Ahora se pasa directamente a las combinaciones que mezclan familias: el
+   * macro se puede cubrir igual con lo que sí hay.
+   */
+  const todasCubiertas = porFamilia.every((f) => f.combos.length > 0);
 
   const salida: OpcionEscalada[] = [];
   const protagonistas = new Map<string, number>();
   const vistos = new Set<string>();
 
-  /** Empareja el i-ésimo combo de cada familia, rotando para dar variedad. */
-  const maximo = Math.max(...porFamilia.map((f) => f.combos.length));
+  /*
+   * Si el macro tiene más de una familia se guardan un par de huecos para las
+   * combinaciones que las mezclan —dos almidones donde había almidón y fruta—.
+   * Sin reservarlos, las que respetan las familias llenan la lista y las otras
+   * no llegan a verse nunca.
+   */
+  const variasFamilias = objetivo.familias.length > 1;
+  const reserva = variasFamilias ? 2 : 0;
 
-  const anadir = (indices: number[]) => {
-    const items = porFamilia.flatMap((f, k) => f.combos[indices[k] % f.combos.length].items);
-    const unificada =
-      porFamilia.length === 1 &&
-      items.length === 1 &&
-      objetivo.porSubgrupo.length > 1;
+  if (todasCubiertas) {
+    /** Empareja el i-ésimo combo de cada familia, rotando para dar variedad. */
+    const maximo = Math.max(...porFamilia.map((f) => f.combos.length));
 
-    const opcion = aOpcion(items, objetivo.bucket, unificada);
-    if (vistos.has(opcion.id)) return;
+    const anadir = (indices: number[]) => {
+      const items = porFamilia.flatMap((f, k) => f.combos[indices[k] % f.combos.length].items);
+      const unificada =
+        porFamilia.length === 1 &&
+        items.length === 1 &&
+        objetivo.porSubgrupo.length > 1;
 
-    const principal = [...items].sort((a, b) => b.intercambios - a.intercambios)[0];
-    const usos = protagonistas.get(principal.foodId) ?? 0;
-    if (usos >= 2) return;
+      const opcion = aOpcion(items, objetivo.bucket, unificada);
+      if (vistos.has(opcion.id)) return;
 
-    vistos.add(opcion.id);
-    protagonistas.set(principal.foodId, usos + 1);
-    salida.push(opcion);
-  };
+      const principal = [...items].sort((a, b) => b.intercambios - a.intercambios)[0];
+      const usos = protagonistas.get(principal.foodId) ?? 0;
+      if (usos >= 2) return;
 
-  for (let i = 0; i < maximo && salida.length < limite - 1; i++) {
-    anadir(porFamilia.map(() => i));
+      vistos.add(opcion.id);
+      protagonistas.set(principal.foodId, usos + 1);
+      salida.push(opcion);
+    };
+
+    for (let i = 0; i < maximo && salida.length < limite - 1 - reserva; i++) {
+      anadir(porFamilia.map(() => i));
+    }
+
+    /**
+     * La opción más ligera siempre entra: es la que deja más margen calórico
+     * para el resto del día.
+     */
+    const ligeras = porFamilia.map((f) =>
+      f.combos.reduce((mejor, c) => {
+        if (c.kcal < mejor.kcal - 0.01) return c;
+        if (Math.abs(c.kcal - mejor.kcal) < 0.01 && c.variedad < mejor.variedad) return c;
+        return mejor;
+      }, f.combos[0]),
+    );
+    const itemsLigera = ligeras.flatMap((c) => c.items);
+    const opcionLigera = aOpcion(itemsLigera, objetivo.bucket, false);
+    if (!vistos.has(opcionLigera.id)) {
+      vistos.add(opcionLigera.id);
+      salida.push(opcionLigera);
+    }
   }
 
-  /**
-   * La opción más ligera siempre entra: es la que deja más margen calórico
-   * para el resto del día.
+  /*
+   * Y por último las que cubren el macro sin respetar las familias. Van al
+   * final a propósito: lo que se pautó sigue saliendo primero, y esto es la
+   * alternativa. Es el mismo criterio del recomendador, donde una receta con
+   * el subgrupo exacto puntúa por encima de la que lo cubre con otro.
    */
-  const ligeras = porFamilia.map((f) =>
-    f.combos.reduce((mejor, c) => {
-      if (c.kcal < mejor.kcal - 0.01) return c;
-      if (Math.abs(c.kcal - mejor.kcal) < 0.01 && c.variedad < mejor.variedad) return c;
-      return mejor;
-    }, f.combos[0]),
-  );
-  const itemsLigera = ligeras.flatMap((c) => c.items);
-  const opcionLigera = aOpcion(itemsLigera, objetivo.bucket, false);
-  if (!vistos.has(opcionLigera.id)) salida.push(opcionLigera);
+  if (variasFamilias || !todasCubiertas) {
+    const todas = new Set(objetivo.familias.map((f) => f.familia));
+    const mezcladas = combosDeFamilia(
+      objetivoUnificado(objetivo),
+      despensa,
+      opciones,
+      todas,
+    );
+    for (const c of mezcladas) {
+      if (salida.length >= limite) break;
+      const opcion = aOpcion(c.items, objetivo.bucket, false);
+      if (vistos.has(opcion.id)) continue;
+      vistos.add(opcion.id);
+      salida.push(opcion);
+    }
+  }
 
   return salida.slice(0, limite);
 }
@@ -392,24 +496,25 @@ export function validarCombo(
 ): ValidacionCombo {
   const lleva = porcionesPorFamilia(items);
   const avisos: string[] = [];
+  const notas: string[] = [];
 
   const porFamilia = objetivo.familias.map((f) => {
     const n = lleva.get(f.familia) ?? 0;
-    const ok = Math.abs(n - f.porciones) < 0.01;
-    if (!ok) {
-      avisos.push(
-        n < f.porciones
-          ? `Faltan ${(f.porciones - n).toFixed(n % 1 ? 1 : 0)} de ${f.familia}`
-          : `Sobran ${(n - f.porciones).toFixed(n % 1 ? 1 : 0)} de ${f.familia}`,
-      );
-    }
-    return { familia: f.familia, pide: f.porciones, lleva: n, ok };
+    return { familia: f.familia, pide: f.porciones, lleva: n, ok: Math.abs(n - f.porciones) < 0.01 };
   });
 
+  /*
+   * Una familia de OTRO macro sí sigue siendo un error: poner una grasa donde
+   * se pautaba carbohidrato no es cambiar de familia, es cambiar de comida. Y
+   * no cuenta para las porciones, que si no taparía el hueco que deja.
+   */
+  const ajenas: Familia[] = [];
   for (const [familia, n] of lleva) {
-    if (!objetivo.familias.some((f) => f.familia === familia) && n > 0) {
+    if (n <= 0 || objetivo.familias.some((f) => f.familia === familia)) continue;
+    porFamilia.push({ familia, pide: 0, lleva: n, ok: false });
+    if (!mismoMacro(familia, objetivo.bucket)) {
+      ajenas.push(familia);
       avisos.push(`${familia} no entra en esta comida`);
-      porFamilia.push({ familia, pide: 0, lleva: n, ok: false });
     }
   }
 
@@ -418,21 +523,58 @@ export function validarCombo(
 
   const kcal = kcalFromMacros(exchangesToMacros(counts));
 
-  // Cada familia se mide con su propio criterio: grasa en proteicos, kcal en
-  // el resto. Lo pautado es un techo, nunca una obligación de gastarlo.
-  for (const f of objetivo.familias) {
-    const suyos: ExchangeCounts = {};
-    for (const [g, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
-      if (EXCHANGE_GROUPS[g]?.familia === f.familia) suyos[g] = n;
-    }
-    const coste = costeDeFamilia(f.familia, suyos);
-    if (coste > techoDeFamilia(f.familia, f.topeMaximo)) {
-      avisos.push(
-        limitaLaGrasa(f.familia)
-          ? `Se pasa ${(coste - f.topeMaximo).toFixed(1)} g de grasa del máximo (${f.topeMaximo.toFixed(1)} g)`
-          : `Se pasa ${Math.round(coste - f.topeMaximo)} kcal del máximo (${Math.round(f.topeMaximo)})`,
-      );
-    }
+  /*
+   * LO QUE TIENE QUE CUADRAR SON LAS PORCIONES DEL MACRO
+   *
+   * No de qué familia salgan. Antes se exigía familia a familia y eso dejaba
+   * fuera dos almidones donde había un almidón y una fruta: 28 g de hidrato en
+   * vez de 29 y dos calorías de diferencia. La primera regla del método ya
+   * dice lo contrario, y así lo hacen el escalado, la completitud y el
+   * recomendador.
+   */
+  const total = [...lleva.entries()]
+    .filter(([familia]) => !ajenas.includes(familia))
+    .reduce((s, [, n]) => s + n, 0);
+  if (Math.abs(total - objetivo.porciones) >= 0.01) {
+    const dif = Math.abs(total - objetivo.porciones);
+    avisos.push(
+      total < objetivo.porciones
+        ? `Faltan ${dif.toFixed(dif % 1 ? 1 : 0)} porciones de ${objetivo.bucket}`
+        : `Sobran ${dif.toFixed(dif % 1 ? 1 : 0)} porciones de ${objetivo.bucket}`,
+    );
+  }
+
+  /*
+   * El techo sí es del macro entero: se puede cambiar de familia, pero no
+   * inflar la comida. Se mide en grasa donde manda la grasa y en calorías en
+   * el resto.
+   */
+  const unificado = objetivoUnificado(objetivo);
+  const coste = costeDeFamilia(unificado.familia, counts);
+  if (coste > techoDeFamilia(unificado.familia, unificado.topeMaximo)) {
+    avisos.push(
+      limitaLaGrasa(unificado.familia)
+        ? `Se pasa ${(coste - unificado.topeMaximo).toFixed(1)} g de grasa del máximo (${unificado.topeMaximo.toFixed(1)} g)`
+        : `Se pasa ${Math.round(coste - unificado.topeMaximo)} kcal del máximo (${Math.round(unificado.topeMaximo)})`,
+    );
+  }
+
+  /*
+   * Y si una familia pautada se ha cubierto con otra cosa, se dice —con los
+   * gramos del macro— pero no se bloquea. Es información para ella: ese
+   * desayuno se quedó sin fruta, y conviene verlo.
+   */
+  const cambiadas = porFamilia.filter((f) => f.pide > 0 && f.lleva < f.pide - 0.01);
+  if (cambiadas.length) {
+    const pautados = gramosDelMacro(
+      objetivo.bucket,
+      Object.fromEntries(objetivo.porSubgrupo) as ExchangeCounts,
+    );
+    const servidos = gramosDelMacro(objetivo.bucket, counts);
+    notas.push(
+      `Cubre ${cambiadas.map((f) => f.familia).join(' y ')} con otra familia: ` +
+        `${Math.round(servidos)} g de ${objetivo.bucket} en vez de ${Math.round(pautados)}.`,
+    );
   }
 
   // El lácteo trae hidrato: no invalida, pero conviene descontarlo.
@@ -442,10 +584,12 @@ export function validarCombo(
   );
   const hcSinPautar = hcExtra - hcPautado;
 
-  const nota =
-    hcSinPautar > 0.5
-      ? `El lácteo suma ${Math.round(hcSinPautar)} g de hidrato: descuéntalo del carbohidrato de esta comida.`
-      : undefined;
+  if (hcSinPautar > 0.5) {
+    notas.push(
+      `El lácteo suma ${Math.round(hcSinPautar)} g de hidrato: descuéntalo del carbohidrato de esta comida.`,
+    );
+  }
+  const nota = notas.length ? notas.join(' · ') : undefined;
 
   return {
     valida: avisos.length === 0,

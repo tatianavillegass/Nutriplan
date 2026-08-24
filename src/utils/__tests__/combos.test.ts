@@ -164,7 +164,7 @@ describe('Combinaciones con tope calórico', () => {
   });
 });
 
-describe('Las familias no se mezclan', () => {
+describe('El macro manda, no la familia', () => {
   // 1 almidón + 1 fruta: el caso que fallaba
   const reparto = { almidones: 1, fruta: 1 };
   const objetivo = objetivoDeBucket(reparto, 'carbohidrato')!;
@@ -179,27 +179,40 @@ describe('Las familias no se mezclan', () => {
     expect(objetivo.familias.find((f) => f.familia === 'fruta')!.porciones).toBe(1);
   });
 
-  it('toda combinación trae un almidón Y una fruta', () => {
+  /**
+   * Lo pautado sale primero: es lo que ella decidió y lo que quiere ver
+   * arriba. Es el mismo criterio del recomendador, donde la receta con el
+   * subgrupo exacto puntúa por encima de la que lo cubre con otro.
+   */
+  it('lo pautado sale primero: almidón y fruta', () => {
     const combos = generarCombinaciones(objetivo, despensa, { limite: 6 });
     expect(combos.length).toBeGreaterThan(0);
-    for (const c of combos) {
-      const grupos = c.items.map((i) => i.grupo);
-      expect(grupos, c.texto).toContain('almidones');
-      expect(grupos, c.texto).toContain('fruta');
-    }
+    const grupos = combos[0].items.map((i) => i.grupo);
+    expect(grupos, combos[0].texto).toContain('almidones');
+    expect(grupos, combos[0].texto).toContain('fruta');
   });
 
-  it('ya no propone avena + cereales, que eran dos almidones', () => {
+  /**
+   * Pero dos almidones donde había un almidón y una fruta son 28 g de hidrato
+   * en vez de 29 y dos calorías de diferencia. Bloquearlo era inventarse una
+   * regla que el resto de la app no aplica.
+   */
+  it('y también se ofrece cubrirlo todo con almidón', () => {
     const combos = generarCombinaciones(objetivo, despensa, { limite: 6 });
     const dosAlmidones = combos.find(
-      (c) => c.items.filter((i) => i.grupo === 'almidones').length === 2,
+      (c) => c.items.every((i) => i.grupo === 'almidones'),
     );
-    expect(dosAlmidones).toBeUndefined();
+    expect(dosAlmidones, combos.map((c) => c.texto).join(' | ')).toBeDefined();
   });
 
-  it('sin fruta en la despensa no hay ninguna combinación posible', () => {
+  /** Sin fruta en la despensa, la comida ya no se queda en blanco. */
+  it('sin fruta en la despensa se cubre con lo que hay', () => {
     const soloAlmidones = despensa.filter((f) => f.grupo === 'almidones');
-    expect(generarCombinaciones(objetivo, soloAlmidones)).toHaveLength(0);
+    const combos = generarCombinaciones(objetivo, soloAlmidones);
+    expect(combos.length).toBeGreaterThan(0);
+    for (const c of combos) {
+      expect(c.items.every((i) => i.grupo === 'almidones'), c.texto).toBe(true);
+    }
   });
 
   it('los lácteos son proteína: una sola familia', () => {
@@ -277,21 +290,38 @@ describe('Validación de combinaciones hechas a mano', () => {
     expect(v.avisos).toHaveLength(0);
   });
 
-  it('rechaza dos almidones y lo explica', () => {
+  /**
+   * Dos almidones donde había un almidón y una fruta: cuadra de macro, así que
+   * vale. Pero se dice, con los gramos, para que no se le pase que ese
+   * desayuno se quedó sin fruta.
+   */
+  it('acepta dos almidones, y avisa de que ahí no hay fruta', () => {
     const v = validarCombo(objetivo, [{ grupo: 'almidones', intercambios: 2 }]);
-    expect(v.valida).toBe(false);
-    expect(v.avisos.join(' ')).toMatch(/Sobran 1 de almidones/);
-    expect(v.avisos.join(' ')).toMatch(/Faltan 1 de fruta/);
+    expect(v.valida).toBe(true);
+    expect(v.avisos).toHaveLength(0);
+    expect(v.nota).toMatch(/fruta/);
+    expect(v.nota).toMatch(/28 g de carbohidrato en vez de 29/);
   });
 
-  it('avisa de una familia que no pinta nada en esa comida', () => {
+  it('pero no acepta que sobren porciones del macro', () => {
     const v = validarCombo(objetivo, [
       { grupo: 'almidones', intercambios: 1 },
       { grupo: 'fruta', intercambios: 1 },
       { grupo: 'azucares', intercambios: 1 },
     ]);
     expect(v.valida).toBe(false);
-    expect(v.avisos.join(' ')).toMatch(/azucares no entra/);
+    expect(v.avisos.join(' ')).toMatch(/Sobran 1 porciones de carbohidrato/);
+  });
+
+  /** Cambiar de familia es una cosa; cambiar de macro es otra comida. */
+  it('y una grasa donde se pautaba carbohidrato sigue sin entrar', () => {
+    const v = validarCombo(objetivo, [
+      { grupo: 'almidones', intercambios: 1 },
+      { grupo: 'fruta', intercambios: 1 },
+      { grupo: 'grasas', intercambios: 1 },
+    ]);
+    expect(v.valida).toBe(false);
+    expect(v.avisos.join(' ')).toMatch(/grasas no entra/);
   });
 
   it('en proteicos el aviso es de grasa, que es lo que limita', () => {
