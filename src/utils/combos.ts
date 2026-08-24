@@ -138,6 +138,46 @@ export function costeDeFamilia(familia: Familia, counts: ExchangeCounts): number
   return limitaLaGrasa(familia) ? m.grasa : kcalFromMacros(m);
 }
 
+/**
+ * MEDIO GRAMO DE GRASA NO ES PASARSE
+ *
+ * En proteicos y en grasas el techo se mide en gramos de grasa, y ahí un
+ * margen del 2 % no significa nada. Si se pauta un lácteo proteico (0 g de
+ * grasa) y dos magros (0,5 g cada uno), el techo es 1 g y el 2 % son dos
+ * centésimas: cambiar el lácteo por otro magro —que la app ya da por
+ * intercambiables, son los mismos 7 g de proteína— sumaba medio gramo y
+ * bloqueaba la combinación entera.
+ *
+ * Por eso, donde manda la grasa, hay además un margen fijo de UN gramo.
+ *
+ * El número no es redondo por casualidad: **tiene que quedarse por debajo de
+ * 1,5 g**, que es lo que cuesta subir una porción de magro a semigraso. Un
+ * gramo deja pasar dos cambios de lácteo proteico por magro —nueve calorías—
+ * y sigue dejando fuera el salto de nivel de verdad, que es lo único que este
+ * tope existe para vigilar. Con gramo y medio se colaba, y con él las
+ * calorías de la comida entera.
+ */
+export const MARGEN_GRASA_G = 1;
+
+/** Margen sobre el techo calórico, en tanto por uno. */
+export const TOLERANCIA_KCAL = 0.02;
+
+/**
+ * El techo real de una familia: lo pautado, su margen relativo y —donde manda
+ * la grasa— el margen fijo en gramos.
+ */
+export function techoDeFamilia(
+  familia: Familia,
+  topeMaximo: number,
+  tolerancia = TOLERANCIA_KCAL,
+): number {
+  return (
+    topeMaximo * (1 + tolerancia) +
+    (limitaLaGrasa(familia) ? MARGEN_GRASA_G : 0) +
+    1e-6
+  );
+}
+
 /** Hidratos que arrastran los lácteos de una selección de proteína. */
 export function hcDeLosLacteos(counts: ExchangeCounts): number {
   let hc = 0;
@@ -164,14 +204,14 @@ interface ComboFamilia {
 function combosDeFamilia(
   objetivo: ObjetivoFamilia,
   despensa: Alimento[],
-  { maxAlimentos = 2, tolerancia = 0.02, paso = 1, limite = 6 }: OpcionesCombo,
+  { maxAlimentos = 2, tolerancia = TOLERANCIA_KCAL, paso = 1, limite = 6 }: OpcionesCombo,
 ): ComboFamilia[] {
   const disponibles = despensa.filter(
     (f) => !!f.grupo && EXCHANGE_GROUPS[f.grupo]?.familia === objetivo.familia && !!gramosPorIntercambio(f),
   );
   if (!disponibles.length || objetivo.porciones <= 0) return [];
 
-  const techo = objetivo.topeMaximo * (1 + tolerancia) + 1e-6;
+  const techo = techoDeFamilia(objetivo.familia, objetivo.topeMaximo, tolerancia);
   const pasos = Math.round(objetivo.porciones / paso);
   const salida: ComboFamilia[] = [];
   const vistos = new Set<string>();
@@ -386,7 +426,7 @@ export function validarCombo(
       if (EXCHANGE_GROUPS[g]?.familia === f.familia) suyos[g] = n;
     }
     const coste = costeDeFamilia(f.familia, suyos);
-    if (coste > f.topeMaximo * 1.02 + 0.01) {
+    if (coste > techoDeFamilia(f.familia, f.topeMaximo)) {
       avisos.push(
         limitaLaGrasa(f.familia)
           ? `Se pasa ${(coste - f.topeMaximo).toFixed(1)} g de grasa del máximo (${f.topeMaximo.toFixed(1)} g)`

@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { generarCombinaciones, kcalDeOpcion, objetivoDeBucket, validarCombo } from '../combos';
+import {
+  costeDeFamilia,
+  generarCombinaciones,
+  kcalDeOpcion,
+  objetivoDeBucket,
+  techoDeFamilia,
+  validarCombo,
+} from '../combos';
+import type { ExchangeCounts } from '../exchanges';
 import {
   alimentosDeComida,
   alternarExclusion,
@@ -634,5 +642,62 @@ describe('Un alimento repetido se suma en vez de duplicarse', () => {
       { foodId: 'a', porciones: 1 },
     ]);
     expect(out).toEqual([{ foodId: 'a', porciones: 1.5 }]);
+  });
+});
+
+/**
+ * MEDIO GRAMO DE GRASA NO ES PASARSE
+ *
+ * El techo de los proteicos se mide en gramos de grasa, y ahí un margen del
+ * 2 % no significa nada: con un lácteo proteico (0 g) y dos magros (0,5 g cada
+ * uno) el techo es 1 g y el 2 % son dos centésimas. Cambiar el lácteo por otro
+ * magro —los mismos 7 g de proteína, y la app ya los da por intercambiables—
+ * sumaba medio gramo y bloqueaba la combinación entera.
+ */
+describe('El margen de grasa', () => {
+  const objetivo = (counts: ExchangeCounts) => objetivoDeBucket(counts, 'proteina')!;
+
+  it('deja pasar el medio gramo de cambiar un lácteo por un magro', () => {
+    // Pautado: 1 lácteo proteico (0 g) + 2 magros (1 g) → techo 1 g.
+    const o = objetivo({ lacteos_proteicos: 1, proteicos_magros: 2 });
+    const f = o.familias[0];
+    expect(f.topeMaximo).toBeCloseTo(1, 4);
+
+    // Servido: 3 magros → 1,5 g. Medio gramo de más, y entra.
+    expect(costeDeFamilia('proteicos', { proteicos_magros: 3 })).toBeCloseTo(1.5, 4);
+    expect(techoDeFamilia('proteicos', f.topeMaximo)).toBeGreaterThanOrEqual(1.5);
+  });
+
+  /**
+   * El margen tiene que quedarse por debajo de 1,5 g, que es lo que cuesta
+   * subir una porción de magro a semigraso. Si lo pasara, se colaría un salto
+   * de nivel entero y con él las calorías de la comida.
+   */
+  it('pero no llega a permitir subir una porción de nivel', () => {
+    const o = objetivo({ proteicos_magros: 4 }); // techo 2 g
+    const techo = techoDeFamilia('proteicos', o.familias[0].topeMaximo);
+    // 3 magros + 1 semigraso son 3,5 g: un salto de nivel, y se queda fuera.
+    expect(costeDeFamilia('proteicos', { proteicos_magros: 3, proteicos_semigrasos: 1 }))
+      .toBeCloseTo(3.5, 4);
+    expect(techo).toBeLessThan(3.5);
+  });
+
+  /**
+   * Lo que de verdad importa sigue fuera: un huevo entero donde había claras
+   * son 4,5 g de grasa por porción, y eso no puede colarse en silencio.
+   */
+  it('pero no deja colar un salto de nivel de verdad', () => {
+    const o = objetivo({ proteicos_magros: 3 }); // techo 1,5 g
+    const techo = techoDeFamilia('proteicos', o.familias[0].topeMaximo);
+    // Tres grasos son 15 g: ni de lejos.
+    expect(costeDeFamilia('proteicos', { proteicos_grasos: 3 })).toBeCloseTo(15, 4);
+    expect(techo).toBeLessThan(15);
+  });
+
+  it('y en las familias que van por calorías no cambia nada', () => {
+    // 2 almidones son 140 kcal; el margen sigue siendo sólo el 2 %.
+    const o = objetivoDeBucket({ almidones: 2 }, 'carbohidrato')!;
+    const techo = techoDeFamilia('almidones', o.familias[0].topeMaximo);
+    expect(techo).toBeCloseTo(o.familias[0].topeMaximo * 1.02, 2);
   });
 });
