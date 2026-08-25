@@ -37,6 +37,10 @@ export function descuentoDelBono(bono: Bono): number {
 export interface SesionContada {
   client: Client;
   sesion: Sesion;
+  /** De qué era: «Consulta», «Llamada»… Sale de la línea del bono. */
+  concepto?: string;
+  /** El bono del que cuelga, para poder enseñar de dónde sale el valor. */
+  bono?: Bono;
   /** La de la sesión si la tiene; si no, la de la ficha. */
   modalidad?: Modalidad;
   /** Lo que devenga. Cero si no cuelga de ningún bono. */
@@ -55,6 +59,8 @@ export function sesionesDelMes(clientes: Client[], mes: string): SesionContada[]
       out.push({
         client: c,
         sesion: s,
+        concepto: bono?.incluye.find((l) => l.id === s.lineaId)?.concepto,
+        bono,
         modalidad: s.modalidad ?? c.modalidad,
         valor: bono ? valorDeSesion(bono) : 0,
         programa: !!c.programa,

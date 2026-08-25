@@ -78,3 +78,24 @@ describe('Con bono', () => {
     expect(onChange.mock.calls[0][0].sesiones).toHaveLength(0);
   });
 });
+
+/**
+ * DE DÓNDE SALE EL «TRABAJO HECHO»
+ *
+ * En el resumen del mes aparecía una cifra en euros que no salía de ningún
+ * sitio visible. Un número que no se puede comprobar no se puede creer.
+ */
+describe('El valor de una sesión', () => {
+  it('se enseña en la tarjeta del bono', () => {
+    render(<BonosPanel client={clienta({ bonos: [BONO] })} onChange={vi.fn()} />);
+    // 270 € entre 3 consultas = 90 € por sesión.
+    expect(document.body.textContent).toContain('90 € por sesión');
+  });
+
+  it('y no se enseña si el bono no incluye nada que repartir', () => {
+    render(
+      <BonosPanel client={clienta({ bonos: [{ ...BONO, incluye: [] }] })} onChange={vi.fn()} />,
+    );
+    expect(document.body.textContent).not.toContain('por sesión');
+  });
+});

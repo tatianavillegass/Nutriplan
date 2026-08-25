@@ -7,7 +7,7 @@ import {
   type ComoVaElBono,
   type Estado,
 } from "../../utils/bonos";
-import { descuentoDelBono } from "../../utils/consulta";
+import { descuentoDelBono, valorDeSesion } from "../../utils/consulta";
 import { Badge, Button, Card, Field, Input, fmt } from "../common/ui";
 
 /**
@@ -246,6 +246,17 @@ function UnBono({
       <p className="mt-1.5 text-sm text-slate-700">
         <span className="tnum font-medium">{dinero(pagado)}</span>
         <span className="text-slate-400"> de {dinero(bono.importe)}</span>
+        {/*
+          De aquí sale el «trabajo hecho» del resumen del mes: el precio del
+          bono repartido entre las sesiones que incluye. Sin enseñarlo, en el
+          resumen aparecía una cifra en euros que no se podía rastrear.
+        */}
+        {valorDeSesion(bono) > 0 && (
+          <span className="text-slate-400">
+            {" "}
+            · {dinero(valorDeSesion(bono))} por sesión
+          </span>
+        )}
         {pendiente > 0 ? (
           /*
            * Aquí sí se dice lo que falta. En los pagos sueltos sería inventar

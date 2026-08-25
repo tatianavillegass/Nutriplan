@@ -4,6 +4,7 @@ import type { Gasto } from "../../types/finanzas";
 import {
   añoDeConsulta,
   descuentos,
+  sesionesDelMes,
   sumarMeses,
   type MesDeConsulta,
 } from "../../utils/consulta";
@@ -45,6 +46,16 @@ export function ResumenConsulta({
   const conDescuento = useMemo(() => descuentos(clients), [clients]);
 
   const hayAlgo = meses.some((m) => m.consultas || m.cobrado || m.gastos);
+
+  /**
+   * QUE SE PUEDA RASTREAR
+   *
+   * En el resumen aparecía un «trabajo hecho» en euros que no salía de ningún
+   * sitio visible. Un número que no se puede comprobar no se puede creer, así
+   * que cada mes se abre y enseña sus consultas una a una, con lo que devenga
+   * cada una y de qué bono sale.
+   */
+  const [abierto, setAbierto] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -107,7 +118,14 @@ export function ResumenConsulta({
                 </thead>
                 <tbody>
                   {meses.map((m) => (
-                    <Fila key={m.mes} m={m} moneda={moneda} />
+                    <Fila
+                      key={m.mes}
+                      m={m}
+                      moneda={moneda}
+                      abierta={abierto === m.mes}
+                      onAbrir={() => setAbierto(abierto === m.mes ? null : m.mes)}
+                      sesiones={abierto === m.mes ? sesionesDelMes(clients, m.mes) : []}
+                    />
                   ))}
                 </tbody>
                 <tfoot>
@@ -185,11 +203,32 @@ export function ResumenConsulta({
   );
 }
 
-function Fila({ m, moneda }: { m: MesDeConsulta; moneda: string }) {
+function Fila({
+  m,
+  moneda,
+  abierta,
+  onAbrir,
+  sesiones,
+}: {
+  m: MesDeConsulta;
+  moneda: string;
+  abierta: boolean;
+  onAbrir: () => void;
+  sesiones: ReturnType<typeof sesionesDelMes>;
+}) {
   const vacio = !m.consultas && !m.cobrado && !m.gastos;
   return (
-    <tr className={`border-t border-slate-100 ${vacio ? "text-slate-300" : ""}`}>
+    <>
+    <tr
+      onClick={m.consultas ? onAbrir : undefined}
+      className={`border-t border-slate-100 ${vacio ? "text-slate-300" : ""} ${
+        m.consultas ? "cursor-pointer hover:bg-brand-50/50" : ""
+      }`}
+    >
       <td className="py-1.5 pr-3 text-left capitalize">
+        {m.consultas > 0 && (
+          <span className="mr-1 text-slate-300">{abierta ? "▾" : "▸"}</span>
+        )}
         {nombreDelMes(m.mes).replace(` de ${m.mes.slice(0, 4)}`, "")}
       </td>
       <td className="tnum px-2 py-1.5 text-right">{m.consultas || "—"}</td>
@@ -228,6 +267,42 @@ function Fila({ m, moneda }: { m: MesDeConsulta; moneda: string }) {
         {m.ticket ? dinero(m.ticket, moneda) : "—"}
       </td>
     </tr>
+
+    {abierta && (
+      <tr className="bg-brand-50/30">
+        <td colSpan={11} className="px-3 py-2">
+          <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+            Las {sesiones.length} consultas de este mes
+          </p>
+          <ul className="space-y-0.5">
+            {sesiones.map((s) => (
+              <li key={s.sesion.id} className="flex flex-wrap items-baseline gap-2 text-xs">
+                <span className="w-20 shrink-0 text-slate-400">{s.sesion.fecha}</span>
+                <span className="font-medium text-slate-800">{s.client.nombre}</span>
+                <span className="text-slate-500">
+                  {s.concepto ?? "Consulta"}
+                  {s.modalidad ? ` · ${s.modalidad}` : ""}
+                </span>
+                <span className="flex-1" />
+                {s.valor > 0 ? (
+                  <span className="tnum text-slate-700">
+                    {dinero(s.valor, moneda)}
+                    <span className="text-slate-400">
+                      {" "}
+                      ({s.bono?.nombre}: {dinero(s.bono?.importe ?? 0, moneda)} ÷{" "}
+                      {s.bono?.incluye.reduce((a, l) => a + l.cuantas, 0)} sesiones)
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-amber-700">sin bono: no devenga</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
 
