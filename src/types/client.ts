@@ -100,6 +100,11 @@ export interface Client {
   tarifa?: Tarifa;
   /** Lo que ha ido pagando. Sólo lo ve la nutricionista. */
   pagos?: Pago[];
+  /**
+   * Si la ves online o en el consultorio. Vale para todas sus consultas salvo
+   * que en una se diga otra cosa.
+   */
+  modalidad?: Modalidad;
   /** Los bonos que ha contratado, del más viejo al más nuevo. */
   bonos?: Bono[];
   /** Las consultas y llamadas ya hechas. Se marcan a mano. */
@@ -202,8 +207,22 @@ export interface Bono {
   id: string;
   /** Como se lo vende: «Online trimestral». */
   nombre: string;
-  /** Lo que cuesta entero. Lo pagado sale de los pagos con este `bonoId`. */
+  /**
+   * Lo que le cobra de verdad. Lo pagado sale de los pagos con este `bonoId`.
+   */
   importe: number;
+  /**
+   * EL DESCUENTO VIVE EN EL BONO, NO EN LA CLIENTA
+   *
+   * Su tarifa normal, cuando este bono va rebajado. La misma persona puede
+   * entrar con descuento por una derivación y renovar al precio de siempre, así
+   * que marcar la ficha entera se quedaría corto y además mentiría al año
+   * siguiente. Con el precio de lista aquí se sabe cuántos bonos llevan
+   * descuento y **cuánto has dejado de cobrar**, que es el dato que falta.
+   */
+  precioBase?: number;
+  /** Por qué se le hizo: «derivación de Marta». */
+  motivoDescuento?: string;
   moneda?: string;
   /** Cuándo lo contrató. */
   inicio: string; // YYYY-MM-DD
@@ -238,10 +257,23 @@ export interface LineaDeBono {
  * el «2 de 3» mentiría — que es justo lo único que este contador no se puede
  * permitir.
  */
+export type Modalidad = 'online' | 'presencial';
+
+export const LABEL_MODALIDAD: Record<Modalidad, string> = {
+  online: 'Online',
+  presencial: 'Presencial',
+};
+
 export interface Sesion {
   id: string;
   /** YYYY-MM-DD */
   fecha: string;
+  /**
+   * Sólo cuando esa consulta fue distinta de lo habitual de la clienta. Casi
+   * nadie alterna, así que preguntarlo en cada sesión era un clic de más que
+   * se acaba dejando sin pulsar; lo normal se hereda de su ficha.
+   */
+  modalidad?: Modalidad;
   /** De qué bono se descuenta. Sin bono, es una sesión suelta. */
   bonoId?: string;
   /** Cuál de las líneas del bono consume. */

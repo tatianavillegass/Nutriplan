@@ -54,14 +54,26 @@ const poner = (clients: Client[], gastos: Gasto[]) => {
 
 beforeEach(() => poner([], []));
 
+/**
+ * Ahora hay tres pestañas: lo que se mira y lo que se teclea, separados.
+ * Se busca el botón de la barra, que «Gastos» también es el título de una
+ * tarjeta de dentro.
+ */
+const abrir = (pestana: string) =>
+  fireEvent.click(
+    screen.getAllByText(pestana).find((e) => e.tagName === 'BUTTON')!,
+  );
+
 describe('Los datos de acceso', () => {
   it('enseñan con qué correo entras', () => {
     render(<PerfilPage />);
+    abrir('Acceso');
     expect(screen.getByText('tats@ejemplo.com')).toBeTruthy();
   });
 
   it('y dejan cambiar la contraseña sin fingir que se te ha olvidado', () => {
     render(<PerfilPage />);
+    abrir('Acceso');
     expect(screen.getByText('Cambiar contraseña')).toBeTruthy();
   });
 
@@ -69,6 +81,7 @@ describe('Los datos de acceso', () => {
     const cambiar = vi.fn();
     useAuthStore.setState({ cambiarContrasena: cambiar } as never);
     const { container } = render(<PerfilPage />);
+    abrir('Acceso');
 
     // Las dos últimas casillas de contraseña son «la nueva» y «repítela».
     const claves = Array.from(
@@ -84,10 +97,10 @@ describe('Los datos de acceso', () => {
 });
 
 describe('Cómo va la consulta', () => {
-  it('sin nada apuntado, dice de dónde salen los ingresos', () => {
+  it('sin nada apuntado, dice de dónde salen los números', () => {
     render(<PerfilPage />);
-    expect(screen.getByText(/Sin ingresos ni gastos todavía/i)).toBeTruthy();
-    expect(document.body.textContent).toContain('Citas y pagos');
+    expect(screen.getByText(/Sin movimiento en/i)).toBeTruthy();
+    expect(document.body.textContent).toContain('marcas como hechas');
   });
 
   it('suma lo cobrado de todas las fichas', () => {
@@ -122,6 +135,7 @@ describe('Los gastos fijos', () => {
       ],
     );
     render(<PerfilPage />);
+    abrir('Gastos');
     // 25 al mes + 12/12 = 26 al mes.
     expect(document.body.textContent).toContain('26');
   });
@@ -133,12 +147,14 @@ describe('Los gastos fijos', () => {
   it('se dan de baja en vez de borrarse', () => {
     poner([], [gasto('Supabase', 25, { cada: 'mes' })]);
     render(<PerfilPage />);
+    abrir('Gastos');
     expect(screen.getByText('Dar de baja')).toBeTruthy();
   });
 
   it('y uno dado de baja deja de salir entre los vigentes', () => {
     poner([], [gasto('Viejo', 25, { cada: 'mes', hasta: '2026-01-01' })]);
     render(<PerfilPage />);
+    abrir('Gastos');
     expect(screen.queryByText('Dar de baja')).toBeNull();
   });
 });

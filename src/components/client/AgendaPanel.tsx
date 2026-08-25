@@ -7,6 +7,7 @@ import type {
   Periodicidad,
 } from "../../types/client";
 import {
+  LABEL_MODALIDAD,
   LABEL_MODO_CITA,
   LABEL_PERIODICIDAD,
   MODOS_CITA,
@@ -250,6 +251,31 @@ export function PagosPanel({ client, onChange }: Props) {
         subtitle="Sólo lo ves tú: no aparece en su pantalla"
       >
         <div className="grid gap-3 sm:grid-cols-2">
+          {/*
+            Cómo la ves habitualmente. Va aquí y no en cada consulta porque casi
+            nadie alterna: preguntarlo cada vez era un clic que se acaba dejando
+            sin pulsar, y entonces el resumen del mes no cuadra. La excepción se
+            marca en la propia sesión.
+          */}
+          <Field label="Cómo la ves" className="sm:col-span-2">
+            <Select
+              value={client.modalidad ?? ""}
+              onChange={(e) =>
+                onChange({
+                  modalidad: (e.target.value || undefined) as Client["modalidad"],
+                })
+              }
+            >
+              <option value="">Sin decir</option>
+              {(Object.keys(LABEL_MODALIDAD) as (keyof typeof LABEL_MODALIDAD)[]).map(
+                (m) => (
+                  <option key={m} value={m}>
+                    {LABEL_MODALIDAD[m]}
+                  </option>
+                ),
+              )}
+            </Select>
+          </Field>
           <Field label="Qué tiene contratado" className="sm:col-span-2">
             <Input
               value={tarifa?.nombre ?? ""}

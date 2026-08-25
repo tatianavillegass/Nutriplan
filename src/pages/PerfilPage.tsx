@@ -12,15 +12,14 @@ import {
   type Gasto,
 } from "../types/finanzas";
 import {
-  delAño,
-  flujoDeCaja,
   hayVariasMonedas,
   monedaDeLaConsulta,
   nombreDelMes,
   porMes,
-  sumar,
 } from "../utils/finanzas";
-import { Button, Card, EmptyState, Field, Input, Select } from "../components/common/ui";
+import { Button, Card, Field, Input, Select } from "../components/common/ui";
+import { ResumenConsulta } from "../components/perfil/ResumenConsulta";
+import { gastosPorCategoria } from "../utils/consulta";
 
 /**
  * MI CUENTA
@@ -54,184 +53,192 @@ export function PerfilPage() {
   const moneda = monedaDeLaConsulta(clients);
   const variasMonedas = hayVariasMonedas(clients);
 
-  const meses = useMemo(() => flujoDeCaja(clients, gastos), [clients, gastos]);
-  const esteAño = new Date().getFullYear();
-  const delAñoEnCurso = useMemo(() => delAño(meses, esteAño), [meses, esteAño]);
-  const totalAño = sumar(delAñoEnCurso);
-  const mesActual = meses[0];
-
   const fijos = gastos.filter((g) => g.cada && !g.hasta);
   const alMes = fijos.reduce((s, g) => s + porMes(g.importe, g.cada), 0);
+
+  /**
+   * TRES PESTAÑAS
+   *
+   * La mirada global y el detalle no se miran a la vez ni con la misma cabeza:
+   * el resumen es para saber cómo va el año, y los gastos para teclear. Todo
+   * junto en una sola página era una pantalla que había que recorrer entera
+   * para llegar a lo de abajo.
+   */
+  const [tab, setTab] = useState<"resumen" | "gastos" | "acceso">("resumen");
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-brand-900">Mi cuenta</h1>
         <p className="mt-0.5 text-sm text-slate-500">
-          Tus datos de acceso y cómo va la consulta.
+          Cómo va la consulta y tus datos de acceso.
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Acceso" subtitle="Con lo que entras en la app">
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
-              <dt className="text-slate-500">Correo</dt>
-              <dd className="font-medium text-slate-900">{cuenta?.email ?? "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
-              <dt className="text-slate-500">Nombre</dt>
-              <dd className="font-medium text-slate-900">{cuenta?.nombre ?? "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Tus datos</dt>
-              <dd className="font-medium text-slate-900">
-                {hayNube ? "En el servidor" : "Sólo en este navegador"}
-              </dd>
-            </div>
-          </dl>
-          {!hayNube && (
-            <p className="mt-3 text-xs leading-snug text-amber-700">
-              Sin servidor, todo vive en este navegador: si lo borras o cambias de
-              ordenador, no está en ningún otro sitio.
+      <nav className="flex gap-1 border-b border-brand-100">
+        {(
+          [
+            ["resumen", "Resumen"],
+            ["gastos", "Gastos"],
+            ["acceso", "Acceso"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${
+              tab === id
+                ? "border-brand-700 font-medium text-brand-900"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "resumen" && (
+        <>
+          <ResumenConsulta clients={clients} gastos={gastos} moneda={moneda} />
+          {variasMonedas && (
+            <p className="text-xs leading-snug text-amber-700">
+              Tienes tarifas en más de una moneda. Las cifras están sumadas en{" "}
+              {moneda}, así que no cuadran con lo que cobras de verdad.
             </p>
           )}
-        </Card>
+        </>
+      )}
 
-        <CambiarClave onCambiar={cambiarContrasena} />
-      </div>
+      {tab === "gastos" && (
+        <>
+          <DesgloseDeGastos gastos={gastos} moneda={moneda} />
+          <GastosFijos
+            gastos={fijos}
+            alMes={alMes}
+            moneda={moneda}
+            onGuardar={upsertGasto}
+            onBorrar={borrarGasto}
+          />
+          <GastosSueltos
+            gastos={gastos}
+            moneda={moneda}
+            onGuardar={upsertGasto}
+            onBorrar={borrarGasto}
+          />
+        </>
+      )}
 
-      {/* ── Cómo va la consulta ─────────────────────────────────── */}
-
-      <Card
-        title="Cómo va la consulta"
-        subtitle={
-          mesActual
-            ? `${nombreDelMes(mesActual.mes)} y lo que llevas de ${esteAño}`
-            : "Todavía no hay ningún movimiento"
-        }
-      >
-        {!meses.length ? (
-          <EmptyState title="Sin ingresos ni gastos todavía">
-            Los ingresos salen de los pagos que apuntas en la ficha de cada clienta,
-            en «Citas y pagos». Los gastos se apuntan aquí abajo.
-          </EmptyState>
-        ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Cifra
-                titulo={`Facturado en ${esteAño}`}
-                valor={dinero(totalAño.ingresos, moneda)}
-                tono="bien"
-              />
-              <Cifra
-                titulo={`Gastos en ${esteAño}`}
-                valor={dinero(totalAño.gastos, moneda)}
-                tono="neutro"
-              />
-              <Cifra
-                titulo="Queda"
-                valor={dinero(totalAño.saldo, moneda)}
-                tono={totalAño.saldo < 0 ? "mal" : "bien"}
-              />
-            </div>
-
-            {variasMonedas && (
+      {tab === "acceso" && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title="Acceso" subtitle="Con lo que entras en la app">
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
+                <dt className="text-slate-500">Correo</dt>
+                <dd className="font-medium text-slate-900">{cuenta?.email ?? "—"}</dd>
+              </div>
+              <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
+                <dt className="text-slate-500">Nombre</dt>
+                <dd className="font-medium text-slate-900">{cuenta?.nombre ?? "—"}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Tus datos</dt>
+                <dd className="font-medium text-slate-900">
+                  {hayNube ? "En el servidor" : "Sólo en este navegador"}
+                </dd>
+              </div>
+            </dl>
+            {!hayNube && (
               <p className="mt-3 text-xs leading-snug text-amber-700">
-                Tienes tarifas en más de una moneda. Estas cifras están sumadas en{" "}
-                {moneda}, así que no cuadran con lo que cobras de verdad. Si te hace
-                falta separarlas, dímelo.
+                Sin servidor, todo vive en este navegador: si lo borras o cambias
+                de ordenador, no está en ningún otro sitio.
               </p>
             )}
+          </Card>
 
-            <table className="mt-4 w-full text-sm">
-              <thead>
-                <tr className="text-[11px] tracking-wide text-slate-400 uppercase">
-                  <th className="py-2 text-left font-medium">Mes</th>
-                  <th className="py-2 text-right font-medium">Entró</th>
-                  <th className="py-2 text-right font-medium">Salió</th>
-                  <th className="py-2 text-right font-medium">Quedó</th>
-                </tr>
-              </thead>
-              <tbody>
-                {meses.map((m) => (
-                  <tr key={m.mes} className="border-t border-slate-100">
-                    <td className="py-1.5 text-slate-700 capitalize">
-                      {nombreDelMes(m.mes)}
-                    </td>
-                    <td className="tnum py-1.5 text-right text-slate-700">
-                      {m.ingresos ? dinero(m.ingresos, moneda) : "—"}
-                    </td>
-                    <td className="tnum py-1.5 text-right text-slate-700">
-                      {m.gastos ? dinero(m.gastos, moneda) : "—"}
-                    </td>
-                    {/*
-                      Un mes en negativo se pinta en rojo y no se esconde: que un
-                      mes salga a deber es información, y es justo la que hace
-                      falta ver a tiempo.
-                    */}
-                    <td
-                      className={`tnum py-1.5 text-right font-medium ${
-                        m.saldo < 0 ? "text-rose-700" : "text-slate-900"
-                      }`}
-                    >
-                      {dinero(m.saldo, moneda)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <p className="mt-3 text-xs leading-snug text-slate-400">
-              La tabla llega hasta este mes y no se mete en el futuro: los gastos
-              fijos se saben, pero los ingresos de dentro de dos meses no, y un mes
-              con todos los gastos y ningún ingreso sería un agujero inventado.
-            </p>
-          </>
-        )}
-      </Card>
-
-      <GastosFijos
-        gastos={fijos}
-        alMes={alMes}
-        moneda={moneda}
-        onGuardar={upsertGasto}
-        onBorrar={borrarGasto}
-      />
-
-      <GastosSueltos
-        gastos={gastos}
-        moneda={moneda}
-        onGuardar={upsertGasto}
-        onBorrar={borrarGasto}
-      />
+          <CambiarClave onCambiar={cambiarContrasena} />
+        </div>
+      )}
     </div>
   );
 }
 
-function Cifra({
-  titulo,
-  valor,
-  tono,
-}: {
-  titulo: string;
-  valor: string;
-  tono: "bien" | "mal" | "neutro";
-}) {
-  const color = {
-    bien: "text-brand-900",
-    mal: "text-rose-700",
-    neutro: "text-slate-700",
-  }[tono];
+/**
+ * LOS GASTOS, MES A MES Y POR CATEGORÍA
+ *
+ * Un total no dice nada. Lo que hace falta ver es que el consultorio sube
+ * cuando subes de clientas, y eso sólo se nota comparando el mismo concepto de
+ * un mes al siguiente.
+ */
+function DesgloseDeGastos({ gastos, moneda }: { gastos: Gasto[]; moneda: string }) {
+  const hoy = new Date();
+  /** Los últimos seis meses: un año entero no cabe a lo ancho y no se lee. */
+  const meses = useMemo(() => {
+    const out: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    return out;
+  }, [hoy.getFullYear(), hoy.getMonth()]);
+
+  const filas = useMemo(() => gastosPorCategoria(gastos, meses), [gastos, meses]);
+  if (!filas.length) return null;
+
+  const totalPorMes = meses.map((_, i) =>
+    filas.reduce((s, f) => s + f.porMes[i], 0),
+  );
+
   return (
-    <div className="rounded-xl border border-brand-100 bg-brand-50/40 px-3 py-2.5">
-      <p className="text-[10px] font-medium tracking-wide text-slate-500 uppercase">
-        {titulo}
-      </p>
-      <p className={`tnum mt-0.5 text-lg font-semibold ${color}`}>{valor}</p>
-    </div>
+    <Card title="En qué se te va" subtitle="Los últimos seis meses, por categoría">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm whitespace-nowrap">
+          <thead>
+            <tr className="text-[10px] tracking-wide text-slate-400 uppercase">
+              <th className="py-2 pr-3 text-left font-medium">Categoría</th>
+              {meses.map((m) => (
+                <th key={m} className="px-2 py-2 text-right font-medium capitalize">
+                  {nombreDelMes(m).split(" de ")[0].slice(0, 3)}
+                </th>
+              ))}
+              <th className="py-2 pl-2 text-right font-medium">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f) => (
+              <tr key={f.categoria} className="border-t border-slate-100">
+                <td className="py-1.5 pr-3 text-slate-700">
+                  {LABEL_CATEGORIA[f.categoria]}
+                </td>
+                {f.porMes.map((n, i) => (
+                  <td key={i} className="tnum px-2 py-1.5 text-right text-slate-600">
+                    {n ? dinero(n, moneda) : "—"}
+                  </td>
+                ))}
+                <td className="tnum py-1.5 pl-2 text-right font-medium text-slate-900">
+                  {dinero(f.total, moneda)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-slate-200 font-semibold">
+              <td className="py-2 pr-3">Total</td>
+              {totalPorMes.map((n, i) => (
+                <td key={i} className="tnum px-2 py-2 text-right">
+                  {n ? dinero(n, moneda) : "—"}
+                </td>
+              ))}
+              <td className="tnum py-2 pl-2 text-right">
+                {dinero(totalPorMes.reduce((s, n) => s + n, 0), moneda)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </Card>
   );
 }
+
 
 /**
  * Cambiar la contraseña sin pasar por «se me olvidó».

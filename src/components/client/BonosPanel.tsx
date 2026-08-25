@@ -1,11 +1,13 @@
 import { useState } from "react";
-import type { Bono, Client, LineaDeBono, Pago, Sesion } from "../../types/client";
+import type { Bono, Client, LineaDeBono, Modalidad, Pago, Sesion } from "../../types/client";
+import { LABEL_MODALIDAD } from "../../types/client";
 import { uid } from "../../utils/storage";
 import {
   comoVaElBono,
   type ComoVaElBono,
   type Estado,
 } from "../../utils/bonos";
+import { descuentoDelBono } from "../../utils/consulta";
 import { Badge, Button, Card, Field, Input, fmt } from "../common/ui";
 
 /**
@@ -61,8 +63,20 @@ export function BonosPanel({ client, onChange }: Props) {
     onChange({ pagos: [...(client.pagos ?? []), pago] });
   };
 
-  const marcarSesion = (bonoId: string, lineaId: string) => {
-    const s: Sesion = { id: uid("se_"), fecha: hoyIso(), bonoId, lineaId };
+  /**
+   * La modalidad se hereda de la ficha y sólo se guarda en la sesión cuando es
+   * la excepción: si un día la ves en el consultorio y normalmente es online.
+   * Guardarla siempre convertiría cada cambio de la ficha en una mentira sobre
+   * el pasado — y no guardarla nunca haría imposible la excepción.
+   */
+  const marcarSesion = (bonoId: string, lineaId: string, modalidad?: Modalidad) => {
+    const s: Sesion = {
+      id: uid("se_"),
+      fecha: hoyIso(),
+      bonoId,
+      lineaId,
+      ...(modalidad && modalidad !== client.modalidad ? { modalidad } : {}),
+    };
     onChange({ sesiones: [...(client.sesiones ?? []), s] });
   };
 
@@ -111,8 +125,9 @@ export function BonosPanel({ client, onChange }: Props) {
               <UnBono
                 key={b.id}
                 como={comoVaElBono(b, client)}
+                modalidadHabitual={client.modalidad}
                 onCobrar={(importe, fecha) => cobrar(b.id, importe, fecha)}
-                onSesion={(lineaId) => marcarSesion(b.id, lineaId)}
+                onSesion={(lineaId, modalidad) => marcarSesion(b.id, lineaId, modalidad)}
                 onQuitarSesion={(lineaId) => quitarUltimaSesion(b.id, lineaId)}
                 onCerrar={() => guardarBono({ ...b, cerrado: !b.cerrado })}
                 onBorrar={() => borrarBono(b.id)}
@@ -126,6 +141,7 @@ export function BonosPanel({ client, onChange }: Props) {
 
 function UnBono({
   como,
+  modalidadHabitual,
   onCobrar,
   onSesion,
   onQuitarSesion,
@@ -133,8 +149,9 @@ function UnBono({
   onBorrar,
 }: {
   como: ComoVaElBono;
+  modalidadHabitual?: Modalidad;
   onCobrar: (importe: number, fecha: string) => void;
-  onSesion: (lineaId: string) => void;
+  onSesion: (lineaId: string, modalidad?: Modalidad) => void;
   onQuitarSesion: (lineaId: string) => void;
   onCerrar: () => void;
   onBorrar: () => void;
@@ -174,6 +191,14 @@ function UnBono({
         )}
       </p>
 
+      {descuentoDelBono(bono) > 0 && (
+        <p className="mt-0.5 text-xs text-violet-700">
+          Con descuento: {dinero(descuentoDelBono(bono))} menos que tu tarifa de{' '}
+          {dinero(bono.precioBase ?? 0)}
+          {bono.motivoDescuento ? ` · ${bono.motivoDescuento}` : ''}
+        </p>
+      )}
+
       {/* ── Las sesiones ──────────────────────────────────────── */}
       {lineas.length > 0 && (
         <ul className="mt-2 space-y-1">
@@ -186,11 +211,36 @@ function UnBono({
               {!bono.cerrado && (
                 <>
                   <button
-                    onClick={() => onSesion(linea.id)}
+                    onClick={() => onSesion(linea.id, modalidadHabitual)}
                     className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800 transition hover:bg-brand-100"
+                    title={
+                      modalidadHabitual
+                        ? `Se apunta como ${LABEL_MODALIDAD[modalidadHabitual].toLowerCase()}`
+                        : 'Sin modalidad: ponla en su ficha para que cuente en el resumen'
+                    }
                   >
                     + Hecha
                   </button>
+                  {/*
+                    La excepción. Casi nadie alterna, así que el botón normal es
+                    el de arriba y esto es el «hoy vino al consultorio».
+                  */}
+                  {modalidadHabitual && (
+                    <button
+                      onClick={() =>
+                        onSesion(
+                          linea.id,
+                          modalidadHabitual === 'online' ? 'presencial' : 'online',
+                        )
+                      }
+                      className="text-xs text-slate-400 underline hover:text-slate-700"
+                      title={`Esta vez fue ${
+                        modalidadHabitual === 'online' ? 'presencial' : 'online'
+                      }`}
+                    >
+                      {modalidadHabitual === 'online' ? '+ presencial' : '+ online'}
+                    </button>
+                  )}
                   {hechas > 0 && (
                     <button
                       onClick={() => onQuitarSesion(linea.id)}
@@ -286,6 +336,8 @@ function NuevoBono({
   const [importe, setImporte] = useState(String(sugerencia?.importe ?? ""));
   const [inicio, setInicio] = useState(hoyIso());
   const [vence, setVence] = useState("");
+  const [precioBase, setPrecioBase] = useState("");
+  const [motivo, setMotivo] = useState("");
   const [lineas, setLineas] = useState<LineaDeBono[]>([
     { id: uid("ln_"), concepto: "Consultas", cuantas: 3 },
     { id: uid("ln_"), concepto: "Llamadas", cuantas: 3 },
@@ -297,10 +349,14 @@ function NuevoBono({
   const guardar = () => {
     const n = Number(importe.replace(",", "."));
     if (!nombre.trim() || !Number.isFinite(n) || n <= 0) return;
+    const base = Number(precioBase.replace(",", "."));
     onGuardar({
       id: uid("bn_"),
       nombre: nombre.trim(),
       importe: n,
+      /* Sólo es descuento si de verdad está por debajo de la tarifa. */
+      ...(Number.isFinite(base) && base > n ? { precioBase: base } : {}),
+      ...(motivo.trim() ? { motivoDescuento: motivo.trim() } : {}),
       moneda,
       inicio,
       ...(vence ? { vence } : {}),
@@ -331,6 +387,25 @@ function NuevoBono({
         </Field>
         <Field label="Vence (si tiene plazo)" className="sm:col-span-2">
           <Input type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
+        </Field>
+        {/*
+          El descuento va en el bono y no en la ficha: la misma persona puede
+          entrar con rebaja por una derivación y renovar al precio de siempre.
+        */}
+        <Field label="Tu tarifa normal (si le haces descuento)">
+          <Input
+            value={precioBase}
+            onChange={(e) => setPrecioBase(e.target.value)}
+            inputMode="decimal"
+            placeholder="270"
+          />
+        </Field>
+        <Field label="Por qué">
+          <Input
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Derivación de Marta"
+          />
         </Field>
       </div>
 
