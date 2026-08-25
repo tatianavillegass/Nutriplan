@@ -80,6 +80,34 @@ export function BonosPanel({ client, onChange }: Props) {
     onChange({ sesiones: [...(client.sesiones ?? []), s] });
   };
 
+  /**
+   * UNA CONSULTA SIN BONO
+   *
+   * Los botones de «hecha» vivían sólo dentro de un bono, así que a quien no
+   * tenía bono contratado no había forma de marcarle nada: ni un botón en toda
+   * la ficha. Y eso es media consulta de las de verdad — la primera visita, una
+   * revisión suelta, alguien que paga por sesión.
+   *
+   * Cuenta en el número de consultas del mes, pero no devenga: sin bono no hay
+   * precio que repartir, y el resumen lo dice en vez de callárselo.
+   */
+  const marcarSuelta = (modalidad?: Modalidad) => {
+    const s: Sesion = {
+      id: uid("se_"),
+      fecha: hoyIso(),
+      ...(modalidad && modalidad !== client.modalidad ? { modalidad } : {}),
+    };
+    onChange({ sesiones: [...(client.sesiones ?? []), s] });
+  };
+
+  const quitarSesion = (id: string) => {
+    onChange({ sesiones: (client.sesiones ?? []).filter((s) => s.id !== id) });
+  };
+
+  const sueltas = (client.sesiones ?? [])
+    .filter((s) => !s.bonoId)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+
   const quitarUltimaSesion = (bonoId: string, lineaId: string) => {
     const suyas = (client.sesiones ?? []).filter(
       (s) => s.bonoId === bonoId && s.lineaId === lineaId,
@@ -91,8 +119,8 @@ export function BonosPanel({ client, onChange }: Props) {
 
   return (
     <Card
-      title="Bonos"
-      subtitle="Lo que tiene contratado, lo que ha pagado y lo que lleva consumido"
+      title="Bonos y consultas"
+      subtitle="Lo que tiene contratado, lo que ha pagado y las consultas que lleva"
       actions={
         <Button variant="outline" onClick={() => setCreando(!creando)}>
           {creando ? "Cancelar" : "+ Contratar bono"}
@@ -135,6 +163,47 @@ export function BonosPanel({ client, onChange }: Props) {
             ))}
         </div>
       )}
+
+      {/* ── Consultas sueltas ─────────────────────────────────── */}
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex-1 text-sm font-medium text-slate-700">
+            {bonos.length ? "Consultas fuera de bono" : "Consultas sueltas"}
+          </span>
+          <button
+            onClick={() => marcarSuelta(client.modalidad)}
+            className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-800 transition hover:bg-brand-100"
+          >
+            + Consulta hecha
+          </button>
+        </div>
+
+        {sueltas.length === 0 ? (
+          <p className="mt-1 text-xs text-slate-400">
+            {bonos.length
+              ? "Para las que no entran en ningún bono."
+              : "Si todavía no tiene bono, apunta aquí las consultas que le hagas: cuentan en el resumen del mes."}
+          </p>
+        ) : (
+          <ul className="mt-1.5 divide-y divide-slate-50">
+            {sueltas.map((s) => (
+              <li key={s.id} className="flex items-center gap-3 py-1.5 text-sm">
+                <span className="w-24 shrink-0 text-xs text-slate-400">{s.fecha}</span>
+                <span className="flex-1 text-slate-700">
+                  Consulta
+                  {s.modalidad ? ` · ${LABEL_MODALIDAD[s.modalidad].toLowerCase()}` : ""}
+                </span>
+                <button
+                  onClick={() => quitarSesion(s.id)}
+                  className="text-xs text-slate-400 underline hover:text-slate-700"
+                >
+                  Quitar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Card>
   );
 }
