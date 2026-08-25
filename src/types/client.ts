@@ -276,6 +276,13 @@ export interface Sesion {
   modalidad?: Modalidad;
   /** De qué bono se descuenta. Sin bono, es una sesión suelta. */
   bonoId?: string;
+  /**
+   * Lo que vale, cuando no cuelga de ningún bono: una primera visita, una
+   * revisión, alguien que paga por sesión. En un bono no hace falta —el precio
+   * se reparte solo— pero una consulta suelta valía cero y salía como si no
+   * hubieras trabajado, que es justo lo contrario de la verdad.
+   */
+  importe?: number;
   /** Cuál de las líneas del bono consume. */
   lineaId?: string;
   nota?: string;

@@ -92,12 +92,27 @@ export function BonosPanel({ client, onChange }: Props) {
    * precio que repartir, y el resumen lo dice en vez de callárselo.
    */
   const marcarSuelta = (modalidad?: Modalidad) => {
+    /*
+     * Si su tarifa es por sesión, ya sabemos lo que vale: se pone solo y ella
+     * lo cambia si ese día cobró otra cosa.
+     */
+    const porSesion =
+      client.tarifa?.periodicidad === "sesion" ? client.tarifa.importe : undefined;
     const s: Sesion = {
       id: uid("se_"),
       fecha: hoyIso(),
+      ...(porSesion ? { importe: porSesion } : {}),
       ...(modalidad && modalidad !== client.modalidad ? { modalidad } : {}),
     };
     onChange({ sesiones: [...(client.sesiones ?? []), s] });
+  };
+
+  const ponerImporte = (id: string, importe: number) => {
+    onChange({
+      sesiones: (client.sesiones ?? []).map((s) =>
+        s.id === id ? { ...s, importe: importe > 0 ? importe : undefined } : s,
+      ),
+    });
   };
 
   const quitarSesion = (id: string) => {
@@ -187,11 +202,31 @@ export function BonosPanel({ client, onChange }: Props) {
         ) : (
           <ul className="mt-1.5 divide-y divide-slate-50">
             {sueltas.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 py-1.5 text-sm">
+              <li key={s.id} className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
                 <span className="w-24 shrink-0 text-xs text-slate-400">{s.fecha}</span>
                 <span className="flex-1 text-slate-700">
                   Consulta
                   {s.modalidad ? ` · ${LABEL_MODALIDAD[s.modalidad].toLowerCase()}` : ""}
+                </span>
+                {/*
+                  Lo que cobraste por ella. En un bono el precio se reparte solo;
+                  aquí hay que decirlo, o esta consulta valdría cero y el mes
+                  saldría como si no hubieras trabajado.
+                */}
+                <input
+                  value={s.importe ?? ""}
+                  onChange={(e) =>
+                    ponerImporte(s.id, Number(e.target.value.replace(",", ".")) || 0)
+                  }
+                  inputMode="decimal"
+                  placeholder="Cobrado"
+                  aria-label={`Lo que cobraste por la consulta del ${s.fecha}`}
+                  className={`tnum w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-brand-400 ${
+                    s.importe ? "border-slate-200" : "border-amber-300 bg-amber-50/40"
+                  }`}
+                />
+                <span className="text-xs text-slate-400">
+                  {client.tarifa?.moneda || "€"}
                 </span>
                 <button
                   onClick={() => quitarSesion(s.id)}

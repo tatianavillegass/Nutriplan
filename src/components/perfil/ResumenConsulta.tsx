@@ -159,11 +159,13 @@ export function ResumenConsulta({
                 la modalidad en la ficha de esa clienta.
               </p>
             )}
-            {total.sinBono > 0 && (
+            {total.sinValor > 0 && (
               <p className="mt-1 text-xs leading-snug text-amber-700">
-                {total.sinBono === 1 ? "Una consulta no cuelga" : `${total.sinBono} consultas no cuelgan`}{" "}
-                de ningún bono, así que no suman en «trabajo hecho»: sin bono no
-                hay precio que repartir.
+                {total.sinValor === 1
+                  ? "Una consulta suelta sin precio"
+                  : `${total.sinValor} consultas sueltas sin precio`}
+                : no suman en «trabajo hecho». Ponle lo que cobraste en su ficha,
+                en «Bonos y consultas», y contarán.
               </p>
             )}
 
@@ -294,7 +296,7 @@ function Fila({
                     </span>
                   </span>
                 ) : (
-                  <span className="text-amber-700">sin bono: no devenga</span>
+                  <span className="text-amber-700">sin precio puesto</span>
                 )}
               </li>
             ))}

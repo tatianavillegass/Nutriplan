@@ -43,7 +43,10 @@ export interface SesionContada {
   bono?: Bono;
   /** La de la sesión si la tiene; si no, la de la ficha. */
   modalidad?: Modalidad;
-  /** Lo que devenga. Cero si no cuelga de ningún bono. */
+  /**
+   * Lo que devenga: lo que le toca del bono, o el precio que ella le puso si
+   * es una consulta suelta.
+   */
   valor: number;
   /** Si esa clienta está haciendo un programa (RESET 90). */
   programa: boolean;
@@ -62,7 +65,7 @@ export function sesionesDelMes(clientes: Client[], mes: string): SesionContada[]
         concepto: bono?.incluye.find((l) => l.id === s.lineaId)?.concepto,
         bono,
         modalidad: s.modalidad ?? c.modalidad,
-        valor: bono ? valorDeSesion(bono) : 0,
+        valor: bono ? valorDeSesion(bono) : (s.importe ?? 0),
         programa: !!c.programa,
       });
     }
@@ -78,8 +81,12 @@ export interface MesDeConsulta {
   /** Sin decir si fue online o presencial: ni de la sesión ni de la ficha. */
   sinModalidad: number;
   programa: number;
-  /** Sesiones que no cuelgan de ningún bono: no se pueden valorar. */
-  sinBono: number;
+  /**
+   * Consultas que devengan cero: ni cuelgan de un bono ni tienen precio
+   * puesto. Se cuentan aparte porque hacen que el «trabajo hecho» salga corto
+   * sin que se vea por qué.
+   */
+  sinValor: number;
   /** El trabajo hecho ese mes. */
   devengado: number;
   /** Lo que entró en caja ese mes. */
@@ -109,7 +116,7 @@ export function mesDeConsulta(
     presencial: sesiones.filter((s) => s.modalidad === "presencial").length,
     sinModalidad: sesiones.filter((s) => !s.modalidad).length,
     programa: sesiones.filter((s) => s.programa).length,
-    sinBono: sesiones.filter((s) => !s.sesion.bonoId).length,
+    sinValor: sesiones.filter((s) => s.valor <= 0).length,
     devengado,
     cobrado,
     diferencia: cobrado - devengado,
@@ -149,7 +156,7 @@ export function añoDeConsulta(
 export function sumarMeses(meses: MesDeConsulta[]): Omit<MesDeConsulta, "mes"> {
   const cero = {
     consultas: 0, online: 0, presencial: 0, sinModalidad: 0, programa: 0,
-    sinBono: 0, devengado: 0, cobrado: 0, diferencia: 0, gastos: 0, neto: 0, ticket: 0,
+    sinValor: 0, devengado: 0, cobrado: 0, diferencia: 0, gastos: 0, neto: 0, ticket: 0,
   };
   const t = meses.reduce((a, m) => ({
     consultas: a.consultas + m.consultas,
@@ -157,7 +164,7 @@ export function sumarMeses(meses: MesDeConsulta[]): Omit<MesDeConsulta, "mes"> {
     presencial: a.presencial + m.presencial,
     sinModalidad: a.sinModalidad + m.sinModalidad,
     programa: a.programa + m.programa,
-    sinBono: a.sinBono + m.sinBono,
+    sinValor: a.sinValor + m.sinValor,
     devengado: a.devengado + m.devengado,
     cobrado: a.cobrado + m.cobrado,
     diferencia: a.diferencia + m.diferencia,

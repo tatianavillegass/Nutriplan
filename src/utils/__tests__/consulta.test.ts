@@ -124,12 +124,29 @@ describe('Las consultas del mes', () => {
     expect(mesDeConsulta(clientes, [], '2026-01').programa).toBe(1);
   });
 
-  /** Una sesión suelta no se puede valorar: se cuenta, pero no devenga. */
-  it('una sesión sin bono se cuenta pero no devenga', () => {
+  /**
+   * Una consulta suelta SÍ vale dinero: la primera visita, una revisión. Al
+   * principio devengaban cero y el mes salía como si no hubieras trabajado,
+   * que es justo lo contrario de la verdad.
+   */
+  it('una consulta suelta devenga lo que le pusiste', () => {
+    const clientes = [
+      clienta('ana', {
+        sesiones: [sesion('2026-01-05', { bonoId: undefined, importe: 60 })],
+      }),
+    ];
+    const m = mesDeConsulta(clientes, [], '2026-01');
+    expect(m.consultas).toBe(1);
+    expect(m.devengado).toBe(60);
+    expect(m.sinValor).toBe(0);
+  });
+
+  /** Y si no se le puso precio, se cuenta aparte para poder avisarlo. */
+  it('y si no lleva precio, se cuenta aparte en vez de inventarlo', () => {
     const clientes = [clienta('ana', { sesiones: [sesion('2026-01-05', { bonoId: undefined })] })];
     const m = mesDeConsulta(clientes, [], '2026-01');
     expect(m.consultas).toBe(1);
-    expect(m.sinBono).toBe(1);
+    expect(m.sinValor).toBe(1);
     expect(m.devengado).toBe(0);
   });
 });
