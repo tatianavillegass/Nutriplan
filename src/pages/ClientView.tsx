@@ -50,8 +50,9 @@ import { PlanDocument } from "../components/export/PlanDocument";
 import { usePrintDocument } from "../components/export/printing";
 import { Button, EmptyState, fmt } from "../components/common/ui";
 import {
-  recetasDeComida,
+  recetasDeLaComida,
   comidasConPauta,
+  comidasDeLaSemana,
   ajustesDeReceta,
   acompanamientosDeReceta,
   planParaCliente,
@@ -567,7 +568,7 @@ export function ClientView() {
   const opcionesDeComida = (m: { id: string; slot: string }) => {
     const suyas = [
       ...new Set([
-        ...recetasDeComida(dayType.recetasAsignadas, m.id),
+        ...recetasDeLaComida(plan, m.id),
         ...(reto
           ? recetasAbiertasDe(reto, fecha, m.slot as never).map(
               (r) => r.recetaId,
@@ -1328,7 +1329,12 @@ export function ClientView() {
               <OrganizaTuSemana
                 menu={menu}
                 plan={plan}
-                comidas={comidas.map((m) => ({
+                /*
+                 * Todas las comidas de la semana, no sólo las de hoy: si la
+                 * merienda sólo la hace los días de entreno y hoy es domingo,
+                 * si no no había forma de dejar puesta la del martes.
+                 */
+                comidas={comidasDeLaSemana(plan).map((m) => ({
                   meal: { id: m.id, nombre: m.nombre },
                   opciones: opcionesDeComida(m),
                 }))}
@@ -1428,6 +1434,7 @@ export function ClientView() {
 
             {plan.fase === 4 && (
               <RecetasDeConsulta
+                plan={plan}
                 dayType={dayType}
                 recipes={recipes}
                 foods={foods}

@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import type { Alimento } from '../../types/food';
-import type { DayType } from '../../types/plan';
-import { comidasConPauta, recetasDeComida, ajustesDeReceta, acompanamientosDeReceta } from '../../types/plan';
+import type { DayType, Plan } from '../../types/plan';
+import {
+  comidasConPauta,
+  recetasDeLaComida,
+  ajustesDeReceta,
+  acompanamientosDeReceta,
+} from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
 
 interface Props {
+  /** De dónde salen las recetas: son del plan, no del día. */
+  plan: Plan;
+  /** De dónde salen los gramos: eso sí es del día. */
   dayType: DayType;
   recipes: Receta[];
   foods: Alimento[];
@@ -22,14 +30,14 @@ interface Props {
  * Plegadas a propósito: si se abren solas, la pantalla vuelve a decirle qué
  * tiene que comer, que es justo lo que esta fase deja atrás.
  */
-export function RecetasDeConsulta({ dayType, recipes, foods }: Props) {
+export function RecetasDeConsulta({ plan, dayType, recipes, foods }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [viendo, setViendo] = useState<string | null>(null);
 
   const porComida = comidasConPauta(dayType)
     .map((m) => ({
       meal: m,
-      recetas: recetasDeComida(dayType.recetasAsignadas, m.id)
+      recetas: recetasDeLaComida(plan, m.id)
         .map((id) => recipes.find((r) => r.id === id))
         .filter(Boolean) as Receta[],
     }))

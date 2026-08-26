@@ -1,6 +1,6 @@
 import type { Client } from '../../types/client';
 import type { Plan } from '../../types/plan';
-import { recetasDeComida, ajustesDeReceta, acompanamientosDeReceta } from '../../types/plan';
+import { recetasDeLaComida, ajustesDeReceta, acompanamientosDeReceta } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
@@ -52,7 +52,9 @@ export function RecipeSheetPDF({
 
             <div className="space-y-5">
               {d.meals.map((m) => {
-                const opciones = recetasDeComida(d.recetasAsignadas, m.id)
+                // Las recetas son del plan; lo que cambia de un día a otro son
+                // los gramos, que salen de `d.grid` al escalarlas.
+                const opciones = recetasDeLaComida(plan, m.id)
                   .map((id) => recipes.find((r) => r.id === id))
                   .filter(Boolean) as Receta[];
                 if (!opciones.length) return null;

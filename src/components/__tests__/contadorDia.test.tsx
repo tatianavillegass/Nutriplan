@@ -3,7 +3,8 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { ContadorDia } from '../phase4/ContadorDia';
 import { RecetasDeConsulta } from '../phase4/RecetasDeConsulta';
-import type { DayType } from '../../types/plan';
+import type { DayType, Plan } from '../../types/plan';
+import { DEMO_PLAN } from '../../data/demoSeed';
 import type { Bocado } from '../../types/diary';
 import type { Alimento } from '../../types/food';
 import type { Receta } from '../../types/recipe';
@@ -295,23 +296,69 @@ describe('Las recetas en fase 4', () => {
     updatedAt: '',
   };
 
-  const CON_RECETA: DayType = { ...DIA, recetasAsignadas: { comida: ['rc1'] } };
+  /** Las recetas son del plan; los gramos, del día. */
+  const planCon = (recetasAsignadas?: Record<string, string[]>) =>
+    ({ ...DEMO_PLAN, fase: 4, dayTypes: [DIA], recetasAsignadas }) as Plan;
 
   it('están a mano, pero cerradas', () => {
-    render(<RecetasDeConsulta dayType={CON_RECETA} recipes={[RECETA]} foods={[POLLO]} />);
+    render(
+      <RecetasDeConsulta
+        plan={planCon({ comida: ['rc1'] })}
+        dayType={DIA}
+        recipes={[RECETA]}
+        foods={[POLLO]}
+      />,
+    );
     expect(screen.getByText('Tus recetas')).toBeTruthy();
     expect(screen.queryByText('Wok de pollo')).toBeNull();
   });
 
   it('y se abren cuando ella quiere', () => {
-    render(<RecetasDeConsulta dayType={CON_RECETA} recipes={[RECETA]} foods={[POLLO]} />);
+    render(
+      <RecetasDeConsulta
+        plan={planCon({ comida: ['rc1'] })}
+        dayType={DIA}
+        recipes={[RECETA]}
+        foods={[POLLO]}
+      />,
+    );
+    fireEvent.click(screen.getByText('Tus recetas'));
+    expect(screen.getByText('Wok de pollo')).toBeTruthy();
+  });
+
+  /**
+   * Las que se pautaron cuando las recetas vivían en el tipo de día siguen
+   * saliendo: nadie tiene que volver a elegirlas.
+   */
+  it('y las del formato viejo también', () => {
+    const viejo: DayType = { ...DIA, recetasAsignadas: { comida: ['rc1'] } };
+    render(
+      <RecetasDeConsulta
+        plan={
+          {
+            ...DEMO_PLAN,
+            fase: 4,
+            dayTypes: [viejo],
+            recetasAsignadas: undefined,
+          } as Plan
+        }
+        dayType={viejo}
+        recipes={[RECETA]}
+        foods={[POLLO]}
+      />,
+    );
     fireEvent.click(screen.getByText('Tus recetas'));
     expect(screen.getByText('Wok de pollo')).toBeTruthy();
   });
 
   it('sin recetas asignadas no ocupa sitio', () => {
     const { container } = render(
-      <RecetasDeConsulta dayType={DIA} recipes={[RECETA]} foods={[POLLO]} />,
+      <RecetasDeConsulta
+        plan={planCon()}
+        dayType={DIA}
+        recipes={[RECETA]}
+        foods={[POLLO]}
+      />,
     );
     expect(container.textContent).toBe('');
   });

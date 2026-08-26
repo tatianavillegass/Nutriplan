@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Client } from '../../types/client';
 import type { Plan } from '../../types/plan';
-import { comidasConPauta, recetasDeComida } from '../../types/plan';
+import { comidasConPauta, recetasDeLaComida } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import type { RegistroDia } from '../../types/diary';
@@ -213,7 +213,7 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
              */
             let queHaComido: string | null = null;
             if (plan.fase === 1) {
-              const opciones = recetasDeComida(dayType.recetasAsignadas, m.id);
+              const opciones = recetasDeLaComida(plan, m.id);
               const elegidaId = registro.recetaElegida?.[m.id] ?? opciones[0];
               queHaComido = recipes.find((r) => r.id === elegidaId)?.nombre ?? null;
             } else {

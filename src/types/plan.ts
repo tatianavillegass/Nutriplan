@@ -140,8 +140,13 @@ export interface DayType {
    */
   aceiteCoccion?: Record<string, number>;
   /**
-   * Fase 1: recetas ofrecidas por comida. La nutricionista elige varias
-   * (3 por defecto) y el cliente escoge entre ellas cada día.
+   * FORMATO VIEJO: las recetas se elegían tipo de día a tipo de día.
+   *
+   * Ahora viven en el plan (`Plan.recetasAsignadas`), porque los platos son
+   * los mismos coma lo que coma ese día: lo que cambia son las cantidades.
+   * Se sigue leyendo para no perder lo que ya estaba pautado —lo junta
+   * `recetasDelPlan`— y en cuanto se toca una comida, esa comida pasa al
+   * plan.
    */
   recetasAsignadas?: Record<string, string[]>;
   /**
@@ -234,6 +239,25 @@ export interface Plan {
   fase: Phase;
   dayTypes: DayType[];
   /**
+   * LOS PLATOS SON DEL PLAN; LAS CANTIDADES, DE CADA DÍA
+   *
+   * Fase 1: qué recetas se le ofrecen en cada comida (mealId → recetas). Vive
+   * aquí y no en el tipo de día porque quien entrena los lunes no come otra
+   * cosa: come lo mismo con más arroz. Elegir platos distintos para el día de
+   * pierna multiplicaba el trabajo de pautar y le dejaba a la clienta ochenta
+   * recetas que repartir en su semana, sin que ninguna fuera realmente nueva.
+   *
+   * Lo que sí es de cada tipo de día: el reparto de intercambios (`grid`), los
+   * gramos ajustados a mano (`ajustesReceta`) y los acompañamientos. La misma
+   * tortilla escalada a dos días distintos son dos platos distintos en la
+   * cocina, pero una sola decisión al pautar.
+   *
+   * Una comida que sólo existe un día —la merienda del día de entreno— no
+   * necesita nada especial: tiene su propio mealId aquí y sólo se le enseña
+   * los días en que ese mealId lleva intercambios repartidos.
+   */
+  recetasAsignadas?: Record<string, string[]>;
+  /**
    * Sólo hay una planificación en uso por cliente; las demás quedan como
    * histórico de solo lectura. Así se ve lo que se pautó en cada momento sin
    * riesgo de tocarlo por error.
@@ -276,6 +300,12 @@ export interface Plan {
 export interface PlanPublicado {
   fase: Phase;
   dayTypes: DayType[];
+  /**
+   * Las recetas del día que se envió. En las fotos de antes de que esto
+   * existiera no está, y entonces se leen las de los `dayTypes` de la foto,
+   * que es donde vivían: nadie se queda sin recetas por haber enviado antes.
+   */
+  recetasAsignadas?: Record<string, string[]>;
   fecha: string;
 }
 
@@ -297,6 +327,52 @@ export function recetasDeComida(
 }
 
 /**
+ * LAS RECETAS DEL PLAN, VENGAN DE DONDE VENGAN
+ *
+ * Ahora se eligen una vez para todo el plan, pero durante un tiempo se
+ * eligieron tipo de día a tipo de día. Aquí se juntan las dos cosas para que
+ * nadie tenga que volver a pautar lo que ya estaba pautado:
+ *
+ *   1. Se parte de lo que hubiera en los tipos de día, en su orden y sin
+ *      repetir. Si el día base tenía tostada y el de entreno tenía tostada y
+ *      avena, la comida se queda con las dos: no se pierde ninguna.
+ *   2. Encima manda lo que haya en el plan. En cuanto se toca una comida, esa
+ *      comida pasa al plan y el formato viejo deja de contar para ella.
+ *
+ * Vale igual para un `Plan` y para la foto de lo enviado (`PlanPublicado`).
+ */
+export function recetasDelPlan(plan: {
+  recetasAsignadas?: Record<string, string[]>;
+  dayTypes: DayType[];
+}): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+
+  for (const d of plan.dayTypes) {
+    for (const mealId of Object.keys(d.recetasAsignadas ?? {})) {
+      const ya = out[mealId] ?? [];
+      const nuevas = recetasDeComida(d.recetasAsignadas, mealId).filter(
+        (r) => !ya.includes(r),
+      );
+      if (ya.length || nuevas.length) out[mealId] = [...ya, ...nuevas];
+    }
+  }
+
+  for (const mealId of Object.keys(plan.recetasAsignadas ?? {})) {
+    out[mealId] = recetasDeComida(plan.recetasAsignadas, mealId);
+  }
+
+  return out;
+}
+
+/** Las recetas que se le ofrecen en una comida, mire el día que mire. */
+export function recetasDeLaComida(
+  plan: { recetasAsignadas?: Record<string, string[]>; dayTypes: DayType[] },
+  mealId: string,
+): string[] {
+  return recetasDelPlan(plan)[mealId] ?? [];
+}
+
+/**
  * LAS COMIDAS QUE EL DÍA TIENE DE VERDAD
  *
  * Un tipo de día arranca con las cinco de siempre, pero si a la merienda no se
@@ -312,6 +388,24 @@ export function comidasConPauta(dayType: DayType): Meal[] {
     Object.values(dayType.grid[m.id] ?? {}).some((n) => (n ?? 0) > 0),
   );
   return conPauta.length ? conPauta : dayType.meals;
+}
+
+/**
+ * LAS COMIDAS DE LA SEMANA, NO LAS DE HOY
+ *
+ * Para organizar la semana hacen falta todas las comidas que va a hacer en
+ * ella, no sólo las del día en que abre la pantalla. Si la merienda sólo
+ * existe los días de entreno y hoy es domingo, sin esto no había forma de
+ * dejar puesta la merienda del martes.
+ */
+export function comidasDeLaSemana(plan: {
+  dayTypes: DayType[];
+}): Meal[] {
+  const porId = new Map<string, Meal>();
+  for (const d of plan.dayTypes) {
+    for (const m of comidasConPauta(d)) if (!porId.has(m.id)) porId.set(m.id, m);
+  }
+  return [...porId.values()].sort((a, b) => a.orden - b.orden);
 }
 
 export const DEFAULT_MEALS: Meal[] = [
@@ -336,6 +430,12 @@ export function planParaCliente(plan: Plan): Plan | undefined {
       ...plan,
       fase: plan.publicado.fase,
       dayTypes: plan.publicado.dayTypes,
+      /*
+       * Si la foto es de antes de que las recetas subieran al plan, no trae
+       * ninguna: entonces se dejan sin poner y `recetasDelPlan` las saca de
+       * los tipos de día de la propia foto, que es donde estaban.
+       */
+      recetasAsignadas: plan.publicado.recetasAsignadas,
     };
   }
 
@@ -358,6 +458,9 @@ export function fotoDelPlan(plan: Plan): PlanPublicado {
   return {
     fase: plan.fase,
     dayTypes: plan.dayTypes,
+    // Ya juntadas: lo que se envía es lo que se ve, sin depender de dónde
+    // estuvieran guardadas.
+    recetasAsignadas: recetasDelPlan(plan),
     fecha: new Date().toISOString(),
   };
 }
@@ -374,10 +477,15 @@ export function fotoDelPlan(plan: Plan): PlanPublicado {
  */
 export function hayCambiosSinEnviar(plan: Plan): boolean {
   if (!plan.publicado) return true;
-  const ahora = JSON.stringify({ fase: plan.fase, dayTypes: plan.dayTypes });
+  const ahora = JSON.stringify({
+    fase: plan.fase,
+    dayTypes: plan.dayTypes,
+    recetas: recetasDelPlan(plan),
+  });
   const enviado = JSON.stringify({
     fase: plan.publicado.fase,
     dayTypes: plan.publicado.dayTypes,
+    recetas: recetasDelPlan(plan.publicado),
   });
   return ahora !== enviado;
 }
@@ -404,6 +512,18 @@ export function queCambio(plan: Plan): string[] {
     antes.delete(d.id);
   }
   for (const [, viejo] of antes) cambios.push(`«${viejo.nombre}» ya no está.`);
+
+  /*
+   * Las recetas son del plan, así que su cambio no se ve en ningún tipo de
+   * día. Sin esta línea, quitarle un desayuno y ponerle otro salía como que no
+   * había nada que enviar.
+   */
+  if (
+    JSON.stringify(recetasDelPlan(plan)) !==
+    JSON.stringify(recetasDelPlan(plan.publicado))
+  ) {
+    cambios.push("Las recetas entre las que puede elegir han cambiado.");
+  }
 
   return cambios;
 }

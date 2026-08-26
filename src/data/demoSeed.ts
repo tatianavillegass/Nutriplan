@@ -39,6 +39,15 @@ export const DEMO_PLAN: Plan = {
   envio: { fecha: now, mensaje: 'Este es el plan de ejemplo para ver cómo funciona la app.' },
   createdAt: now,
   updatedAt: now,
+  /*
+   * Los platos son los mismos entrene o no: lo que cambia son las cantidades,
+   * que salen del reparto de cada día. El almuerzo sólo existe el día de
+   * entreno, y por eso sólo ese día lleva intercambios repartidos ahí.
+   */
+  recetasAsignadas: {
+    comida: ['rc_wok_pollo', 'rc_lentejas'],
+    cena: ['rc_bowl_salmon'],
+  },
   dayTypes: [
     {
       id: 'dt_demo_entreno',
@@ -64,10 +73,6 @@ export const DEMO_PLAN: Plan = {
         cena: 'Verdura ilimitada, mínimo ½ plato (200 g).',
       },
       postre: '1 onza de chocolate negro 85% o una infusión.',
-      recetasAsignadas: {
-        comida: ['rc_wok_pollo', 'rc_lentejas'],
-        cena: ['rc_bowl_salmon'],
-      },
     },
     {
       id: 'dt_demo_descanso',

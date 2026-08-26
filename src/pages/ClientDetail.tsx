@@ -41,7 +41,7 @@ import { ComboEditor } from "../components/phase2/ComboEditor";
 import { catalogoPermitido, evaluarAlimento } from "../utils/restrictions";
 import {
   RECETAS_POR_COMIDA,
-  recetasDeComida,
+  recetasDelPlan,
   fotoDelPlan,
 } from "../types/plan";
 import { gridMacros } from "../utils/exchanges";
@@ -109,6 +109,13 @@ export function ClientDetail() {
   const dayType = plan.dayTypes[Math.min(dtIndex, plan.dayTypes.length - 1)];
   const caloriasBase = calc?.energy.caloriasObjetivo ?? 0;
   const kcalDia = dayType.caloriasOverride ?? caloriasBase;
+
+  /**
+   * Las recetas que se le ofrecen, sea el día que sea. Junta lo que ya
+   * estuviera guardado en los tipos de día con lo que hay en el plan, así que
+   * vale tanto para pintar como para escribir encima.
+   */
+  const recetasEnUso = recetasDelPlan(plan);
 
   const foodsPermitidos = catalogoPermitido(foods, client);
   /**
@@ -615,6 +622,24 @@ export function ClientDetail() {
               title="Recetas por comida"
               subtitle={`Al menos ${RECETAS_POR_COMIDA} opciones por comida, y en cada seguimiento puedes sumar más sin quitar las que ya se sabe`}
             >
+              {/*
+                LOS PLATOS SON DE TODO EL PLAN
+                Quien entrena los lunes no come otra cosa: come lo mismo con
+                más arroz. Elegir platos aparte para el día de entreno era
+                pautar dos veces y dejarle a la clienta el doble de recetas que
+                repartir en su semana, sin que ninguna fuera nueva de verdad.
+              */}
+              {plan.dayTypes.length > 1 && (
+                <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs leading-snug text-slate-600">
+                  Estas recetas valen para{" "}
+                  <strong className="font-semibold">
+                    los {plan.dayTypes.length} tipos de día
+                  </strong>
+                  . Lo que cambia de uno a otro son las cantidades, que salen
+                  solas del reparto de cada día — y los gramos que ajustes a
+                  mano, que sí son de «{dayType.nombre}».
+                </p>
+              )}
               <div className="space-y-6">
                 {dayType.meals.map((m) => (
                   <RecipeRecommender
@@ -624,15 +649,10 @@ export function ClientDetail() {
                     recetas={recipes}
                     client={client}
                     foods={foodsPermitidos}
-                    seleccionadas={recetasDeComida(
-                      dayType.recetasAsignadas,
-                      m.id,
-                    )}
+                    seleccionadas={recetasEnUso[m.id] ?? []}
                     yaAsignadas={dayType.meals
                       .filter((otra) => otra.id !== m.id)
-                      .flatMap((otra) =>
-                        recetasDeComida(dayType.recetasAsignadas, otra.id),
-                      )}
+                      .flatMap((otra) => recetasEnUso[otra.id] ?? [])}
                     onEditarReceta={(rid, patch) => updateRecipe(rid, patch)}
                     /**
                      * Los gramos a mano viven en el plan de esta clienta, no
@@ -658,10 +678,7 @@ export function ClientDetail() {
                       })
                     }
                     onToggle={(rid) => {
-                      const actuales = recetasDeComida(
-                        dayType.recetasAsignadas,
-                        m.id,
-                      );
+                      const actuales = recetasEnUso[m.id] ?? [];
                       /*
                        * Sin tope: el repertorio crece en cada seguimiento. Con
                        * un tope de tres, meter una cuarta obligaba a quitar
@@ -670,11 +687,14 @@ export function ClientDetail() {
                       const nuevas = actuales.includes(rid)
                         ? actuales.filter((x) => x !== rid)
                         : [...actuales, rid];
-                      updateDayType(plan.id, dayType.id, {
-                        recetasAsignadas: {
-                          ...(dayType.recetasAsignadas ?? {}),
-                          [m.id]: nuevas,
-                        },
+                      /*
+                       * Se escribe el mapa entero, no sólo esta comida: así
+                       * lo que estuviera guardado en los tipos de día sube al
+                       * plan de una vez y deja de haber dos sitios donde
+                       * mirar.
+                       */
+                      updatePlan(plan.id, {
+                        recetasAsignadas: { ...recetasEnUso, [m.id]: nuevas },
                       });
                     }}
                   />
