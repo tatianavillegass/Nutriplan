@@ -71,4 +71,70 @@ describe('Mis recetas', () => {
     fireEvent.click(screen.getByText('Mis recetas'));
     expect(document.body.textContent).toContain('100 g cada una');
   });
+
+  /**
+   * AL EDITARLA HAY QUE VER DE QUÉ SON ESOS GRAMOS
+   *
+   * La casilla de los gramos se comía la fila entera y el nombre del
+   * ingrediente desaparecía: quedaban dos números sueltos sin saber cuál era
+   * la avena y cuál el plátano.
+   */
+  it('al editarla, cada casilla de gramos dice de qué ingrediente es', () => {
+    const receta: RecetaPropia = {
+      id: 'r1',
+      nombre: 'Banana bread',
+      ingredientes: [
+        { id: 'i1', nombre: 'Avena', gramos: 240 },
+        { id: 'i2', nombre: 'Plátano', gramos: 200 },
+      ],
+      raciones: 2,
+      creada: '2026-08-19T10:00:00.000Z',
+    };
+    render(
+      <MisRecetas
+        recetas={[receta]}
+        foods={FOOD_CATALOG}
+        onGuardar={vi.fn()}
+        onBorrar={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Mis recetas'));
+    fireEvent.click(screen.getByText('Editar'));
+
+    // El nombre, escrito al lado de su casilla.
+    expect(screen.getByText('Avena')).toBeTruthy();
+    expect(screen.getByText('Plátano')).toBeTruthy();
+    expect((screen.getByLabelText('Gramos de Avena') as HTMLInputElement).value).toBe('240');
+    expect((screen.getByLabelText('Gramos de Plátano') as HTMLInputElement).value).toBe('200');
+  });
+
+  /**
+   * Y que la casilla no vuelva a comerse la fila: si se le pone un ancho, ese
+   * ancho manda. El `w-full` de la casilla base ganaba siempre porque en la
+   * hoja de estilos va después, no por el orden en que se escriben.
+   */
+  it('y la casilla estrecha se queda estrecha', () => {
+    const receta: RecetaPropia = {
+      id: 'r1',
+      nombre: 'Banana bread',
+      ingredientes: [{ id: 'i1', nombre: 'Avena', gramos: 240 }],
+      creada: '2026-08-19T10:00:00.000Z',
+    };
+    render(
+      <MisRecetas
+        recetas={[receta]}
+        foods={FOOD_CATALOG}
+        onGuardar={vi.fn()}
+        onBorrar={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Mis recetas'));
+    fireEvent.click(screen.getByText('Editar'));
+
+    const casilla = screen.getByLabelText('Gramos de Avena');
+    expect(casilla.className).toContain('w-20');
+    expect(casilla.className).not.toContain('w-full');
+  });
 });

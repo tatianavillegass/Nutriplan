@@ -184,10 +184,16 @@ function Formulario({
       <p className="mt-3 mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
         Lo que le echas
       </p>
+      {/*
+        El nombre se deja partir en dos líneas en vez de cortarlo con puntos
+        suspensivos: en el móvil, «Yogur griego natural…» y «Yogur griego
+        proteico…» se leen igual, y lo que hay que saber es de cuál son esos
+        gramos.
+      */}
       <ul className="space-y-1.5">
         {ingredientes.map((ing, i) => (
           <li key={ing.id} className="flex items-center gap-2 rounded bg-white px-2 py-1.5">
-            <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+            <span className="min-w-0 flex-1 text-sm leading-snug text-slate-700">
               {ing.nombre}
               {!ing.foodId && (
                 <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-500">
@@ -198,10 +204,10 @@ function Formulario({
             <NumeroConComa
               value={String(ing.gramos)}
               onChange={(t) => poner(i, { gramos: aNumero(t) ?? 0 })}
-              className="w-20 text-sm"
+              className="w-20 shrink-0 text-sm"
               aria-label={`Gramos de ${ing.nombre}`}
             />
-            <span className="w-4 text-[11px] text-slate-400">g</span>
+            <span className="shrink-0 text-[11px] text-slate-400">g</span>
             <button
               onClick={() => setIngredientes((prev) => prev.filter((_, idx) => idx !== i))}
               aria-label={`Quitar ${ing.nombre}`}

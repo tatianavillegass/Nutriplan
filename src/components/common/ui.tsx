@@ -49,8 +49,30 @@ export function Field({
   );
 }
 
-const inputBase =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-400';
+const inputSinAncho =
+  'rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-400';
+
+const inputBase = `w-full ${inputSinAncho}`;
+
+/**
+ * UNA CASILLA ESTRECHA SE QUEDABA ANCHA
+ *
+ * Las casillas ocupan todo el ancho salvo cuando quien las pone dice otra
+ * cosa: los gramos de un ingrediente son `w-20` para que al lado quepa su
+ * nombre. Pero el `w-full` de aquí abajo y ese `w-20` acababan los dos en la
+ * misma casilla, y en la hoja de estilos `w-full` va después, así que ganaba
+ * siempre: la casilla se comía la fila y el nombre del ingrediente
+ * desaparecía. Se veía en «Mis recetas», en «Ajustar cantidades» y en
+ * cualquier sitio con un número y una etiqueta al lado.
+ *
+ * El orden en que se escriben las clases no decide nada en CSS, así que la
+ * única forma honesta es no poner `w-full` cuando ya viene un ancho puesto.
+ */
+const traeAncho = (className: string) =>
+  /(^|\s)(w-|min-w-|max-w-|flex-1|grow)/.test(className);
+
+const conBase = (className: string, extra = '') =>
+  `${traeAncho(className) ? inputSinAncho : inputBase} ${extra} ${className}`;
 
 /**
  * AL TOCAR UN NÚMERO, SE SELECCIONA ENTERO
@@ -75,14 +97,14 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
         if (numerica) e.currentTarget.select();
         onFocus?.(e);
       }}
-      className={`${inputBase} tnum ${className}`}
+      className={conBase(className, 'tnum')}
     />
   );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   const { className = '', ...rest } = props;
-  return <select {...rest} className={`${inputBase} ${className}`} />;
+  return <select {...rest} className={conBase(className)} />;
 }
 
 type Variant = 'primary' | 'ghost' | 'outline' | 'danger';
