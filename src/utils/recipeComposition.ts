@@ -2,7 +2,7 @@ import type { Alimento } from '../types/food';
 import type { Ingrediente, Receta, RecipeBase } from '../types/recipe';
 import type { ExchangeGroupId } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
-import { exchangesToMacros, esCompuesto } from './exchanges';
+import { aporteDeAlimento, exchangesToMacros, esCompuesto } from './exchanges';
 import { kcalFromMacros, snapHalf } from './macros';
 import { calcularPorcion, hcNeto } from './portions';
 
@@ -22,6 +22,16 @@ export interface AporteIngrediente {
   /** Gramos que equivalen a 1 intercambio de su subgrupo. */
   gramosPorIntercambio?: number;
   intercambios: number;
+  /**
+   * QUÉ GASTA DE VERDAD, GRUPO A GRUPO
+   *
+   * Casi siempre es `{ [su grupo]: intercambios }`. Pero hay alimentos que
+   * gastan de varios a la vez —la mezcla de tortitas son almidones Y proteína;
+   * un yogur griego light, lácteo proteico Y algo de grasa— y eso vive en
+   * `Alimento.equivale`. Antes esto no se miraba aquí: la receta apuntaba todo
+   * al grupo principal y la grasa del yogur desaparecía de lo que costaba.
+   */
+  reparto: Partial<Record<ExchangeGroupId, number>>;
   /** El ingrediente no aporta intercambios: verdura libre o condimento. */
   libre: boolean;
 }
@@ -71,6 +81,7 @@ export function aporteDeIngrediente(
     ingredienteId: ing.id,
     nombre: ing.nombre,
     intercambios: 0,
+    reparto: {},
     libre: false,
   };
 
@@ -84,12 +95,21 @@ export function aporteDeIngrediente(
   const gpi = gramosPorIntercambio(food);
   if (!gpi) return base;
 
+  const medidas = ing.cantidad_base / gpi;
+
   return {
     ...base,
     grupo: food.grupo,
     gramos: ing.cantidad_base,
     gramosPorIntercambio: gpi,
-    intercambios: ing.cantidad_base / gpi,
+    intercambios: medidas,
+    /*
+     * En un compuesto, cada medida gasta el reparto que ella declaró en la
+     * ficha del alimento; en los demás, sus intercambios van a su grupo. Es
+     * exactamente lo que hace `aporteDeAlimento` cuando la clienta marca una
+     * porción: las recetas hacían otra cuenta y por eso no cuadraban.
+     */
+    reparto: aporteDeAlimento(food, medidas),
   };
 }
 
@@ -111,7 +131,9 @@ export function composicionDesdeIngredientes(
       if (ing.cantidad_base != null) sinResolver.push(ing.nombre);
       continue;
     }
-    exacto[a.grupo] = (exacto[a.grupo] ?? 0) + a.intercambios;
+    for (const [g, n] of Object.entries(a.reparto) as [ExchangeGroupId, number][]) {
+      if (n) exacto[g] = (exacto[g] ?? 0) + n;
+    }
   }
 
   const base: RecipeBase = {};
