@@ -1,5 +1,10 @@
-import type { Alimento, Alergeno } from '../types/food';
-import { ALERGENO_LABELS } from '../types/food';
+import type { Alimento, Alergeno, Carga, CargaDeEje, EjeClinico } from '../types/food';
+import {
+  ALERGENO_LABELS,
+  CARGA_LABELS,
+  EJE_LABELS,
+  TIPO_FODMAP_LABELS,
+} from '../types/food';
 import type { Receta } from '../types/recipe';
 import type { Client } from '../types/client';
 import { PATOLOGIAS_POR_ID, PATOLOGIA_EXIGE_APTO } from '../data/patologias';
@@ -19,6 +24,28 @@ export interface Bloqueo {
   motivos: string[];
   /** true si el motivo es clínico (patología) y no una simple preferencia. */
   clinico: boolean;
+  /**
+   * LO QUE HAY QUE VIGILAR, QUE NO ES LO MISMO QUE BLOQUEAR
+   *
+   * Carga alta o moderada en un eje que ella le ha activado. NO esconde el
+   * alimento: lo marca en ámbar con la porción segura si la hay. Media aguacate
+   * cuadra en una dieta baja en FODMAP y uno entero no, así que aquí la
+   * decisión sigue siendo suya.
+   */
+  avisos?: AvisoDeCarga[];
+  /**
+   * Ejes activos que este alimento tiene **sin revisar**. Sin dato no es sin
+   * problema: es que nadie lo ha mirado, y decirlo es la diferencia entre
+   * ayudar y mentir.
+   */
+  sinDatos?: EjeClinico[];
+}
+
+export interface AvisoDeCarga {
+  eje: EjeClinico;
+  nivel: Carga;
+  /** «Alto en FODMAP (fructanos) · bajo hasta 40 g» */
+  texto: string;
 }
 
 const LIBRE: Bloqueo = { bloqueado: false, motivos: [], clinico: false };
@@ -40,6 +67,27 @@ export function aptosExigidos(client: Pick<Client, 'patologias'>): ('vegetariano
     if (a) out.add(a);
   }
   return [...out];
+}
+
+/** Ejes clínicos que hay que vigilarle, por sus patologías. */
+export function ejesVigilados(client: Pick<Client, 'patologias'>): EjeClinico[] {
+  const set = new Set<EjeClinico>();
+  for (const id of client.patologias ?? []) {
+    for (const e of PATOLOGIAS_POR_ID[id]?.vigila ?? []) set.add(e);
+  }
+  return [...set];
+}
+
+/** «Alto en FODMAP (fructanos) · bajo hasta 40 g» */
+export function describeCarga(eje: EjeClinico, c: CargaDeEje): string {
+  const partes = [`${CARGA_LABELS[c.nivel]} en ${EJE_LABELS[eje].toLowerCase()}`];
+  if (c.tipos?.length) {
+    partes[0] += ` (${c.tipos.map((t) => TIPO_FODMAP_LABELS[t].toLowerCase()).join(', ')})`;
+  }
+  if (c.liberador) partes.push('liberador de histamina');
+  if (c.porcionSegura) partes.push(`bajo hasta ${c.porcionSegura} g`);
+  if (c.nota) partes.push(c.nota);
+  return partes.join(' · ');
 }
 
 export function evaluarAlimento(
@@ -68,7 +116,31 @@ export function evaluarAlimento(
     motivos.push('En su lista de alimentos que no quiere');
   }
 
-  return motivos.length ? { bloqueado: true, motivos, clinico } : LIBRE;
+  /*
+   * Las cargas se miran SIEMPRE, esté bloqueado o no, y nunca bloquean. Un
+   * alimento vetado por gluten que además es alto en fructanos sigue siendo
+   * las dos cosas, y a ella le sirve saberlo.
+   */
+  const avisos: AvisoDeCarga[] = [];
+  const sinDatos: EjeClinico[] = [];
+  for (const eje of ejesVigilados(client)) {
+    const c = food.cargas?.[eje];
+    if (!c) {
+      sinDatos.push(eje);
+      continue;
+    }
+    if (c.nivel === 'bajo') continue;
+    avisos.push({ eje, nivel: c.nivel, texto: describeCarga(eje, c) });
+  }
+
+  const extra = {
+    ...(avisos.length ? { avisos } : {}),
+    ...(sinDatos.length ? { sinDatos } : {}),
+  };
+
+  return motivos.length
+    ? { bloqueado: true, motivos, clinico, ...extra }
+    : { ...LIBRE, ...extra };
 }
 
 /** Catálogo ya filtrado para un cliente concreto. */
@@ -95,10 +167,29 @@ export function evaluarReceta(
 
   const porId = new Map(foods.map((f) => [f.id, f]));
 
+  /*
+   * UNA RECETA CARGA LO QUE CARGUE SU PEOR INGREDIENTE
+   *
+   * Si lleva cebolla, es alta en fructanos aunque todo lo demás sea bajo. Así
+   * las recetas se etiquetan solas desde sus ingredientes y no hay que
+   * marcarlas a mano una por una.
+   */
+  const peor = new Map<EjeClinico, AvisoDeCarga>();
+  const sinDatos = new Set<EjeClinico>();
+  const anotar = (ev: Bloqueo) => {
+    for (const a of ev.avisos ?? []) {
+      const ya = peor.get(a.eje);
+      if (!ya || (ya.nivel === 'moderado' && a.nivel === 'alto')) peor.set(a.eje, a);
+    }
+    for (const e of ev.sinDatos ?? []) sinDatos.add(e);
+  };
+
   for (const ing of receta.ingredientes) {
     const food = ing.foodId ? porId.get(ing.foodId) : undefined;
     if (!food) continue;
     const ev = evaluarAlimento(food, client);
+    // Lo que se quita no carga: por eso los avisos sólo cuentan si se queda.
+    if (!ing.opcional || !ev.bloqueado) anotar(ev);
     if (!ev.bloqueado) continue;
 
     if (ing.opcional) {
@@ -120,7 +211,14 @@ export function evaluarReceta(
     }
   }
 
-  return { bloqueado, motivos: [...new Set(motivos)], clinico, ingredientesAQuitar };
+  return {
+    bloqueado,
+    motivos: [...new Set(motivos)],
+    clinico,
+    ingredientesAQuitar,
+    ...(peor.size ? { avisos: [...peor.values()] } : {}),
+    ...(sinDatos.size ? { sinDatos: [...sinDatos] } : {}),
+  };
 }
 
 /**

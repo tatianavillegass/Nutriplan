@@ -3,7 +3,7 @@ import type { Client } from "../types/client";
 import type { Plan, DayType, Meal, Phase } from "../types/plan";
 import { DEFAULT_MEALS } from "../types/plan";
 import type { Receta } from "../types/recipe";
-import type { Alimento } from "../types/food";
+import type { Alergeno, Alimento } from "../types/food";
 import type { Medicion } from "../types/anthropometry";
 import type { RegistroDia } from "../types/diary";
 import type { Recurso } from "../types/recursos";
@@ -246,14 +246,57 @@ function migrarGruposPlanes(plans: Plan[]): Plan[] {
 
 /** Un subgrupo que ya no existe dejaba el alimento invisible en toda la app. */
 export function sanearGrupos(foods: Alimento[]): Alimento[] {
+  return migrarAlergenos(
+    foods.map((f) => {
+      if (!f.grupo || f.grupo in EXCHANGE_GROUPS) return f;
+      const nuevo = GRUPOS_RENOMBRADOS[f.grupo as string];
+      return {
+        ...f,
+        grupo: nuevo,
+        bucket: nuevo ? EXCHANGE_GROUPS[nuevo].bucket : undefined,
+      };
+    }),
+  );
+}
+
+/**
+ * LOS ALÉRGENOS VIEJOS, TRADUCIDOS
+ *
+ * Se pasa de siete etiquetas a los catorce del reglamento europeo, y dos de
+ * las viejas se parten en dos. Se traduce **hacia el lado seguro**: ante la
+ * duda se marcan las dos etiquetas, porque quitarle un veto a alguien sin
+ * saberlo es lo único que aquí no se puede permitir.
+ *
+ *  · `lactosa` → lactosa **y** proteína de la leche. Todo lo que lleva lactosa
+ *    lleva caseína, así que esto es verdad y además tapa el agujero que había:
+ *    a una alérgica a la proteína se le colaban todos los «sin lactosa».
+ *  · `marisco` → crustáceos **y** moluscos. Por el nombre no se sabe cuál era,
+ *    y en el catálogo de la app ya vienen bien puestos uno por uno.
+ *  · `fodmap` deja de ser un alérgeno: ahora es una carga, con sus niveles y su
+ *    porción segura. Se quita en vez de bloquear a ciegas.
+ */
+function migrarAlergenos(foods: Alimento[]): Alimento[] {
   return foods.map((f) => {
-    if (!f.grupo || f.grupo in EXCHANGE_GROUPS) return f;
-    const nuevo = GRUPOS_RENOMBRADOS[f.grupo as string];
-    return {
-      ...f,
-      grupo: nuevo,
-      bucket: nuevo ? EXCHANGE_GROUPS[nuevo].bucket : undefined,
-    };
+    const viejos = (f.alergenos ?? []) as string[];
+    if (!viejos.some((a) => a === "marisco" || a === "fodmap" || a === "lactosa"))
+      return f;
+
+    const nuevos = new Set<Alergeno>();
+    for (const a of viejos) {
+      if (a === "fodmap") continue;
+      if (a === "marisco") {
+        nuevos.add("crustaceos");
+        nuevos.add("moluscos");
+        continue;
+      }
+      if (a === "lactosa") {
+        nuevos.add("lactosa");
+        nuevos.add("proteina_leche");
+        continue;
+      }
+      nuevos.add(a as Alergeno);
+    }
+    return { ...f, alergenos: [...nuevos] };
   });
 }
 
