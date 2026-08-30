@@ -1356,6 +1356,7 @@ export function ClientView() {
             */}
             <AlgoDulce
               postres={postres}
+              foods={foods}
               soloExtra={plan.fase === 1}
               comidas={dayType.meals.map((m) => ({ id: m.id, nombre: m.nombre }))}
               cambiadas={registro?.cambiadasPorPostre ?? {}}

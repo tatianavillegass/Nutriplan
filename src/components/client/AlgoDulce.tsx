@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import type { Receta } from '../../types/recipe';
+import type { Alimento } from '../../types/food';
 import type { MacroBucket } from '../../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { costeDelPostre } from '../../utils/postres';
 import { exchangesToMacros } from '../../utils/exchanges';
+import { macrosDeIngredientes } from '../../utils/recipeComposition';
 import { kcalFromMacros } from '../../utils/macros';
 import { nombreBucket } from '../../utils/dailyBudget';
 import { Button, fmt } from '../common/ui';
@@ -16,6 +18,11 @@ export interface PostreConEstado {
 
 interface Props {
   postres: PostreConEstado[];
+  /**
+   * Para poder decir las calorías de verdad, leyendo los gramos y la etiqueta
+   * de cada ingrediente en vez de deducirlas de las porciones.
+   */
+  foods: Alimento[];
   /**
    * En fase 1 no hay porciones que gastar, así que en vez de «contarlo en el
    * plan» lo que cabe es cambiar una comida por él.
@@ -52,6 +59,7 @@ interface Props {
  */
 export function AlgoDulce({
   postres,
+  foods,
   soloExtra = false,
   comidas = [],
   cambiadas = {},
@@ -153,6 +161,7 @@ export function AlgoDulce({
           {elegido && (
             <Detalle
               entrada={postres.find((p) => p.postre.id === elegido)!}
+              foods={foods}
               soloExtra={soloExtra}
               comidas={comidas.filter((c) => !cambiadas[c.id])}
               onEnPlan={(r) => {
@@ -181,6 +190,7 @@ export function AlgoDulce({
 
 function Detalle({
   entrada,
+  foods,
   soloExtra,
   comidas,
   onEnPlan,
@@ -188,6 +198,7 @@ function Detalle({
   onEnLugarDe,
 }: {
   entrada: PostreConEstado;
+  foods: Alimento[];
   soloExtra: boolean;
   comidas: { id: string; nombre: string }[];
   onEnPlan: (r: Receta) => void;
@@ -198,8 +209,26 @@ function Detalle({
   const { postre, cabe } = entrada;
   const sale = postre.raciones && postre.raciones > 1 ? postre.raciones : 1;
   const coste = costeDelPostre(postre);
-  const macros = exchangesToMacros(coste);
-  const kcal = kcalFromMacros(macros);
+
+  /**
+   * LAS PORCIONES SON DEL PLAN; LAS CALORÍAS SON DE LA COMIDA
+   *
+   * Lo que cuesta se cuenta en porciones, porque el plan se pauta en
+   * porciones. Las calorías, en cambio, no las decide el plan: son las de lo
+   * que se come. Sacándolas de las porciones —como se hacía— la tabla de
+   * intercambios se le colaba en el número: un yogur griego light entra como
+   * lácteo proteico y ahí la grasa vale cero, así que el mismo froyo salía a
+   * 60 kcal aquí y a 104 en «Mis recetas» de fase 4, que las cuenta por
+   * gramos. Ahora las dos pantallas hacen la misma cuenta.
+   *
+   * Si la receta no tiene ningún ingrediente enlazado al catálogo no hay
+   * gramos que leer, y entonces sí se dicen las de las porciones: es lo único
+   * que se sabe.
+   */
+  const reales = macrosDeIngredientes(postre, foods);
+  const kcal = reales.gramos > 0
+    ? reales.kcal / sale
+    : kcalFromMacros(exchangesToMacros(coste));
 
   /*
    * Repartir un bizcocho entre doce deja decimales feos —0,08 almidones— que

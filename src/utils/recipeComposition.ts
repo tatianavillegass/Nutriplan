@@ -4,7 +4,7 @@ import type { ExchangeGroupId } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 import { exchangesToMacros, esCompuesto } from './exchanges';
 import { kcalFromMacros, snapHalf } from './macros';
-import { calcularPorcion } from './portions';
+import { calcularPorcion, hcNeto } from './portions';
 
 /**
  * COMPOSICIÓN DE UNA RECETA A PARTIR DE SUS INGREDIENTES
@@ -132,6 +132,69 @@ export function composicionDesdeIngredientes(
     kcal: kcalFromMacros(macros),
     sinResolver,
   };
+}
+
+/**
+ * LO QUE PESA DE VERDAD UNA RECETA
+ *
+ * La composición de arriba pasa los gramos a intercambios y de ahí a macros:
+ * eso es lo que la receta *cuesta* del plan, y es lo que tiene que ser, porque
+ * el plan se pauta en porciones. Pero la tabla de intercambios es un modelo
+ * redondeado —un lácteo proteico son 7 g de proteína, 3 de hidrato y 0 de
+ * grasa— y hay alimentos reales que no caen justo ahí: un yogur griego light
+ * lleva 2 g de grasa por cada 100, y esa grasa desaparece al contarlo por
+ * porciones.
+ *
+ * Cuando lo que hay que decir son las calorías —y las calorías son un hecho,
+ * no una decisión del plan— se leen los gramos y la etiqueta de cada
+ * ingrediente. Es la misma cuenta que hacen las recetas que cocina la clienta
+ * en fase 4, así que los dos sitios dicen el mismo número.
+ */
+export interface MacrosReales {
+  proteina: number;
+  hc: number;
+  grasa: number;
+  kcal: number;
+  /** Gramos que se han podido leer del catálogo. Cero = no hay nada que decir. */
+  gramos: number;
+  /** Los que no están enlazados: la gelatina, el edulcorante, «al gusto». */
+  sinResolver: string[];
+}
+
+export function macrosDeIngredientes(
+  receta: Pick<Receta, 'ingredientes'>,
+  foods: Alimento[],
+): MacrosReales {
+  const out: MacrosReales = {
+    proteina: 0,
+    hc: 0,
+    grasa: 0,
+    kcal: 0,
+    gramos: 0,
+    sinResolver: [],
+  };
+
+  for (const ing of receta.ingredientes) {
+    // «Al gusto» y los condimentos no suman ni faltan: es lo que aportan.
+    if (ing.cantidad_base == null) continue;
+
+    const food = ing.foodId ? foods.find((f) => f.id === ing.foodId) : undefined;
+    const n = food?.nutrientes;
+    if (!n) {
+      out.sinResolver.push(ing.nombre);
+      continue;
+    }
+
+    const f = ing.cantidad_base / 100;
+    out.proteina += (n.proteina || 0) * f;
+    // El carbohidrato neto, como en toda la app.
+    out.hc += hcNeto(n) * f;
+    out.grasa += (n.grasa || 0) * f;
+    out.gramos += ing.cantidad_base;
+  }
+
+  out.kcal = kcalFromMacros({ proteina: out.proteina, hc: out.hc, grasa: out.grasa });
+  return out;
 }
 
 /** Alérgenos que arrastra una receta desde sus ingredientes enlazados. */
