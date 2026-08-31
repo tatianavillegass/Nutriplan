@@ -24,6 +24,8 @@ import {
 import { PlanHistory } from "../components/client/PlanHistory";
 import { FollowUpPanel } from "../components/client/FollowUpPanel";
 import { CheckInsDelPrograma } from "../components/client/CheckInsDelPrograma";
+import { PatronesDePausa } from "../components/client/PatronesDePausa";
+import { PausaDeCliente } from "../components/planning/PausaDeCliente";
 import { DiaEnVivo } from "../components/client/DiaEnVivo";
 import {
   NewPlanWizard,
@@ -317,6 +319,11 @@ export function ClientDetail() {
             otro sitio de la app.
           */}
           <CheckInsDelPrograma registros={registrosCliente} />
+          {/*
+            Justo debajo del check-in, que es lo mismo: lo que ella siente. Los
+            números de aquí no salen en ninguna pantalla suya.
+          */}
+          <PatronesDePausa registros={registrosCliente} />
           <AdherenceTab
             client={client}
             plan={plan}
@@ -542,6 +549,10 @@ export function ClientDetail() {
               onChange={(patch) => updateClient(client.id, patch)}
             />
             <MetasDeCliente
+              client={client}
+              onChange={(patch) => updateClient(client.id, patch)}
+            />
+            <PausaDeCliente
               client={client}
               onChange={(patch) => updateClient(client.id, patch)}
             />

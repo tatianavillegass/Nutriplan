@@ -85,6 +85,22 @@ export interface Client {
   /** Costumbres que se marcan cada día: 10.000 pasos, 2 l de agua. */
   metas?: Meta[];
   /**
+   * EL BOTÓN «PAUSA»
+   *
+   * Trabajar el hambre emocional no le hace falta a todo el mundo, y a quien no
+   * le hace falta, ponerle un botón de emociones al lado de la comida le mete
+   * una pregunta que no tenía. Por eso se enciende persona a persona.
+   */
+  pausa?: boolean;
+  /**
+   * QUÉ HACER EN VEZ DE COMER
+   *
+   * La lista de actividades de la guía. Se le ofrecen **tres**, no la lista
+   * entera: a las once de la noche y con el impulso encima, veinte opciones es
+   * lo mismo que ninguna. Sin lista se usan unas de partida.
+   */
+  actividades?: string[];
+  /**
    * UN RETO CONSIGO MISMA
    *
    * RESET 90 y los que vengan: consulta individual de siempre, pero con un

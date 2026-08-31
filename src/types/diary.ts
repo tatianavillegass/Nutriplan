@@ -117,6 +117,54 @@ export interface CheckIn {
   nota?: string;
 }
 
+/**
+ * UNA PAUSA
+ *
+ * Lo que queda cuando la clienta pulsa «Pausa»: qué sentía, qué estaba
+ * pasando, qué hizo y cómo quedó. Sale del árbol de decisión y de los cinco
+ * ejercicios de la guía de hambre emocional, hechos dentro de la app.
+ *
+ * **Es el diario de emociones, escrito solo.** El ejercicio 5 pide rellenar una
+ * tabla al final de la semana; nadie la rellena. Si cada pausa deja su fila, la
+ * tabla existe sin que haya que sentarse a hacerla.
+ *
+ * Vive en el registro del día porque el registro es lo único que sube el
+ * cliente: en su ficha se lo pisaría la nutricionista.
+ */
+export interface Pausa {
+  id: string;
+  /** Cuándo fue. Es la mitad del patrón: casi siempre hay una franja. */
+  hora: string;
+  /** Antes de comer o cuando ya había comido. El tono cambia. */
+  momento: 'antes' | 'despues';
+  /** Cuál de los cinco ejercicios le tocó según el árbol. */
+  ejercicio?: string;
+  emocion?: string;
+  /** Del 1 al 10, como en el ejercicio 1. */
+  intensidad?: number;
+  /** La situación: «discutí con mi pareja», «plazos en el trabajo». */
+  contexto?: string;
+  /** Si llegó a distinguirlo. «No lo sé» es una respuesta legítima. */
+  hambre?: 'fisica' | 'emocional' | 'no-lo-se';
+  /** Qué necesitaba de verdad, del ejercicio 2. */
+  necesidad?: string;
+  /** Sin aprobado ni suspenso: ver `QUE_HIZO`. */
+  queHizo?: string;
+  /** Lo que hizo en vez de comer, si eligió otra cosa. */
+  actividad?: string;
+  /** Cómo se sintió después. */
+  despues?: string;
+  /** Si esperó los cinco minutos de verdad (el temporizador los cuenta). */
+  espero?: boolean;
+  /**
+   * Ids de `SENALES`. **Sólo las ve la nutricionista**: en la pantalla de la
+   * clienta no salen ni marcadas ni contadas. La app no diagnostica; se lo
+   * enseña a quien sabe qué hacer con ello.
+   */
+  senales?: string[];
+  nota?: string;
+}
+
 export interface Bocado {
   id: string;
   nombre: string;
@@ -199,6 +247,12 @@ export interface RegistroDia {
    * porque son de ese día concreto, como las comidas hechas.
    */
   metas?: string[];
+  /**
+   * Las veces que pulsó «Pausa» ese día. Se guardan todas —también las de
+   * después de comer— y **no se cuentan en ninguna pantalla suya**: ver
+   * `utils/hambreEmocional.ts`.
+   */
+  pausas?: Pausa[];
   /**
    * Alimentos que la clienta ha definido con la calculadora: la granola del
    * armario que no está en su despensa. Viven aquí y no en el catálogo de la

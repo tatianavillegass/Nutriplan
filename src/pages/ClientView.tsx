@@ -45,6 +45,8 @@ import { ComidaLibre } from "../components/client/ComidaLibre";
 import { ResumenTab } from "../components/client/ResumenTab";
 import { MisMedidas } from "../components/client/MisMedidas";
 import { MetasDiarias } from "../components/client/MetasDiarias";
+import { BotonPausa } from "../components/client/BotonPausa";
+import { MisPausas } from "../components/client/MisPausas";
 import { RecursosTab } from "../components/client/RecursosTab";
 import { PlanDocument } from "../components/export/PlanDocument";
 import { usePrintDocument } from "../components/export/printing";
@@ -988,6 +990,8 @@ export function ClientView() {
               mediciones={mediciones}
               fecha={fecha}
             />
+            {/* Releerlo es el ejercicio 5. Sin contarlas: ver `MisPausas`. */}
+            {client.pausa && <MisPausas registros={mios} />}
           </div>
         )}
 
@@ -1144,6 +1148,21 @@ export function ClientView() {
               hechas={registro?.metas ?? []}
               onAlternar={alternarMeta}
             />
+
+            {/*
+              ARRIBA Y FUERA DE LAS COMIDAS, COMO EL ANTOJO
+              El impulso no tiene hora ni pertenece a la merienda. Y tiene que
+              estar a mano: si hay que bajar media pantalla y entrar en una
+              comida, cuando se encuentre ya se ha comido.
+            */}
+            {soyElCliente && client.pausa && (
+              <BotonPausa
+                actividades={client.actividades}
+                onGuardar={(pausa) =>
+                  guardar({ pausas: [...(registro?.pausas ?? []), pausa] })
+                }
+              />
+            )}
 
             <WeekStrip
               fecha={fecha}
