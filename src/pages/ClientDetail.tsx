@@ -26,6 +26,7 @@ import { FollowUpPanel } from "../components/client/FollowUpPanel";
 import { CheckInsDelPrograma } from "../components/client/CheckInsDelPrograma";
 import { PatronesDePausa } from "../components/client/PatronesDePausa";
 import { PausaDeCliente } from "../components/planning/PausaDeCliente";
+import { RepartirLaSemana } from "../components/planning/RepartirLaSemana";
 import { DiaEnVivo } from "../components/client/DiaEnVivo";
 import {
   NewPlanWizard,
@@ -712,6 +713,18 @@ export function ClientDetail() {
                 ))}
               </div>
             </Card>
+          )}
+
+          {/*
+            Justo debajo de las recetas: primero se eligen los platos y aquí
+            mismo se reparten. En fase 3 y 4 no hay recetas que repartir.
+          */}
+          {plan.fase <= 2 && !suReto && (
+            <RepartirLaSemana
+              plan={plan}
+              recetas={recipes}
+              onChange={(menuPropuesto) => updatePlan(plan.id, { menuPropuesto })}
+            />
           )}
 
           {plan.fase === 3 && (

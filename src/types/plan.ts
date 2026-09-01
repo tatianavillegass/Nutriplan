@@ -258,6 +258,11 @@ export interface Plan {
    */
   recetasAsignadas?: Record<string, string[]>;
   /**
+   * La semana repartida por la nutricionista, para quien no se la organiza.
+   * Es el punto de partida: lo que la clienta cambie manda sobre esto.
+   */
+  menuPropuesto?: MenuPropuesto;
+  /**
    * Sólo hay una planificación en uso por cliente; las demás quedan como
    * histórico de solo lectura. Así se ve lo que se pautó en cada momento sin
    * riesgo de tocarlo por error.
@@ -296,6 +301,50 @@ export interface Plan {
   updatedAt: string;
 }
 
+/**
+ * LA SEMANA YA REPARTIDA
+ *
+ * Organizarse la semana es lo que hace posible la compra y el batch cooking,
+ * pero a mucha gente le da pereza y acaba sin hacerlo. Así que la nutricionista
+ * puede dejársela hecha: qué plato en qué comida y en qué día.
+ *
+ * SIGUE SIENDO UNA PROPUESTA
+ * ==========================
+ * Lo que ella reparte es el punto de partida, no un contrato. La clienta abre
+ * su semana y la ve puesta; si cambia algo, manda lo suyo y la app no dice
+ * nada. Un menú que riñe se convierte en una jaula y se deja de abrir.
+ *
+ * Y NO SE COPIA A SU REGISTRO
+ * ===========================
+ * La propuesta se lee y se solapa al vuelo (`menuEfectivo`). Copiándola, un
+ * cambio de la nutricionista no le llegaría nunca, y lo que la clienta ya
+ * hubiera tocado se perdería al volver a repartir.
+ */
+export interface DiaPropuesto {
+  /** mealId → recetaId. Una receta por comida: si no, no es un reparto. */
+  comidas: Record<string, string>;
+  /** Qué días entrena, para que las cantidades salgan solas. */
+  dayTypeId?: string;
+}
+
+export interface SemanaPropuesta {
+  /** Día de la semana (0 lunes … 6 domingo) → lo que toca. */
+  dias: Record<number, DiaPropuesto>;
+}
+
+export interface MenuPropuesto {
+  /**
+   * Desde qué lunes se cuenta el ciclo. Sin esto no se sabe cuál de las dos
+   * semanas toca.
+   */
+  desde: string;
+  /**
+   * Una o dos. Con dos se van alternando —que es lo que evita comer lo mismo
+   * cada siete días—; con una se repite siempre la misma.
+   */
+  semanas: SemanaPropuesta[];
+}
+
 /** La foto del plan tal y como se envió. Sólo lo que el cliente usa. */
 export interface PlanPublicado {
   fase: Phase;
@@ -306,6 +355,8 @@ export interface PlanPublicado {
    * que es donde vivían: nadie se queda sin recetas por haber enviado antes.
    */
   recetasAsignadas?: Record<string, string[]>;
+  /** La semana repartida que se le envió. */
+  menuPropuesto?: MenuPropuesto;
   fecha: string;
 }
 
@@ -436,6 +487,7 @@ export function planParaCliente(plan: Plan): Plan | undefined {
        * los tipos de día de la propia foto, que es donde estaban.
        */
       recetasAsignadas: plan.publicado.recetasAsignadas,
+      menuPropuesto: plan.publicado.menuPropuesto,
     };
   }
 
@@ -461,6 +513,7 @@ export function fotoDelPlan(plan: Plan): PlanPublicado {
     // Ya juntadas: lo que se envía es lo que se ve, sin depender de dónde
     // estuvieran guardadas.
     recetasAsignadas: recetasDelPlan(plan),
+    menuPropuesto: plan.menuPropuesto,
     fecha: new Date().toISOString(),
   };
 }
@@ -481,11 +534,13 @@ export function hayCambiosSinEnviar(plan: Plan): boolean {
     fase: plan.fase,
     dayTypes: plan.dayTypes,
     recetas: recetasDelPlan(plan),
+    menu: plan.menuPropuesto,
   });
   const enviado = JSON.stringify({
     fase: plan.publicado.fase,
     dayTypes: plan.publicado.dayTypes,
     recetas: recetasDelPlan(plan.publicado),
+    menu: plan.publicado.menuPropuesto,
   });
   return ahora !== enviado;
 }
@@ -523,6 +578,12 @@ export function queCambio(plan: Plan): string[] {
     JSON.stringify(recetasDelPlan(plan.publicado))
   ) {
     cambios.push("Las recetas entre las que puede elegir han cambiado.");
+  }
+
+  if (
+    JSON.stringify(plan.menuPropuesto) !== JSON.stringify(plan.publicado.menuPropuesto)
+  ) {
+    cambios.push("Le has repartido la semana de otra manera.");
   }
 
   return cambios;

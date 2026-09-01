@@ -17,7 +17,14 @@ import { alternarComprado } from '../../utils/menuSemana';
 import { fmt } from '../common/ui';
 
 interface Props {
+  /** Lo que se ve: lo que le repartió su nutricionista más lo que ella cambió. */
   menu: MenuSemana;
+  /**
+   * Sólo lo suyo, que es donde se escribe. Guardar el efectivo copiaría la
+   * propuesta entera a su registro, y entonces un cambio de la nutricionista no
+   * le llegaría nunca.
+   */
+  menuSuyo?: MenuSemana;
   plan: Plan;
   /** Las comidas del día y, para cada una, entre qué recetas puede elegir. */
   comidas: { meal: { id: string; nombre: string }; opciones: Receta[] }[];
@@ -49,6 +56,7 @@ const INICIALES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
  */
 export function OrganizaTuSemana({
   menu,
+  menuSuyo,
   plan,
   comidas,
   recetas,
@@ -56,6 +64,8 @@ export function OrganizaTuSemana({
   onCambiar,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
+  /** Donde se escribe. Sin propuesta de por medio son el mismo menú. */
+  const mio = menuSuyo ?? menu;
   /**
    * TRES COSAS, TRES PESTAÑAS
    *
@@ -67,6 +77,11 @@ export function OrganizaTuSemana({
   const dias = diasDeLaSemana(menu.inicio);
   const puestas = comidasPuestas(menu);
 
+  /*
+   * Las dos salen del menú EFECTIVO, no de lo suyo: si su nutricionista le
+   * repartió la semana, la compra tiene que ser la de esa semana. Y en cuanto
+   * cambia un plato, se rehacen las dos con lo que quede.
+   */
   const lista = useMemo(
     () => listaDeLaCompra(menu, plan, recetas, foods),
     [menu, plan, recetas, foods],
@@ -103,9 +118,24 @@ export function OrganizaTuSemana({
 
       {abierto && (
         <>
+          {/*
+            Si se la repartió su nutricionista se dice, y en la misma frase se
+            dice que puede cambiarla. Encontrarse la semana hecha sin saber de
+            dónde sale es lo que hace pensar que no se toca.
+          */}
           <p className="mt-1 text-xs leading-snug text-slate-500">
-            Elige qué comes cada día y te hacemos la lista de la compra. Si un día te apetece otra
-            cosa, la cambias y ya: esto es un plan, no una obligación.
+            {plan.menuPropuesto ? (
+              <>
+                Tu semana ya viene puesta por tu nutricionista. Cambia lo que quieras: los
+                días que toques mandan sobre lo que te ha propuesto, y la lista de la
+                compra se rehace sola.
+              </>
+            ) : (
+              <>
+                Elige qué comes cada día y te hacemos la lista de la compra. Si un día te
+                apetece otra cosa, la cambias y ya: esto es un plan, no una obligación.
+              </>
+            )}
           </p>
 
           <div className="mt-3 flex gap-1.5">
@@ -149,7 +179,7 @@ export function OrganizaTuSemana({
                         {tipos.map((t) => (
                           <button
                             key={t.id}
-                            onClick={() => onCambiar(ponerTipoDeDia(menu, fecha, t.id))}
+                            onClick={() => onCambiar(ponerTipoDeDia(mio, fecha, t.id))}
                             className={`rounded-lg border px-2 py-0.5 text-[11px] transition ${
                               actual === t.id
                                 ? 'border-brand-500 bg-brand-600 text-white'
@@ -200,12 +230,13 @@ export function OrganizaTuSemana({
                               onClick={() =>
                                 onCambiar(
                                   ponerEnDias(
-                                    menu,
+                                    mio,
                                     meal.id,
                                     receta.id,
                                     puesto
                                       ? puestos.filter((d) => d !== fecha)
                                       : [...puestos, fecha],
+                                    menu,
                                   ),
                                 )
                               }
@@ -276,7 +307,7 @@ export function OrganizaTuSemana({
                         return (
                           <li key={l.clave}>
                             <button
-                              onClick={() => onCambiar(alternarComprado(menu, l.clave))}
+                              onClick={() => onCambiar(alternarComprado(mio, l.clave))}
                               aria-pressed={comprado}
                               className={`flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left text-sm transition ${
                                 comprado ? 'bg-slate-100' : 'bg-white'

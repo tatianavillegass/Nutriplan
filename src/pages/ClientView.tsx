@@ -13,6 +13,7 @@ import { postresDelBanco, costeDelPostre } from "../utils/postres";
 import {
   lunesDe,
   menuDeLaSemana,
+  menuEfectivo,
   menuDelDia,
   menuVacio,
   tipoDeDiaPlaneado,
@@ -256,9 +257,22 @@ export function ClientView() {
    * Vive en el registro del lunes, así que se lee y se escribe ahí y no en el
    * día que esté mirando. Ver `utils/menuSemana.ts`.
    */
-  const menu = useMemo(
+  const menuSuyo = useMemo(
     () => menuDeLaSemana(mios, fecha) ?? menuVacio(fecha),
     [mios, fecha],
+  );
+
+  /**
+   * LO QUE SE VE DE VERDAD
+   *
+   * Si su nutricionista le repartió la semana, sale ya puesta; y encima manda
+   * todo lo que ella haya cambiado. Es una propuesta, no una imposición: aquí
+   * es donde eso se hace verdad. De este menú salen también la lista de la
+   * compra y el batch cooking, así que las tres cosas dicen lo mismo.
+   */
+  const menu = useMemo(
+    () => menuEfectivo(plan?.menuPropuesto, menuSuyo, fecha) ?? menuSuyo,
+    [plan?.menuPropuesto, menuSuyo, fecha],
   );
 
   /** Lo que tenía pensado comer hoy cuando organizó la semana. */
@@ -1347,6 +1361,7 @@ export function ClientView() {
             {(plan.fase === 1 || plan.fase === 2) && soyElCliente && (
               <OrganizaTuSemana
                 menu={menu}
+                menuSuyo={menuSuyo}
                 plan={plan}
                 /*
                  * Todas las comidas de la semana, no sólo las de hoy: si la
