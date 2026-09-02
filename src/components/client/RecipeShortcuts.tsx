@@ -105,15 +105,40 @@ export function RecipeShortcuts({
                     : 'border-slate-200 bg-white hover:border-brand-300'
                 }`}
               >
-                <div className="flex items-baseline justify-between gap-2">
-                  <h4 className="text-[13px] font-medium text-slate-800">{s.receta.nombre}</h4>
-                  {usada && <span className="text-[10px] text-brand-700">usada ✓</span>}
-                </div>
+                {/*
+                  LA FOTO, PEQUEÑA Y A LA IZQUIERDA
+                  Con sólo el nombre hay que leerse las cuatro para decidir. Un
+                  plato se reconoce de un vistazo, que es de lo que va esto:
+                  estás delante de la nevera y no se te ocurre nada.
 
-                <p className="tnum mt-0.5 text-[10px] text-slate-500">
-                  {fmt(kcalFromMacros(macros))} kcal · P {fmt(macros.proteina, 0)} · HC{' '}
-                  {fmt(macros.hc, 0)} · G {fmt(macros.grasa, 0)} g
-                </p>
+                  Las que no tienen foto llevan un hueco del mismo tamaño: si
+                  no, las tarjetas de la fila se descuadran entre sí.
+                */}
+                <div className="flex items-start gap-2.5">
+                  {s.receta.foto_url ? (
+                    <img
+                      src={s.receta.foto_url}
+                      alt=""
+                      loading="lazy"
+                      className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <span className="block h-12 w-12 shrink-0 rounded-lg bg-brand-50" />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <h4 className="text-[13px] leading-snug font-medium text-slate-800">
+                        {s.receta.nombre}
+                      </h4>
+                      {usada && <span className="text-[10px] text-brand-700">usada ✓</span>}
+                    </span>
+
+                    <span className="tnum mt-0.5 block text-[10px] text-slate-500">
+                      {fmt(kcalFromMacros(macros))} kcal · P {fmt(macros.proteina, 0)} · HC{' '}
+                      {fmt(macros.hc, 0)} · G {fmt(macros.grasa, 0)} g
+                    </span>
+                  </span>
+                </div>
 
                 <ul className="mt-1.5 space-y-0.5">
                   {escalada.ingredientes
