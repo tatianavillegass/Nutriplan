@@ -148,8 +148,18 @@ export function ScaledOptionsBoard({
 
                     return (
                       <li key={o.id}>
+                        {/*
+                          El segundo toque la quita y la comida se queda en
+                          blanco. Antes, una vez marcada algo tenía que quedar
+                          marcado sí o sí: sólo se podía cambiar por otra
+                          opción. Y arrepentirse es normal —te equivocaste de
+                          comida, o al final no lo comiste—, así que la única
+                          salida era dejar puesto algo que no era verdad.
+                        */}
                         <button
                           onClick={() => onElegir?.(o)}
+                          aria-pressed={elegida}
+                          title={elegida ? 'Vuelve a pulsar para quitarla' : undefined}
                           className={`flex w-full items-baseline gap-1.5 rounded-lg px-2 py-1.5 text-left text-[13px] leading-snug transition ${
                             elegida
                               ? 'bg-brand-50 text-brand-900 ring-1 ring-brand-300'

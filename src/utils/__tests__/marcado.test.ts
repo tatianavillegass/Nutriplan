@@ -108,6 +108,39 @@ describe('Fase 2 — pulsar una opción completa', () => {
     expect(marcadoDeBucket(p, 'desayuno', 'proteina', FOOD_CATALOG)).toBe(3);
   });
 
+  /**
+   * ARREPENTIRSE ES NORMAL
+   *
+   * Antes, una vez marcada una opción algo tenía que quedar marcado sí o sí:
+   * sólo se podía cambiar por otra. Y si te equivocaste de comida, o al final
+   * no lo comiste, la única salida era dejar puesto algo que no era verdad.
+   */
+  it('volver a pulsarla la quita y la comida se queda en blanco', () => {
+    let p = elegirOpcion({}, 'desayuno', opcion, FOOD_CATALOG);
+    expect(opcionElegida(p, 'desayuno', opcion)).toBe(true);
+
+    p = elegirOpcion(p, 'desayuno', opcion, FOOD_CATALOG);
+    expect(opcionElegida(p, 'desayuno', opcion)).toBe(false);
+    expect(marcadoDeBucket(p, 'desayuno', 'proteina', FOOD_CATALOG)).toBe(0);
+  });
+
+  /** Y quitarla no se lleva por delante lo que tenga marcado de otro macro. */
+  it('y al quitarla no se toca lo de los demás macros', () => {
+    const objCarbo = objetivoDeBucket(DIA.grid.desayuno!, 'carbohidrato')!;
+    const carbo = generarCombinaciones(
+      objCarbo,
+      ['Avena copos', 'Plátano'].map((n) => FOOD_CATALOG.find((f) => f.nombre === n)!),
+      { limite: 3 },
+    )[0];
+
+    let p: PorcionesMarcadas = elegirOpcion({}, 'desayuno', carbo, FOOD_CATALOG);
+    p = elegirOpcion(p, 'desayuno', opcion, FOOD_CATALOG);
+    p = elegirOpcion(p, 'desayuno', opcion, FOOD_CATALOG);
+
+    expect(opcionElegida(p, 'desayuno', carbo)).toBe(true);
+    expect(marcadoDeBucket(p, 'desayuno', 'proteina', FOOD_CATALOG)).toBe(0);
+  });
+
   it('elegir otra opción del mismo macro sustituye a la anterior', () => {
     const otra = col.opciones[1];
     let p = elegirOpcion({}, 'desayuno', opcion, FOOD_CATALOG);

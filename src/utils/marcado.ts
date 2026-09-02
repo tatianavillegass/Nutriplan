@@ -120,6 +120,13 @@ export function limpiarBucket(
 /**
  * Elegir una opción completa de la Fase 2: sustituye lo que hubiera marcado
  * de ese macro en esa comida por los alimentos de la opción.
+ *
+ * VOLVER A PULSARLA LA QUITA
+ * ==========================
+ * Antes, una vez marcada una opción no había forma de dejar la comida en
+ * blanco: sólo se podía cambiar por otra. Y arrepentirse es normal —te has
+ * equivocado de comida, o al final no lo has comido— así que la única salida
+ * era dejar marcado algo que no era verdad. El segundo toque deshace.
  */
 export function elegirOpcion(
   porciones: PorcionesMarcadas,
@@ -127,7 +134,10 @@ export function elegirOpcion(
   opcion: OpcionEscalada,
   foods: Alimento[],
 ): PorcionesMarcadas {
-  let out = limpiarBucket(porciones, mealId, opcion.bucket, foods);
+  const limpia = limpiarBucket(porciones, mealId, opcion.bucket, foods);
+  if (opcionElegida(porciones, mealId, opcion)) return limpia;
+
+  let out = limpia;
   for (const item of opcion.items) {
     out = fijarAlimento(out, mealId, item.foodId, item.intercambios);
   }
