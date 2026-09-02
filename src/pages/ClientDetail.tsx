@@ -15,7 +15,7 @@ import { RecipeRecommender } from "../components/phase1/RecipeRecommender";
 import { AnthroTab } from "../components/anthro/AnthroTab";
 import { AdherenceTab } from "../components/client/AdherenceTab";
 import { SeguimientoResumen } from "../components/client/SeguimientoResumen";
-import { CitaPanel, PagosPanel } from "../components/client/AgendaPanel";
+import { CitaPanel } from "../components/client/AgendaPanel";
 import { BonosPanel } from "../components/client/BonosPanel";
 import {
   RecursosDeCliente,
@@ -512,15 +512,11 @@ export function ClientDetail() {
             onChange={(patch) => updateClient(client.id, patch)}
           />
           {/*
-            Los bonos van antes que los pagos sueltos: es lo que se mira al
-            abrir la pestaña —cuánto le falta y cuántas consultas lleva— y lo
-            de abajo es el detalle.
+            Todo el dinero en una sola tarjeta. Antes había dos —bonos arriba,
+            tarifa y pagos abajo— y no se hablaban: apuntar un pago abajo no lo
+            colgaba de ningún bono, así que el «faltan 90» no se enteraba.
           */}
           <BonosPanel
-            client={client}
-            onChange={(patch) => updateClient(client.id, patch)}
-          />
-          <PagosPanel
             client={client}
             onChange={(patch) => updateClient(client.id, patch)}
           />
