@@ -39,6 +39,8 @@ export function RecipeShortcuts({
   onUsar,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
+  /** De qué receta se está leyendo la preparación. Sólo una a la vez. */
+  const [como, setComo] = useState<string | null>(null);
   const reparto = dayType.grid[meal.id] ?? {};
 
   const sugerencias = useMemo(
@@ -66,7 +68,11 @@ export function RecipeShortcuts({
       }))
       .filter((a) => a.intercambios > 0);
     onUsar(meal.id, aportes);
-    setAbierto(false);
+    /*
+     * No se cierra el panel: al elegirla se abre su preparación, que es lo
+     * siguiente que hace falta. Cerrándolo había que volver a buscarla.
+     */
+    setComo(receta.preparacion?.trim() ? receta.id : null);
   };
 
   const yaMarcado = (receta: Receta) => {
@@ -95,16 +101,22 @@ export function RecipeShortcuts({
             const macros = exchangesToMacros(reparto);
             const usada = yaMarcado(s.receta);
 
+            const abiertaLaPreparacion = como === s.receta.id;
+            const hayPreparacion = !!s.receta.preparacion?.trim();
+
             return (
-              <button
+              <div
                 key={s.receta.id}
-                onClick={() => usar(s.receta)}
-                className={`rounded-xl border p-3 text-left transition ${
+                className={`rounded-xl border transition ${
                   usada
                     ? 'border-brand-400 bg-brand-50'
                     : 'border-slate-200 bg-white hover:border-brand-300'
                 }`}
               >
+                <button
+                  onClick={() => usar(s.receta)}
+                  className="block w-full p-3 text-left"
+                >
                 {/*
                   LA FOTO, PEQUEÑA Y A LA IZQUIERDA
                   Con sólo el nombre hay que leerse las cuatro para decidir. Un
@@ -151,12 +163,42 @@ export function RecipeShortcuts({
                     ))}
                 </ul>
 
-                {!!s.faltantes.length && (
-                  <p className="mt-1 text-[10px] text-amber-600">
-                    No cubre {s.faltantes.map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase()).join(', ')}
-                  </p>
+                  {!!s.faltantes.length && (
+                    <p className="mt-1 text-[10px] text-amber-600">
+                      No cubre{' '}
+                      {s.faltantes.map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase()).join(', ')}
+                    </p>
+                  )}
+                </button>
+
+                {/*
+                  CÓMO SE HACE
+                  ============
+                  Se abre sola al elegirla, que es cuando hace falta: acabas de
+                  decidir qué cenas y lo siguiente es cocinarlo. Y se puede
+                  abrir antes, porque a veces lo que decide no son los gramos
+                  sino si hay que encender el horno.
+
+                  Va aquí y no en una pantalla aparte porque esto se lee de pie
+                  en la cocina: sacarla de aquí serían dos toques y una vuelta.
+                */}
+                {hayPreparacion && (
+                  <div className="border-t border-slate-100 px-3 pt-1.5 pb-2">
+                    <button
+                      onClick={() => setComo(abiertaLaPreparacion ? null : s.receta.id)}
+                      aria-expanded={abiertaLaPreparacion}
+                      className="text-[10px] text-brand-600 underline decoration-dotted"
+                    >
+                      {abiertaLaPreparacion ? 'Ocultar cómo se hace' : 'Cómo se hace'}
+                    </button>
+                    {abiertaLaPreparacion && (
+                      <p className="mt-1 text-[11px] leading-snug whitespace-pre-line text-slate-600">
+                        {s.receta.preparacion.trim()}
+                      </p>
+                    )}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
