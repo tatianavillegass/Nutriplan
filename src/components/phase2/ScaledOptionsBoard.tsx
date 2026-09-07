@@ -49,15 +49,22 @@ export function ScaledOptionsBoard({
   /** Si la nutricionista ha guardado combinaciones, mandan las suyas. */
   const columnas = useMemo(
     () =>
-      columnasDeComida(dayType, meal, foods).map((c) => ({
+      /*
+       * Se le pasa lo que lleva marcado: si ya ha elegido lentejas en el
+       * carbohidrato, la columna de proteína pide sólo lo que falta. Ver
+       * `columnasDeComida`.
+       */
+      columnasDeComida(dayType, meal, foods, { porciones }).map((c) => ({
         bucket: c.bucket,
         total: c.objetivo.porciones,
         porSubgrupo: c.objetivo.porSubgrupo,
         kcalMaximas: c.objetivo.kcalMaximas,
         opciones: c.opciones,
         propias: c.propias,
+        cubiertoPorOtro: c.cubiertoPorOtro ?? 0,
+        cubiertoDelTodo: !!c.cubiertoDelTodo,
       })),
-    [dayType, meal, foods],
+    [dayType, meal, foods, porciones],
   );
 
   const esPrincipal = meal.slot === 'comida' || meal.slot === 'cena';
@@ -73,10 +80,16 @@ export function ScaledOptionsBoard({
 
       <div className="grid gap-5 p-5 md:grid-cols-3">
         {columnas.map((col) => {
+          /*
+           * Lo que ya trae otro macro no cuenta aquí: el objetivo ya lo
+           * descontó, así que contarlo también en lo marcado dejaría la
+           * columna en «a medias» con todo elegido.
+           */
           const marcado = porciones
-            ? marcadoDeBucket(porciones, meal.id, col.bucket, foods)
+            ? marcadoDeBucket(porciones, meal.id, col.bucket, foods) - col.cubiertoPorOtro
             : 0;
-          const completo = interactivo && Math.abs(marcado - col.total) < 0.01;
+          const completo =
+            interactivo && (col.cubiertoDelTodo || Math.abs(marcado - col.total) < 0.01);
 
           return (
             <div key={col.bucket}>
@@ -108,7 +121,24 @@ export function ScaledOptionsBoard({
                 )}
               </p>
 
-              {col.opciones.length === 0 ? (
+              {/*
+                POR QUÉ PIDE MENOS DE LO PAUTADO
+                Las lentejas traen proteína, así que al elegirlas la columna de
+                proteína baja. Sin decirlo, parece que la app se ha equivocado.
+              */}
+              {col.cubiertoPorOtro > 0 && (
+                <p className="mb-2 rounded-lg bg-brand-50 px-2 py-1 text-[10px] leading-snug text-brand-800">
+                  {fmt(col.cubiertoPorOtro, col.cubiertoPorOtro % 1 ? 1 : 0)}{' '}
+                  {col.cubiertoPorOtro === 1 ? 'porción ya te la trae' : 'porciones ya te las trae'}{' '}
+                  lo que has elegido antes.
+                </p>
+              )}
+
+              {col.cubiertoDelTodo ? (
+                <p className="text-[11px] text-brand-700">
+                  Ya lo cubre lo que has elegido: aquí no tienes que poner nada.
+                </p>
+              ) : col.opciones.length === 0 ? (
                 <p className="text-[11px] text-amber-700">
                   Sin combinaciones posibles para {meal.nombre.toLowerCase()}. Revisa la despensa de
                   esta comida.

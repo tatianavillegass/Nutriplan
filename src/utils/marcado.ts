@@ -157,6 +157,42 @@ export function opcionElegida(
   );
 }
 
+/**
+ * LO QUE UN MACRO YA TIENE CUBIERTO POR OTRO
+ *
+ * Una porción de lentejas son 14 g de hidrato Y 7 g de proteína: al elegirla en
+ * la columna del carbohidrato, la proteína de esa comida ya está medio hecha.
+ * Pero la columna de proteína se calcula del reparto pautado y no de lo que
+ * hay marcado, así que seguía pidiendo las cuatro porciones enteras — y quien
+ * las marcaba se comía la proteína dos veces.
+ *
+ * Aquí se cuenta sólo lo que viene **de otro macro**: los alimentos cuyo grupo
+ * principal es otro y que además caen en éste por `bucketExtra`. Contar también
+ * lo marcado en la propia columna sería una pescadilla: cada porción de pollo
+ * bajaría el objetivo y nunca se llegaría.
+ */
+export function cubiertoPorOtroMacro(
+  porciones: PorcionesMarcadas,
+  mealId: string,
+  bucket: MacroBucket,
+  foods: Alimento[],
+): number {
+  return Object.entries(porciones[mealId] ?? {}).reduce((s, [foodId, n]) => {
+    const food = foods.find((f) => f.id === foodId);
+    if (!food || !n) return s;
+    let suma = 0;
+    for (const [gid, cuantos] of Object.entries(aporteDeAlimento(food, n)) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
+      const g = EXCHANGE_GROUPS[gid];
+      if (!g || g.ilimitado || g.bucket === bucket) continue;
+      if (bucketsDeGrupo(gid).includes(bucket)) suma += cuantos ?? 0;
+    }
+    return s + suma;
+  }, 0);
+}
+
 /** Porciones marcadas de un macro en una comida. */
 export function marcadoDeBucket(
   porciones: PorcionesMarcadas,

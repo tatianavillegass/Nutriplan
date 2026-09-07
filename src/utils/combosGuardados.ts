@@ -4,7 +4,9 @@ import type { MacroBucket } from '../data/exchangeGroups';
 import { textoItem, type OpcionEscalada } from './mealOptions';
 import { generarCombinaciones, objetivoDeBucket, type ObjetivoBucket } from './combos';
 import { alimentosDeBucket, repartoElegible } from './pantry';
-import { roundPortion } from './macros';
+import { cubiertoPorOtroMacro } from './marcado';
+import type { PorcionesMarcadas } from '../types/diary';
+import { roundPortion, snapHalf } from './macros';
 import { gramosPorIntercambio } from './recipeComposition';
 import { escalarMedida } from './measures';
 import type { ExchangeCounts } from './exchanges';
@@ -75,21 +77,44 @@ export interface ColumnaFase2 {
   opciones: OpcionEscalada[];
   /** true si son las guardadas por la nutricionista. */
   propias: boolean;
+  /**
+   * Porciones que este macro ya tiene cubiertas por otro: las lentejas del
+   * carbohidrato traen proteína. Se dice en pantalla para que se entienda por
+   * qué la columna pide menos de lo pautado.
+   */
+  cubiertoPorOtro?: number;
+  /** Lo otro ya lo cubre entero: no hay nada que elegir en esta columna. */
+  cubiertoDelTodo?: boolean;
 }
 
 /**
  * Columnas de una comida en Fase 2: guardadas si las hay, propuestas si no.
+ *
+ * SI YA HA ELEGIDO LENTEJAS, LA PROTEÍNA PIDE MENOS
+ * =================================================
+ * Una porción de legumbre son 14 g de hidrato Y 7 g de proteína. Al elegirla en
+ * la columna del carbohidrato, la proteína de esa comida ya está medio hecha —
+ * pero la columna se calculaba sólo del reparto pautado, así que seguía
+ * pidiendo las cuatro porciones enteras y quien las marcaba se comía la
+ * proteína dos veces.
+ *
+ * Pasando lo que lleva marcado, el objetivo de cada macro descuenta lo que ya
+ * le trae otro. Es lo mismo que ya se hace con el aceite de cocinar, que se
+ * descuenta de las grasas del día porque no se elige.
+ *
+ * Sin `porciones` se comporta como siempre: en el PDF y en la pantalla de la
+ * nutricionista no hay nada marcado que descontar.
  */
 export function columnasDeComida(
   dayType: DayType,
   meal: Meal,
   foods: Alimento[],
-  opciones: { limite?: number } = {},
+  opciones: { limite?: number; porciones?: PorcionesMarcadas } = {},
 ): ColumnaFase2[] {
   const { reparto } = repartoElegible(dayType, meal);
 
   return (['proteina', 'carbohidrato', 'grasa'] as MacroBucket[])
-    .map((bucket) => {
+    .map((bucket): ColumnaFase2 | undefined => {
       const objetivo = objetivoDeBucket(reparto, bucket);
       if (!objetivo) return undefined;
 
@@ -101,15 +126,61 @@ export function columnasDeComida(
         if (opcs.length) return { bucket, objetivo, opciones: opcs, propias: true };
       }
 
+      /*
+       * Las porciones que otro macro ya le ha traído. Si las cubre todas, la
+       * columna desaparece: no hay nada que elegir, y eso es la verdad.
+       */
+      const deOtro = opciones.porciones
+        ? cubiertoPorOtroMacro(opciones.porciones, meal.id, bucket, foods)
+        : 0;
+
+      const pendiente = deOtro > 0 ? restarDelObjetivo(objetivo, deOtro) : objetivo;
+      if (!pendiente)
+        return {
+          bucket,
+          objetivo,
+          opciones: [],
+          propias: false,
+          cubiertoPorOtro: deOtro,
+          cubiertoDelTodo: true,
+        };
+
       const despensa = alimentosDeBucket(dayType, meal, bucket, foods);
       return {
         bucket,
-        objetivo,
-        opciones: generarCombinaciones(objetivo, despensa, { limite: opciones.limite ?? 5 }),
+        objetivo: pendiente,
+        opciones: generarCombinaciones(pendiente, despensa, {
+          limite: opciones.limite ?? 5,
+        }),
         propias: false,
+        ...(deOtro > 0 ? { cubiertoPorOtro: deOtro } : {}),
       };
     })
     .filter((x): x is ColumnaFase2 => !!x);
+}
+
+/**
+ * El mismo objetivo con menos porciones. Se quitan de los subgrupos con más
+ * porciones primero, que es lo que menos deforma el reparto: de «4 magros» se
+ * pasa a «1 magro», no a un subgrupo distinto.
+ */
+function restarDelObjetivo(
+  objetivo: ObjetivoBucket,
+  porciones: number,
+): ObjetivoBucket | undefined {
+  let quedan = porciones;
+  const counts: ExchangeCounts = {};
+
+  for (const [g, n] of [...objetivo.porSubgrupo].sort((a, b) => b[1] - a[1])) {
+    const quita = Math.min(n, quedan);
+    quedan -= quita;
+    const resto = snapHalf(n - quita);
+    if (resto > 0) counts[g] = resto;
+  }
+
+  return Object.keys(counts).length
+    ? objetivoDeBucket(counts, objetivo.bucket)
+    : undefined;
 }
 
 /** Guarda una combinación en una comida. */
