@@ -1,6 +1,7 @@
 import type { Alimento } from '../types/food';
 import {
   EXCHANGE_GROUPS,
+  KCAL_PER_GRAM,
   type ExchangeGroupId,
   type Familia,
   type MacroBucket,
@@ -132,10 +133,49 @@ export function limitaLaGrasa(familia: Familia): boolean {
   return familia === 'proteicos' || familia === 'grasas';
 }
 
+/**
+ * CADA MACRO PAGA LO SUYO
+ *
+ * Una porción de legumbre son 14 g de hidrato Y 7 g de proteína: gasta de los
+ * dos macros, y así está en la tabla (`bucketExtra`). Pero al medirla contra el
+ * techo del carbohidrato se le cobraban también las 28 calorías de esa
+ * proteína, así que tres lentejas donde había tres almidones se pasaban sesenta
+ * calorías y quedaban bloqueadas — cuando lo que se ha comido de más es
+ * proteína, no hidrato, y esa proteína ya se descuenta de la del día.
+ *
+ * Al carbohidrato se le cobra sólo el carbohidrato. La proteína que trae la
+ * legumbre se avisa aparte para descontarla, igual que ya se hace con el
+ * hidrato que traen los lácteos.
+ */
+export function kcalDeOtroMacro(counts: ExchangeCounts): number {
+  let kcal = 0;
+  for (const [g, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
+    const info = EXCHANGE_GROUPS[g];
+    if (!info?.bucketExtra?.length || !n) continue;
+    for (const extra of info.bucketExtra) {
+      if (extra === 'proteina') kcal += info.proteina * n * KCAL_PER_GRAM.proteina;
+      if (extra === 'carbohidrato') kcal += info.hc * n * KCAL_PER_GRAM.hc;
+      if (extra === 'grasa') kcal += info.grasa * n * KCAL_PER_GRAM.grasa;
+    }
+  }
+  return kcal;
+}
+
 /** Coste de una selección con el criterio de su familia: grasa o kcal. */
 export function costeDeFamilia(familia: Familia, counts: ExchangeCounts): number {
   const m = exchangesToMacros(counts);
-  return limitaLaGrasa(familia) ? m.grasa : kcalFromMacros(m);
+  if (limitaLaGrasa(familia)) return m.grasa;
+  return kcalFromMacros(m) - kcalDeOtroMacro(counts);
+}
+
+/** La proteína que traen las legumbres, que no se pautó como proteína. */
+export function proteinaDeLasLegumbres(counts: ExchangeCounts): number {
+  let p = 0;
+  for (const [g, n] of Object.entries(counts) as [ExchangeGroupId, number][]) {
+    const info = EXCHANGE_GROUPS[g];
+    if (info?.bucketExtra?.includes('proteina') && n) p += info.proteina * n;
+  }
+  return p;
 }
 
 /**
@@ -197,7 +237,6 @@ export function techoDeFamilia(
  */
 export function objetivoUnificado(objetivo: ObjetivoBucket): ObjetivoFamilia {
   const counts = Object.fromEntries(objetivo.porSubgrupo) as ExchangeCounts;
-  const m = exchangesToMacros(counts);
   /*
    * El criterio se toma de la primera familia. Hoy no hay ningún macro que
    * mezcle familias de grasa con familias de caloría —los lácteos ya viven
@@ -209,7 +248,12 @@ export function objetivoUnificado(objetivo: ObjetivoBucket): ObjetivoFamilia {
     bucket: objetivo.bucket,
     porciones: objetivo.porciones,
     kcalMaximas: objetivo.kcalMaximas,
-    topeMaximo: limitaLaGrasa(referencia) ? m.grasa : kcalFromMacros(m),
+    /*
+     * Por `costeDeFamilia` y no a mano: si no, el techo del pautado y el coste
+     * de las combinaciones se medirían con dos varas distintas y las legumbres
+     * volverían a bloquearse.
+     */
+    topeMaximo: costeDeFamilia(referencia, counts),
     porSubgrupo: objetivo.porSubgrupo,
   };
 }
@@ -485,6 +529,8 @@ export interface ValidacionCombo {
   }[];
   /** Hidrato que traen los lácteos por encima de lo pautado. No invalida. */
   hcDeLacteos?: number;
+  /** La proteína que trae la legumbre y que no estaba pautada como proteína. */
+  proteinaDeLegumbres?: number;
   /** Aviso informativo, para mostrarlo en otro tono que los errores. */
   nota?: string;
 }
@@ -589,6 +635,25 @@ export function validarCombo(
       `El lácteo suma ${Math.round(hcSinPautar)} g de hidrato: descuéntalo del carbohidrato de esta comida.`,
     );
   }
+
+  /*
+   * Y la legumbre, al revés: trae proteína. No invalida —el techo del
+   * carbohidrato ya no se la cobra— pero hay que decirlo, porque esa proteína
+   * sale de la misma comida y si no se descuenta se come dos veces.
+   */
+  const pExtra =
+    objetivo.bucket === 'carbohidrato' ? proteinaDeLasLegumbres(counts) : 0;
+  const pPautada = proteinaDeLasLegumbres(
+    Object.fromEntries(objetivo.porSubgrupo) as ExchangeCounts,
+  );
+  const pSinPautar = pExtra - pPautada;
+
+  if (pSinPautar > 0.5) {
+    notas.push(
+      `La legumbre suma ${Math.round(pSinPautar)} g de proteína (${Math.round(pSinPautar / 7)} porciones): descuéntalas de la proteína de esta comida.`,
+    );
+  }
+
   const nota = notas.length ? notas.join(' · ') : undefined;
 
   return {
@@ -598,6 +663,7 @@ export function validarCombo(
     avisos,
     porFamilia,
     hcDeLacteos: hcSinPautar > 0.5 ? hcSinPautar : undefined,
+    proteinaDeLegumbres: pSinPautar > 0.5 ? pSinPautar : undefined,
     nota,
   };
 }
