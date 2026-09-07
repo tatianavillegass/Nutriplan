@@ -117,6 +117,13 @@ export interface Alimento {
   custom?: boolean;
   /** Aporta grasa + proteína a la vez (bloque "Grasa Prot" de merienda). */
   grasa_prot?: boolean;
+  /**
+   * Lleva glucosa Y fructosa. Sólo importa en el avituallamiento: por encima de
+   * 60 g de hidrato por hora una sola fuente satura el transportador, así que
+   * hay que mezclar. Se marca en los geles, bebidas y gominolas deportivas que
+   * ella da de alta; el resto del catálogo no lo necesita.
+   */
+  conFructosa?: boolean;
   notas?: string;
 }
 

@@ -48,6 +48,8 @@ export interface FoodFormValue {
   equivalencia_cocido?: number;
   /** Si sale en la guía de cocinar de una vez. */
   batch?: boolean;
+  /** Lleva glucosa y fructosa: sólo importa en el avituallamiento. */
+  conFructosa?: boolean;
   comidas_sugeridas: MealSlot[];
   alergenos: Alergeno[];
   apto: Apto[];
@@ -75,6 +77,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const [gramosManual, setGramosManual] = useState<number | undefined>(inicial?.gramos);
   const [cocido, setCocido] = useState<number | undefined>(inicial?.equivalencia_cocido);
   /** Si sale en la guía de cocinar de una vez. Sin tocar, lo decide la app. */
+  const [conFructosa, setConFructosa] = useState<boolean>(!!inicial?.conFructosa);
   const [batch, setBatch] = useState<boolean>(
     inicial?.batch ?? seCocinaEnTanda({ nombre: inicial?.nombre ?? '', grupo: inicial?.grupo }),
   );
@@ -409,6 +412,27 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
         </span>
       </label>
 
+      {/*
+        Por encima de 60 g de hidrato por hora una sola fuente satura el
+        transportador, así que hay que mezclar. Se marca en los geles, bebidas y
+        gominolas deportivas; el resto del catálogo no lo necesita.
+      */}
+      <label className="mt-2 flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={conFructosa}
+          onChange={(e) => setConFructosa(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span className="text-xs leading-snug text-slate-600">
+          Aporta glucosa y fructosa
+          <span className="block text-[11px] text-slate-500">
+            Sólo para el avituallamiento: geles, bebidas y gominolas deportivas. Por encima de
+            60 g/h hay que mezclar y la app se lo recuerda si sólo elige glucosa.
+          </span>
+        </span>
+      </label>
+
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Field label="Equivalencia en cocido" hint="Sólo si el gramaje de arriba es en crudo">
           <Input
@@ -590,6 +614,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
               gramos: gramosFinales,
               equivalencia_cocido: cocido,
               batch,
+              conFructosa: conFructosa || undefined,
               comidas_sugeridas: slots,
               alergenos,
               apto,

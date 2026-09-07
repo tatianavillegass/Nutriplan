@@ -27,6 +27,7 @@ import { CheckInsDelPrograma } from "../components/client/CheckInsDelPrograma";
 import { PatronesDePausa } from "../components/client/PatronesDePausa";
 import { PausaDeCliente } from "../components/planning/PausaDeCliente";
 import { RepartirLaSemana } from "../components/planning/RepartirLaSemana";
+import { AvituallamientoDeComida } from "../components/planning/AvituallamientoDeComida";
 import { DiaEnVivo } from "../components/client/DiaEnVivo";
 import {
   NewPlanWizard,
@@ -501,6 +502,63 @@ export function ClientDetail() {
               }
               onRemoveMeal={(mealId) => removeMeal(plan.id, dayType.id, mealId)}
             />
+          </Card>
+
+          {/*
+            EL AVITUALLAMIENTO NO ES UNA COMIDA
+            Lo que se come encima de la bici se pauta en gramos de hidrato y se
+            reparte a lo largo de la salida. Va aquí, pegado al reparto, porque
+            al pautarlo se escriben sus porciones en esa comida.
+          */}
+          <Card
+            title="Entrenos largos"
+            subtitle="Si alguna toma es un avituallamiento —intra-entreno— se pauta en gramos de hidrato, no en recetas"
+          >
+            <div className="space-y-3">
+              {dayType.meals.map((m) => (
+                <div key={m.id}>
+                  <p className="text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+                    {m.nombre}
+                  </p>
+                  <AvituallamientoDeComida
+                    dayType={dayType}
+                    meal={m}
+                    onChange={(patch) => updateDayType(plan.id, dayType.id, patch)}
+                  />
+                  {/*
+                    Sus fuentes salen de la despensa de esa comida, así que el
+                    editor va aquí mismo: en fase 1 no aparece en ningún otro
+                    sitio y sin él no habría geles que elegir.
+                  */}
+                  {dayType.avituallamientos?.[m.id] && plan.fase <= 2 && (
+                    <div className="mt-2">
+                      <MealPantryEditor
+                        dayType={dayType}
+                        meal={m}
+                        foods={foods}
+                        motivoBloqueo={motivoBloqueo}
+                        onDespensa={(despensa) =>
+                          updateDayType(plan.id, dayType.id, { despensa })
+                        }
+                        onAceite={(porciones) =>
+                          updateDayType(plan.id, dayType.id, {
+                            aceiteCoccion: {
+                              ...(dayType.aceiteCoccion ?? {}),
+                              [m.id]: porciones,
+                            },
+                          })
+                        }
+                        onNota={(t) =>
+                          updateDayType(plan.id, dayType.id, {
+                            notas: { ...dayType.notas, [m.id]: t },
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
       )}

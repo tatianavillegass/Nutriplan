@@ -111,6 +111,29 @@ export const FOOD_ACEITE = "a-aceite-de-oliva-virgen-extra";
 /** Comidas que llevan aceite de cocción por defecto. */
 export const SLOTS_CON_COCCION: MealSlot[] = ["comida", "cena"];
 
+/**
+ * UN AVITUALLAMIENTO NO ES UNA COMIDA
+ *
+ * Lo que se come encima de la bici se pauta en gramos de hidrato y se reparte a
+ * lo largo de la salida, no se elige como un plato. Ver
+ * `utils/avituallamiento.ts`.
+ *
+ * Las dos formas no son intercambiables: **total** vale para quien sale hora y
+ * media, **por hora** hace falta en cuanto la salida se alarga —60 g para dos
+ * horas y media no es el avituallamiento, son los primeros cuarenta y cinco
+ * minutos—. Es la diferencia entre una amateur y alguien que compite, así que
+ * se elige persona a persona.
+ */
+export interface Avituallamiento {
+  modo: 'total' | 'hora';
+  /** Gramos de hidrato de toda la sesión, cuando se pauta en total. */
+  gramos?: number;
+  /** Gramos de hidrato por hora. */
+  porHora?: number;
+  /** Cuánto dura la sesión, en horas. */
+  horas?: number;
+}
+
 export interface DayType {
   id: string;
   nombre: string; // "Día descanso", "Día entreno CrossFit"
@@ -134,6 +157,12 @@ export interface DayType {
   despensa?: Record<string, DespensaComida>;
   /** Combinaciones elegidas por la nutricionista: mealId → lista. */
   combinaciones?: Record<string, CombinacionGuardada[]>;
+  /**
+   * Las comidas que son un avituallamiento: mealId → cómo se pauta. En ellas
+   * no hay recetas ni combinaciones, hay un objetivo en gramos y las fuentes
+   * que ella le monte en la despensa.
+   */
+  avituallamientos?: Record<string, Avituallamiento>;
   /**
    * Porciones de grasa reservadas para el aceite de cocción, por comida.
    * Salen de las opciones y aparecen como nota fija.

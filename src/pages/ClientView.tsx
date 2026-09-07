@@ -20,6 +20,8 @@ import {
 } from "../utils/menuSemana";
 import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
 import { columnasDeComida } from "../utils/combosGuardados";
+import { alimentosDeComida } from "../utils/pantry";
+import { AvituallamientoDelDia } from "../components/client/AvituallamientoDelDia";
 import type { Receta } from "../types/recipe";
 import type { ExchangeGroupId } from "../data/exchangeGroups";
 import { exchangesToMacros } from "../utils/exchanges";
@@ -1563,6 +1565,32 @@ export function ClientView() {
             {plan.fase === 1 && (
               <div className="space-y-5">
                 {comidas.map((m) => {
+                  /*
+                   * EL AVITUALLAMIENTO VA ANTES QUE LAS RECETAS
+                   * Lo que se come encima de la bici no es un plato: son
+                   * gramos de hidrato que se suman con lo que lleve en el
+                   * bolsillo. En esa comida no hay recetas que elegir.
+                   */
+                  const avit = dayType.avituallamientos?.[m.id];
+                  if (avit)
+                    return (
+                      <div key={m.id} id={`comida-${m.id}`} className="scroll-mt-20">
+                        <AvituallamientoDelDia
+                          meal={m}
+                          avituallamiento={avit}
+                          fuentes={alimentosDeComida(dayType, m, foods)}
+                          marcado={porciones[m.id] ?? {}}
+                          onMarcar={(foodId, delta) =>
+                            guardar({
+                              porciones: marcarAlimento(porciones, m.id, foodId, delta),
+                            })
+                          }
+                          acciones={accionesDe(m.id, m.nombre)}
+                        />
+                        {libreDe(m.id, m.nombre)}
+                      </div>
+                    );
+
                   const opciones = opcionesDeComida(m);
                   if (!opciones.length) return null;
 
