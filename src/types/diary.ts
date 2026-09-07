@@ -91,6 +91,25 @@ export interface MenuSemana {
   /** fecha ISO → lo de ese día. */
   dias: Record<string, DiaDelMenu>;
   /**
+   * FASE 2: CUÁNTAS VECES, NO QUÉ DÍA
+   *
+   * `mealId → opcionId → veces esta semana`.
+   *
+   * En fase 2 la clienta no come platos: come combinaciones de alimentos que
+   * elige cada día entre las que le salen. Pedirle que diga «el martes
+   * huevos» le quita justo la libertad que esa fase existe para darle — y sin
+   * saber qué va a comer el jueves no hay lista de la compra.
+   *
+   * Decir «huevos tres veces» resuelve las dos cosas: la compra sale de una
+   * multiplicación y ella sigue eligiendo cada mañana. Son tres o cuatro
+   * números por comida en vez de siete casillas por opción, y es como se
+   * piensa al hacer la compra.
+   *
+   * **No es un menú**: la app nunca le dirá «hoy te tocan huevos». Es una
+   * lista de la compra, y si el martes le apetece otra cosa no pasa nada.
+   */
+  veces?: Record<string, Record<string, number>>;
+  /**
    * Lo que ya ha echado al carro. Se guarda porque la compra se hace de pie en
    * el pasillo y con una mano: si al bloquear el móvil se destachara todo, la
    * lista no serviría para comprar, sólo para mirarla en casa.

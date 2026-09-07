@@ -11,12 +11,26 @@ import {
   ponerEnDias,
   ponerTipoDeDia,
 } from '../../utils/menuSemana';
-import { listaDeLaCompra, SECCIONES } from '../../utils/listaCompra';
+import { listaDeLaCompra, listaDesdeVeces, SECCIONES } from '../../utils/listaCompra';
+import { comidasDecididas } from '../../utils/vecesSemana';
+import { CuantasVeces, type ComidaConOpciones } from '../phase2/CuantasVeces';
 import { queCocinar, DIAS_QUE_AGUANTA } from '../../utils/batchCooking';
 import { alternarComprado } from '../../utils/menuSemana';
 import { fmt } from '../common/ui';
 
 interface Props {
+  /**
+   * FASE 2: SE CUENTAN VECES, NO DÍAS
+   *
+   * Ahí no se comen platos sino combinaciones que elige cada mañana, así que
+   * repartirlas por días le quitaría la libertad que esa fase existe para
+   * darle. Cuando esto viene, la pestaña del menú son los `+/−` de cada opción
+   * y la compra sale de multiplicar. Ver `CuantasVeces`.
+   *
+   * Una sola forma de organizar la semana por fase: dos que dieran dos listas
+   * de la compra distintas sería el mismo lío que las dos tarjetas de pagos.
+   */
+  porVeces?: ComidaConOpciones[];
   /** Lo que se ve: lo que le repartió su nutricionista más lo que ella cambió. */
   menu: MenuSemana;
   /**
@@ -57,6 +71,7 @@ const INICIALES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 export function OrganizaTuSemana({
   menu,
   menuSuyo,
+  porVeces,
   plan,
   comidas,
   recetas,
@@ -75,16 +90,30 @@ export function OrganizaTuSemana({
    */
   const [pestana, setPestana] = useState<'menu' | 'compra' | 'cocina'>('menu');
   const dias = diasDeLaSemana(menu.inicio);
-  const puestas = comidasPuestas(menu);
+  const puestas = porVeces ? comidasDecididas(menu) : comidasPuestas(menu);
 
   /*
    * Las dos salen del menú EFECTIVO, no de lo suyo: si su nutricionista le
    * repartió la semana, la compra tiene que ser la de esa semana. Y en cuanto
    * cambia un plato, se rehacen las dos con lo que quede.
+   *
+   * En fase 2 no hay platos: la lista se multiplica por las veces de cada
+   * opción, pero pasa por el mismo redondeo y las mismas secciones, así que
+   * sale exactamente igual.
    */
   const lista = useMemo(
-    () => listaDeLaCompra(menu, plan, recetas, foods),
-    [menu, plan, recetas, foods],
+    () =>
+      porVeces
+        ? listaDesdeVeces(
+            porVeces.map((c) => ({
+              mealId: c.mealId,
+              opciones: c.columnas.flatMap((x) => x.opciones),
+            })),
+            menu.veces,
+            foods,
+          )
+        : listaDeLaCompra(menu, plan, recetas, foods),
+    [porVeces, menu, plan, recetas, foods],
   );
   const pendientes = useMemo(
     () => lista.lineas.filter((l) => !(menu.comprados ?? []).includes(l.clave)).length,
@@ -124,7 +153,13 @@ export function OrganizaTuSemana({
             dónde sale es lo que hace pensar que no se toca.
           */}
           <p className="mt-1 text-xs leading-snug text-slate-500">
-            {plan.menuPropuesto ? (
+            {porVeces ? (
+              <>
+                Di cuántas veces comes cada cosa esta semana y te hacemos la lista de la
+                compra. Sigues eligiendo cada día lo que te apetezca: esto es para
+                comprar, no para decirte qué toca hoy.
+              </>
+            ) : plan.menuPropuesto ? (
               <>
                 Tu semana ya viene puesta por tu nutricionista. Cambia lo que quieras: los
                 días que toques mandan sobre lo que te ha propuesto, y la lista de la
@@ -141,9 +176,18 @@ export function OrganizaTuSemana({
           <div className="mt-3 flex gap-1.5">
             {(
               [
-                ['menu', 'Menú'],
+                ['menu', porVeces ? 'Qué comes' : 'Menú'],
                 ['compra', `Compra${pendientes ? ` (${pendientes})` : ''}`],
-                ['cocina', `Cocina${cocinar.length ? ` (${cocinar.length})` : ''}`],
+                /*
+                 * En fase 2 no hay recetas que cocinar en tanda —son alimentos
+                 * sueltos— y sin días no se puede decir «cocina el domingo para
+                 * el miércoles». Enseñar la pestaña vacía sería peor.
+                 */
+                ...(porVeces
+                  ? []
+                  : ([
+                      ['cocina', `Cocina${cocinar.length ? ` (${cocinar.length})` : ''}`],
+                    ] as const)),
               ] as const
             ).map(([id, texto]) => (
               <button
@@ -161,8 +205,13 @@ export function OrganizaTuSemana({
             ))}
           </div>
 
+          {/* ── Fase 2: cuántas veces comes cada opción ─── */}
+          {pestana === 'menu' && porVeces && (
+            <CuantasVeces menu={mio} comidas={porVeces} onCambiar={onCambiar} />
+          )}
+
           {/* ── Qué día es cada día ─────────────────────── */}
-          {pestana === 'menu' && tipos.length > 1 && (
+          {pestana === 'menu' && !porVeces && tipos.length > 1 && (
             <div className="mt-3">
               <p className="mb-1.5 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
                 Tus días
@@ -201,8 +250,9 @@ export function OrganizaTuSemana({
             </div>
           )}
 
-          {/* ── Qué comes, receta a receta ──────────────── */}
+          {/* ── Qué comes, receta a receta (fase 1) ─────── */}
           {pestana === 'menu' &&
+            !porVeces &&
             comidas.map(({ meal, opciones }) => (
             <div key={meal.id} className="mt-4">
               <p className="mb-1.5 text-[10px] font-medium tracking-wide text-slate-500 uppercase">

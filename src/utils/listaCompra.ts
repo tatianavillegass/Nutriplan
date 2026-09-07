@@ -5,6 +5,7 @@ import type { Receta } from '../types/recipe';
 import { scaleRecipe } from './recipeScaling';
 import { diasDeLaSemana } from './menuSemana';
 import { gramosPorPieza } from './measures';
+import type { OpcionEscalada } from './mealOptions';
 import type { ExchangeGroupId } from '../data/exchangeGroups';
 
 /**
@@ -204,6 +205,25 @@ export function listaDeLaCompra(
     }
   }
 
+  return { lineas: lineasDesde(acumulado, porId), comidas };
+}
+
+/** Lo acumulado, pasado a líneas: redondeo, sección y orden de supermercado. */
+type Acumulado = Map<
+  string,
+  {
+    nombre: string;
+    foodId?: string;
+    grupo?: string;
+    gramos: number;
+    veces: number;
+    unidad: string;
+    sinEnlazar?: boolean;
+    alGusto?: boolean;
+  }
+>;
+
+function lineasDesde(acumulado: Acumulado, porId: Map<string, Alimento>): LineaCompra[] {
   const lineas: LineaCompra[] = [...acumulado.entries()].map(([clave, v]) => {
     const food = v.foodId ? porId.get(v.foodId) : undefined;
     const seccion = seccionDe(food?.grupo ?? v.grupo);
@@ -247,7 +267,63 @@ export function listaDeLaCompra(
     return a.nombre.localeCompare(b.nombre);
   });
 
-  return { lineas, comidas };
+  return lineas;
+}
+
+/**
+ * LA LISTA DE FASE 2: OPCIÓN × VECES
+ *
+ * En fase 2 no hay platos que repartir por días, hay combinaciones que se
+ * eligen cada mañana. La clienta dice cuántas veces come cada una y la compra
+ * es una multiplicación: tres desayunos de dos huevos son seis huevos.
+ *
+ * Pasa por las mismas cuatro trampas de arriba —se suma por alimento, se
+ * compra crudo, se redondea a lo que se vende y la verdura va por veces—, así
+ * que la lista sale exactamente igual que la de fase 1 y no hay dos formatos.
+ */
+export function listaDesdeVeces(
+  comidas: { mealId: string; opciones: OpcionEscalada[] }[],
+  veces: MenuSemana['veces'],
+  foods: Alimento[],
+): ListaCompra {
+  const porId = new Map(foods.map((f) => [f.id, f]));
+  const acumulado: Acumulado = new Map();
+  let total = 0;
+
+  for (const { mealId, opciones } of comidas) {
+    for (const opcion of opciones) {
+      const n = veces?.[mealId]?.[opcion.id] ?? 0;
+      if (n <= 0) continue;
+      total += n;
+
+      for (const item of opcion.items) {
+        const food = porId.get(item.foodId);
+
+        /*
+         * De cocido a crudo: la opción habla de lo que se come, la lista de lo
+         * que se compra. Sin la equivalencia se deja tal cual.
+         */
+        let gramos = item.gramos * n;
+        if (food?.equivalencia_cocido && food.gramos > 0) {
+          const deCocidoACrudo = food.gramos / food.equivalencia_cocido;
+          if (deCocidoACrudo > 0 && deCocidoACrudo < 1) gramos *= deCocidoACrudo;
+        }
+
+        const clave = `f:${item.foodId}`;
+        const ya = acumulado.get(clave);
+        acumulado.set(clave, {
+          nombre: food?.nombre ?? item.nombre,
+          foodId: item.foodId,
+          grupo: item.grupo,
+          gramos: (ya?.gramos ?? 0) + gramos,
+          veces: (ya?.veces ?? 0) + n,
+          unidad: item.unidad || food?.unidad || 'g',
+        });
+      }
+    }
+  }
+
+  return { lineas: lineasDesde(acumulado, porId), comidas: total };
 }
 
 /**

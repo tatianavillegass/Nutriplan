@@ -19,6 +19,7 @@ import {
   tipoDeDiaPlaneado,
 } from "../utils/menuSemana";
 import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
+import { columnasDeComida } from "../utils/combosGuardados";
 import type { Receta } from "../types/recipe";
 import type { ExchangeGroupId } from "../data/exchangeGroups";
 import { exchangesToMacros } from "../utils/exchanges";
@@ -446,6 +447,26 @@ export function ClientView() {
 
   /** Las que ha escrito ella, juntando todos sus días. */
   const misRecetas = useMemo(() => recetasPropiasDe(mios), [mios]);
+
+  /**
+   * FASE 2: LAS OPCIONES DE CADA COMIDA, PARA PODER CONTARLAS
+   *
+   * Ahí no hay platos que repartir por días: hay combinaciones calculadas
+   * entre las que elige cada mañana. Se le pregunta cuántas veces come cada
+   * una y de ahí sale la lista de la compra, que era lo único para lo que
+   * hacían falta los días.
+   */
+  const porVeces = useMemo(() => {
+    if (plan?.fase !== 2 || !dayType) return undefined;
+    return comidasDeLaSemana(plan).map((m) => ({
+      mealId: m.id,
+      nombre: m.nombre,
+      columnas: columnasDeComida(dayType, m, foods).map((c) => ({
+        bucket: c.bucket,
+        opciones: c.opciones,
+      })),
+    }));
+  }, [plan, dayType, foods]);
 
   const porciones = registro?.porciones ?? {};
   /** Lo escogido por subgrupo: es la base del presupuesto del día. */
@@ -1362,6 +1383,12 @@ export function ClientView() {
               <OrganizaTuSemana
                 menu={menu}
                 menuSuyo={menuSuyo}
+                /*
+                 * En fase 2 no come platos: come combinaciones que elige cada
+                 * mañana. Repartirlas por días le quitaría esa libertad, así
+                 * que dice cuántas veces come cada una y de ahí sale la compra.
+                 */
+                porVeces={porVeces}
                 plan={plan}
                 /*
                  * Todas las comidas de la semana, no sólo las de hoy: si la
