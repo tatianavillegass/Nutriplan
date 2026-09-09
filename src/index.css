@@ -63,6 +63,19 @@ body {
   .print-doc {
     font-size: 11pt;
   }
+  /*
+   * EL NAVEGADOR NO IMPRIME FONDOS SI NO SE LE DICE
+   *
+   * Por defecto Chrome y Safari tiran los colores de fondo al imprimir, para
+   * ahorrar tinta. En una hoja pensada para colgarse eso se lleva por delante
+   * las bandas de cada comida, los números de las opciones y la marca de agua:
+   * sale un folio en blanco y negro. Con esto se imprime lo que se ve.
+   */
+  .print-doc,
+  .print-doc * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
   @page {
     size: A4;
     margin: 14mm;

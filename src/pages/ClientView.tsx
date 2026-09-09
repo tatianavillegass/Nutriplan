@@ -231,8 +231,14 @@ export function ClientView() {
     return recursos.filter((r) => dados.has(r.id));
   }, [recursos, client, reto]);
 
+  /*
+   * El nombre del archivo es lo que ve al guardarlo, así que no lleva «Fase 2»:
+   * a la clienta no se le habla de fases (es vocabulario de la consulta).
+   */
   const imprimir = usePrintDocument(
-    `Plan ${client?.nombre ?? ""} — Fase ${plan?.fase ?? ""}`.trim(),
+    plan?.fase === 2
+      ? `Tus comidas — ${client?.nombre ?? ""}`.trim()
+      : `Plan ${client?.nombre ?? ""} — Fase ${plan?.fase ?? ""}`.trim(),
   );
 
   const mios = useMemo(
@@ -947,7 +953,11 @@ export function ClientView() {
                 {interactivo ? "Ver como documento" : "Marcar lo que como"}
               </Button>
             )}
-            <Button onClick={imprimir}>Exportar PDF</Button>
+            {/* En fase 2 lo que sale es una hoja para colgar, y decirlo cambia
+                lo que se espera del botón: no es «el plan en PDF». */}
+            <Button onClick={imprimir}>
+              {plan?.fase === 2 ? "Hoja para la nevera" : "Exportar PDF"}
+            </Button>
           </div>
         </div>
 
