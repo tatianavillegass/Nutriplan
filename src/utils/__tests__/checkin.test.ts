@@ -1,82 +1,129 @@
 import { describe, it, expect } from 'vitest';
-import { checkInPendiente, checkInQueToca, comoVaCambiando } from '../checkin';
-import { dondeVa } from '../programa';
-import { registroVacio } from '../../types/diary';
+import {
+  checkInPendiente,
+  checkInsDe,
+  comoVaCambiando,
+  etiquetaDeCheckIn,
+  lunesDe,
+  nombreDeLaSemana,
+  semanaQueToca,
+} from '../checkin';
 import type { CheckIn, RegistroDia } from '../../types/diary';
 
 /**
- * EL CHECK-IN DE CADA DOS SEMANAS
+ * LA ENCUESTA SEMANAL
  *
- * Un mes es demasiado para enterarse de que algo no va: si el hambre se
- * disparó la segunda semana, saberlo el día 30 es tarde. Y cada dos semanas no
- * cansa.
+ * Iba cada catorce días contados desde el inicio de un programa, así que a una
+ * clienta de consulta normal —que es la mayoría— no le salía nunca. Ahora es de
+ * la SEMANA y de todas: se abre el domingo, pregunta por la semana que acaba y
+ * se queda hasta la siguiente.
+ *
+ * Septiembre de 2026: el 6 es domingo, el 7 lunes y el 13 el domingo siguiente.
  */
 
-const PROGRAMA = { nombre: 'RESET 90', inicio: '2026-08-01', dias: 90 };
+const respuestas = { energia: 3, digestion: 3, sueno: 3, hambre: 3, antojos: 3 };
 
-const respuestas = (n: number): CheckIn['respuestas'] => ({
-  energia: n,
-  digestion: n,
-  sueno: n,
-  hambre: n,
-  antojos: n,
+const respondido = (semana: string, fecha: string, extra: Partial<CheckIn> = {}): RegistroDia =>
+  ({
+    id: `r-${fecha}`,
+    clientId: 'c1',
+    fecha,
+    checkins: [{ semana, fecha, respuestas, ...extra }],
+  }) as unknown as RegistroDia;
+
+describe('Las semanas empiezan en lunes', () => {
+  it('y el domingo cierra la suya, no abre la siguiente', () => {
+    expect(lunesDe('2026-09-07')).toBe('2026-09-07'); // lunes
+    expect(lunesDe('2026-09-09')).toBe('2026-09-07'); // miércoles
+    expect(lunesDe('2026-09-13')).toBe('2026-09-07'); // domingo
+    expect(lunesDe('2026-09-14')).toBe('2026-09-14'); // lunes siguiente
+  });
 });
 
-const conCheckIn = (fecha: string, numero: number, valor: number): RegistroDia => ({
-  ...registroVacio('c1', fecha, `r_${fecha}`),
-  checkins: [{ numero, fecha, respuestas: respuestas(valor) }],
-});
-
-describe('Cuándo toca', () => {
-  it('el primero a las dos semanas, no antes', () => {
-    expect(checkInQueToca(dondeVa(PROGRAMA, '2026-08-10'))).toBeUndefined();
-    expect(checkInQueToca(dondeVa(PROGRAMA, '2026-08-14'))).toBe(1);
+describe('Por qué semana se pregunta', () => {
+  /** Una semana a medias se contesta peor: el miércoles no se sabe aún. */
+  it('el domingo, por la semana que se cierra ese día', () => {
+    expect(semanaQueToca('2026-09-13')).toBe('2026-09-07');
   });
 
-  it('y el segundo a las cuatro', () => {
-    expect(checkInQueToca(dondeVa(PROGRAMA, '2026-08-28'))).toBe(2);
+  it('y de lunes a sábado, por esa misma: la que acaba de terminar', () => {
+    expect(semanaQueToca('2026-09-14')).toBe('2026-09-07');
+    expect(semanaQueToca('2026-09-19')).toBe('2026-09-07');
+  });
+
+  it('hasta que llega el domingo siguiente', () => {
+    expect(semanaQueToca('2026-09-20')).toBe('2026-09-14');
+  });
+});
+
+describe('Cuándo se le enseña', () => {
+  it('a cualquiera con plan enviado, sin necesitar programa', () => {
+    expect(checkInPendiente('2026-09-13', [], '2026-08-31')).toBe('2026-09-07');
   });
 
   /**
-   * Se queda disponible hasta el siguiente: si abre la app el día 16, sigue
-   * pudiendo contestarlo. Perseguir a alguien con una encuesta no funciona,
-   * pero hacerla desaparecer por un día tampoco.
+   * Preguntarle qué tal la semana en la que todavía no tenía plan no informa
+   * de nada: la semana entera tiene que haber ido por detrás del envío.
    */
-  it('sigue disponible los días siguientes', () => {
-    expect(checkInPendiente(dondeVa(PROGRAMA, '2026-08-17'), [])).toBe(1);
+  it('pero no por una semana anterior a su plan', () => {
+    expect(checkInPendiente('2026-09-13', [], '2026-09-10')).toBeUndefined();
   });
 
-  it('y deja de pedirse en cuanto lo contesta', () => {
-    const registros = [conCheckIn('2026-08-14', 1, 4)];
-    expect(checkInPendiente(dondeVa(PROGRAMA, '2026-08-17'), registros)).toBeUndefined();
-    // Pero el de la quincena siguiente sí vuelve a salir.
-    expect(checkInPendiente(dondeVa(PROGRAMA, '2026-08-28'), registros)).toBe(2);
+  it('sin fecha de envío no se estorba', () => {
+    expect(checkInPendiente('2026-09-13', [])).toBe('2026-09-07');
   });
 
-  it('cuando el programa termina, ya no se pregunta nada', () => {
-    expect(checkInQueToca(dondeVa(PROGRAMA, '2026-12-01'))).toBeUndefined();
+  it('y deja de salir en cuanto la contesta', () => {
+    const registros = [respondido('2026-09-07', '2026-09-13')];
+    expect(checkInPendiente('2026-09-13', registros, '2026-08-31')).toBeUndefined();
+    // El domingo siguiente vuelve, con la semana nueva.
+    expect(checkInPendiente('2026-09-20', registros, '2026-08-31')).toBe('2026-09-14');
+  });
+
+  /** Perseguir con una encuesta no funciona; hacerla desaparecer tampoco. */
+  it('si no contesta el domingo, sigue disponible toda la semana', () => {
+    expect(checkInPendiente('2026-09-17', [], '2026-08-31')).toBe('2026-09-07');
   });
 });
 
-/**
- * En consulta lo que importa no es el número suelto sino hacia dónde va: un 3
- * después de un 1 es una buena noticia y después de un 5 es una conversación.
- */
-describe('Cómo va cambiando', () => {
-  it('compara el último con el anterior', () => {
-    const t = comoVaCambiando([
-      conCheckIn('2026-08-14', 1, 2),
-      conCheckIn('2026-08-28', 2, 4),
-    ]);
+describe('Lo ya contestado no se pierde', () => {
+  const viejo = {
+    id: 'r0',
+    clientId: 'c1',
+    fecha: '2026-08-14',
+    checkins: [{ numero: 1, fecha: '2026-08-14', respuestas }],
+  } as unknown as RegistroDia;
 
-    expect(t[0].ahora).toBe(4);
-    expect(t[0].antes).toBe(2);
-    expect(t[0].cambio).toBe('sube');
+  it('los de las quincenas del programa se siguen leyendo', () => {
+    const todos = checkInsDe([viejo, respondido('2026-09-07', '2026-09-13')]);
+    expect(todos.length).toBe(2);
+    expect(todos[0].numero).toBe(1);
+    expect(todos[1].semana).toBe('2026-09-07');
   });
 
-  it('y con uno solo no se inventa una comparación', () => {
-    const t = comoVaCambiando([conCheckIn('2026-08-14', 1, 3)]);
-    expect(t[0].antes).toBeUndefined();
-    expect(t[0].cambio).toBe('igual');
+  it('y se enseñan por su quincena, que es lo que eran', () => {
+    expect(etiquetaDeCheckIn(viejo.checkins![0])).toBe('Quincena 1');
+    expect(etiquetaDeCheckIn({ semana: '2026-09-07', fecha: '2026-09-13', respuestas })).toBe(
+      nombreDeLaSemana('2026-09-07'),
+    );
+  });
+});
+
+describe('Lo que importa es hacia dónde va', () => {
+  it('compara el último con el anterior', () => {
+    const registros = [
+      respondido('2026-09-07', '2026-09-13'),
+      respondido('2026-09-14', '2026-09-20', {
+        respuestas: { ...respuestas, sueno: 5, hambre: 1 },
+      }),
+    ];
+    const t = comoVaCambiando(registros);
+    expect(t.find((x) => x.id === 'sueno')?.cambio).toBe('sube');
+    expect(t.find((x) => x.id === 'hambre')?.cambio).toBe('baja');
+    expect(t.find((x) => x.id === 'energia')?.cambio).toBe('igual');
+  });
+
+  it('y sin ninguno no dice nada', () => {
+    expect(comoVaCambiando([])).toEqual([]);
   });
 });

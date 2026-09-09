@@ -77,7 +77,7 @@ import {
 import { calcularRacha, diaCerrado } from "../utils/racha";
 import { comoVaElMes, dondeVa } from "../utils/programa";
 import { checkInPendiente } from "../utils/checkin";
-import { CheckInQuincenal } from "../components/client/CheckInQuincenal";
+import { CheckInSemanal } from "../components/client/CheckInSemanal";
 import type { RegistroDia } from "../types/diary";
 import { TuPrograma } from "../components/client/TuPrograma";
 import { preparacionDe } from "../utils/preparacion";
@@ -308,8 +308,15 @@ export function ClientView() {
     return () => esperaSuPlan(false);
   }, [soyElCliente, sinPlanQueVer]);
 
-  /** El check-in de esta quincena, si está sin contestar. */
-  const pendiente = useMemo(() => checkInPendiente(donde, mios), [donde, mios]);
+  /**
+   * La encuesta de esta semana, si está sin contestar. Ya no depende de tener
+   * un programa: le sale a cualquiera con plan enviado, desde la primera
+   * semana entera que haya vivido con él.
+   */
+  const pendiente = useMemo(
+    () => checkInPendiente(fecha, mios, plan?.envio?.fecha),
+    [fecha, mios, plan],
+  );
 
   const delMes = useMemo(
     () => comoVaElMes(donde, mios, fecha, tipoDelDia),
@@ -1177,12 +1184,13 @@ export function ClientView() {
             )}
 
             {/*
-              El check-in de cada dos semanas: aparece cuando toca, se queda
-              hasta el siguiente y no bloquea nada. Ver `utils/checkin.ts`.
+              La encuesta de la semana: se abre el domingo, pregunta por la
+              semana que acaba, se queda hasta la siguiente y no bloquea nada.
+              Ver `utils/checkin.ts`.
             */}
             {soyElCliente && pendiente && (
-              <CheckInQuincenal
-                numero={pendiente}
+              <CheckInSemanal
+                semana={pendiente}
                 fecha={fecha}
                 onGuardar={(checkin) =>
                   guardar({ checkins: [...(registro?.checkins ?? []), checkin] })

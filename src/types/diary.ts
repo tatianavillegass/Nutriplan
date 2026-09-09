@@ -122,8 +122,23 @@ export interface MenuSemana {
  * cosas para hablarlas, no un examen que aprobar.
  */
 export interface CheckIn {
-  /** El 1 es el de la primera quincena, el 2 el de la segunda… */
-  numero: number;
+  /**
+   * El lunes de la semana sobre la que se pregunta, en ISO. Es lo que
+   * identifica un check-in: dos personas que empiezan en meses distintos
+   * contestan igual la semana del 8 de septiembre, y así se puede mirar la
+   * consulta entera de una semana de una sentada.
+   */
+  semana?: string;
+  /**
+   * LO VIEJO: el número de quincena del programa
+   *
+   * Antes el check-in iba cada catorce días contados desde el inicio del
+   * programa, así que se identificaba por «la quincena 1, la 2…». Los ya
+   * respondidos se conservan tal cual —no se pueden reescribir desde hoy, y
+   * son material de consulta— así que este campo sigue existiendo y ordena por
+   * detrás de `semana`.
+   */
+  numero?: number;
   fecha: string;
   respuestas: {
     energia: number;

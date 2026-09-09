@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { CheckInQuincenal } from '../client/CheckInQuincenal';
-import { CheckInsDelPrograma } from '../client/CheckInsDelPrograma';
+import { CheckInSemanal } from '../client/CheckInSemanal';
+import { CheckInsDeLaClienta } from '../client/CheckInsDeLaClienta';
 import { registroVacio } from '../../types/diary';
 import type { CheckIn, RegistroDia } from '../../types/diary';
 
@@ -29,23 +29,23 @@ const dia = (fecha: string, checkins: CheckIn[]): RegistroDia => ({
  */
 describe('El check-in de la clienta', () => {
   it('no ocupa sitio hasta que ella quiere', () => {
-    render(<CheckInQuincenal numero={1} fecha="2026-08-14" onGuardar={vi.fn()} />);
+    render(<CheckInSemanal semana="2026-09-07" fecha="2026-08-14" onGuardar={vi.fn()} />);
     expect(screen.queryByText(/energía/i)).toBeNull();
 
-    fireEvent.click(screen.getByText('¿Qué tal estas dos semanas?'));
+    fireEvent.click(screen.getByText('¿Qué tal la semana?'));
     expect(screen.getByText(/energía/i)).toBeTruthy();
   });
 
   it('se puede dejar para otro momento', () => {
-    render(<CheckInQuincenal numero={1} fecha="2026-08-14" onGuardar={vi.fn()} />);
-    fireEvent.click(screen.getByText('¿Qué tal estas dos semanas?'));
+    render(<CheckInSemanal semana="2026-09-07" fecha="2026-08-14" onGuardar={vi.fn()} />);
+    fireEvent.click(screen.getByText('¿Qué tal la semana?'));
     expect(screen.getByText('Ahora no')).toBeTruthy();
   });
 
   it('y al contestarlo todo se envía con lo que escribió', () => {
     const onGuardar = vi.fn();
-    render(<CheckInQuincenal numero={2} fecha="2026-08-28" onGuardar={onGuardar} />);
-    fireEvent.click(screen.getByText('¿Qué tal estas dos semanas?'));
+    render(<CheckInSemanal semana="2026-09-14" fecha="2026-08-28" onGuardar={onGuardar} />);
+    fireEvent.click(screen.getByText('¿Qué tal la semana?'));
 
     for (const pregunta of [
       '¿Cómo has estado de energía?',
@@ -62,7 +62,7 @@ describe('El check-in de la clienta', () => {
     fireEvent.click(screen.getByText('Enviar'));
 
     const enviado = onGuardar.mock.calls[0][0] as CheckIn;
-    expect(enviado.numero).toBe(2);
+    expect(enviado.semana).toBe('2026-09-14');
     expect(enviado.respuestas.sueno).toBe(4);
     expect(enviado.nota).toBe('Semana de viaje');
   });
@@ -75,7 +75,7 @@ describe('El check-in de la clienta', () => {
 describe('Lo que ve la nutricionista', () => {
   it('enseña la nota y el cambio respecto a la quincena anterior', () => {
     render(
-      <CheckInsDelPrograma
+      <CheckInsDeLaClienta
         registros={[
           dia('2026-08-14', [{ numero: 1, fecha: '2026-08-14', respuestas: respuestas(2) }]),
           dia('2026-08-28', [
@@ -90,7 +90,7 @@ describe('Lo que ve la nutricionista', () => {
   });
 
   it('y sin check-ins no ocupa sitio', () => {
-    const { container } = render(<CheckInsDelPrograma registros={[]} />);
+    const { container } = render(<CheckInsDeLaClienta registros={[]} />);
     expect(container.textContent).toBe('');
   });
 });

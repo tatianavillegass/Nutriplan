@@ -1,5 +1,5 @@
 import type { RegistroDia } from '../../types/diary';
-import { checkInsDe, comoVaCambiando, PREGUNTAS } from '../../utils/checkin';
+import { checkInsDe, comoVaCambiando, etiquetaDeCheckIn, PREGUNTAS } from '../../utils/checkin';
 
 interface Props {
   registros: RegistroDia[];
@@ -8,16 +8,16 @@ interface Props {
 const FLECHA = { sube: '↑', baja: '↓', igual: '=' } as const;
 
 /**
- * LO QUE TE CUENTA CADA DOS SEMANAS
+ * LO QUE TE CUENTA CADA SEMANA
  *
  * Es material de consulta, no una nota. Se enseña el último con su cambio
  * respecto al anterior —lo que importa no es el número suelto sino hacia dónde
- * va— y el histórico debajo para poder decir «llevas tres quincenas durmiendo
+ * va— y el histórico debajo para poder decir «llevas tres semanas durmiendo
  * mal», que es una conversación distinta a «¿qué tal el sueño?».
  *
  * Y lo primero de todo, lo que haya escrito: casi siempre es lo más útil.
  */
-export function CheckInsDelPrograma({ registros }: Props) {
+export function CheckInsDeLaClienta({ registros }: Props) {
   const todos = checkInsDe(registros);
   if (!todos.length) return null;
 
@@ -27,9 +27,9 @@ export function CheckInsDelPrograma({ registros }: Props) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">Sus check-ins</h3>
+        <h3 className="text-sm font-semibold text-slate-800">Cómo se ha sentido</h3>
         <span className="text-[11px] text-slate-400">
-          Último: {ultimo.fecha} · quincena {ultimo.numero}
+          Semana del {etiquetaDeCheckIn(ultimo)}
         </span>
       </div>
 
@@ -69,7 +69,7 @@ export function CheckInsDelPrograma({ registros }: Props) {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="text-slate-400">
-                <th className="py-1 pr-2 font-medium">Quincena</th>
+                <th className="py-1 pr-2 font-medium">Semana</th>
                 {PREGUNTAS.map((p) => (
                   <th key={p.id} className="py-1 pr-2 font-medium capitalize">
                     {p.id === 'sueno' ? 'sueño' : p.id}
@@ -79,8 +79,8 @@ export function CheckInsDelPrograma({ registros }: Props) {
             </thead>
             <tbody>
               {todos.map((c) => (
-                <tr key={`${c.numero}-${c.fecha}`} className="border-t border-slate-100">
-                  <td className="tnum py-1 pr-2 text-slate-600">{c.numero}</td>
+                <tr key={`${c.semana ?? c.numero}-${c.fecha}`} className="border-t border-slate-100">
+                  <td className="py-1 pr-2 text-slate-600">{etiquetaDeCheckIn(c)}</td>
                   {PREGUNTAS.map((p) => (
                     <td key={p.id} className="tnum py-1 pr-2 text-slate-700">
                       {c.respuestas[p.id]}

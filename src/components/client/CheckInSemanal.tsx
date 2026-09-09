@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { CheckIn } from '../../types/diary';
-import { PREGUNTAS } from '../../utils/checkin';
+import { nombreDeLaSemana, PREGUNTAS } from '../../utils/checkin';
 import { Button } from '../common/ui';
 
 interface Props {
-  numero: number;
+  /** El lunes de la semana por la que se pregunta, en ISO. */
+  semana: string;
   fecha: string;
   onGuardar: (checkin: CheckIn) => void;
 }
@@ -12,7 +13,7 @@ interface Props {
 const VALORES = [1, 2, 3, 4, 5];
 
 /**
- * ¿QUÉ TAL ESTAS DOS SEMANAS?
+ * ¿QUÉ TAL LA SEMANA?
  *
  * Cinco preguntas y una línea libre. Treinta segundos para ella; para la
  * nutricionista, la próxima consulta ya empezada.
@@ -28,7 +29,7 @@ const VALORES = [1, 2, 3, 4, 5];
  * Se queda disponible hasta el siguiente y no bloquea nada. Una app que
  * persigue a alguien con una encuesta se cierra y no se vuelve a abrir.
  */
-export function CheckInQuincenal({ numero, fecha, onGuardar }: Props) {
+export function CheckInSemanal({ semana, fecha, onGuardar }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [respuestas, setRespuestas] = useState<Record<string, number>>({});
   const [nota, setNota] = useState('');
@@ -42,7 +43,7 @@ export function CheckInQuincenal({ numero, fecha, onGuardar }: Props) {
         onClick={() => setAbierto(true)}
         className="w-full rounded-xl border border-brand-200 bg-brand-50/40 p-3 text-left"
       >
-        <p className="text-sm font-medium text-brand-900">¿Qué tal estas dos semanas?</p>
+        <p className="text-sm font-medium text-brand-900">¿Qué tal la semana?</p>
         <p className="mt-0.5 text-xs leading-snug text-slate-600">
           Cinco preguntas rápidas para tu nutricionista. Si ahora no te va bien, sigue aquí.
         </p>
@@ -52,7 +53,9 @@ export function CheckInQuincenal({ numero, fecha, onGuardar }: Props) {
   return (
     <section className="rounded-xl border border-brand-200 bg-brand-50/40 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold text-brand-900">¿Qué tal estas dos semanas?</p>
+        <p className="text-sm font-semibold text-brand-900">
+          ¿Qué tal la semana del {nombreDeLaSemana(semana)}?
+        </p>
         <button
           onClick={() => setAbierto(false)}
           className="text-xs text-slate-500 hover:underline"
@@ -110,7 +113,7 @@ export function CheckInQuincenal({ numero, fecha, onGuardar }: Props) {
           disabled={!listo}
           onClick={() =>
             onGuardar({
-              numero,
+              semana,
               fecha,
               respuestas: respuestas as CheckIn['respuestas'],
               nota: nota.trim() || undefined,

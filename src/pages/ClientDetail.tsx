@@ -23,7 +23,7 @@ import {
 } from "../components/planning/RecursosYMetas";
 import { PlanHistory } from "../components/client/PlanHistory";
 import { FollowUpPanel } from "../components/client/FollowUpPanel";
-import { CheckInsDelPrograma } from "../components/client/CheckInsDelPrograma";
+import { CheckInsDeLaClienta } from "../components/client/CheckInsDeLaClienta";
 import { PatronesDePausa } from "../components/client/PatronesDePausa";
 import { PausaDeCliente } from "../components/planning/PausaDeCliente";
 import { RepartirLaSemana } from "../components/planning/RepartirLaSemana";
@@ -320,7 +320,7 @@ export function ClientDetail() {
             se mira antes de una consulta: lo que ella siente no sale de ningún
             otro sitio de la app.
           */}
-          <CheckInsDelPrograma registros={registrosCliente} />
+          <CheckInsDeLaClienta registros={registrosCliente} />
           {/*
             Justo debajo del check-in, que es lo mismo: lo que ella siente. Los
             números de aquí no salen en ninguna pantalla suya.
