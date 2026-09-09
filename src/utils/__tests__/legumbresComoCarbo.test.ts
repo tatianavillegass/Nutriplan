@@ -6,6 +6,7 @@ import {
   objetivoUnificado,
   proteinaDeLasLegumbres,
   techoDeFamilia,
+  topeDeLoPautado,
   validarCombo,
 } from '../combos';
 import type { ExchangeCounts } from '../exchanges';
@@ -93,6 +94,54 @@ describe('El caso de Tats: 3 almidones y lentejas de opción', () => {
   it('cinco lentejas donde había tres almidones sí se pasan', () => {
     const r = validarCombo(objetivo, [{ grupo: 'legumbres', intercambios: 5 }]);
     expect(r.valida).toBe(false);
+  });
+});
+
+/**
+ * EL CASO CONTRARIO: LA MITAD Y LA MITAD
+ *
+ * Pautando 1,5 almidones y 1,5 legumbres, el descuento se le estaba aplicando
+ * también al techo —193,5 kcal en vez de 235,5— mientras que ofrecer 3
+ * almidones costaba 205,5. Los mismos 42 g de hidrato en las dos opciones, y la
+ * app bloqueaba la que NO traía legumbre.
+ *
+ * El techo es lo que ella pautó; el descuento es de las opciones.
+ */
+describe('Mitad almidón y mitad legumbre', () => {
+  const MIXTA: ExchangeCounts = { almidones: 1.5, legumbres: 1.5 };
+  const objetivo = objetivoDeBucket(MIXTA, 'carbohidrato')!;
+  const unificado = objetivoUnificado(objetivo);
+
+  it('el techo son las calorías de lo pautado, sin descuentos', () => {
+    // 42 g de hidrato, 13,5 de proteína, 1,5 de grasa.
+    expect(topeDeLoPautado('almidones', MIXTA)).toBeCloseTo(235.5, 1);
+  });
+
+  it('tres almidones cubren los mismos 42 g y ya no se bloquean', () => {
+    const r = validarCombo(objetivo, [{ grupo: 'almidones', intercambios: 3 }]);
+    expect(r.valida).toBe(true);
+  });
+
+  it('y tres legumbres tampoco', () => {
+    const r = validarCombo(objetivo, [{ grupo: 'legumbres', intercambios: 3 }]);
+    expect(r.valida).toBe(true);
+  });
+
+  /** La fruta trae un gramo más de hidrato por porción y sigue entrando. */
+  it('ni tres frutas', () => {
+    const r = validarCombo(objetivo, [{ grupo: 'fruta', intercambios: 3 }]);
+    expect(r.valida).toBe(true);
+  });
+
+  /** Lo que sigue vigilado: que no se infle la comida. */
+  it('pero cinco legumbres se siguen pasando', () => {
+    const r = validarCombo(objetivo, [{ grupo: 'legumbres', intercambios: 5 }]);
+    expect(r.valida).toBe(false);
+  });
+
+  it('en proteicos el techo sigue siendo la grasa', () => {
+    expect(topeDeLoPautado('proteicos', { proteicos_magros: 3 })).toBeCloseTo(1.5, 1);
+    expect(unificado.familia).toBe('almidones');
   });
 });
 

@@ -74,7 +74,7 @@ export function objetivoDeBucket(
       bucket,
       porciones: subs.reduce((s, [, n]) => s + n, 0),
       kcalMaximas: kcalFromMacros(exchangesToMacros(counts)),
-      topeMaximo: costeDeFamilia(familia, counts),
+      topeMaximo: topeDeLoPautado(familia, counts),
       porSubgrupo: subs,
     };
   });
@@ -168,6 +168,24 @@ export function costeDeFamilia(familia: Familia, counts: ExchangeCounts): number
   return kcalFromMacros(m) - kcalDeOtroMacro(counts);
 }
 
+/**
+ * EL TECHO ES LO QUE SE PAUTÓ, ENTERO
+ *
+ * El descuento de arriba es para medir lo que gasta una OPCIÓN, no para medir
+ * lo pautado. Aplicándoselo también al techo se rompía el caso contrario:
+ * pautando 1,5 almidones y 1,5 legumbres, a lo pautado se le quitaban las 42
+ * calorías de la proteína de la legumbre —techo 193,5— mientras que ofrecer 3
+ * almidones costaba 205,5. Los mismos 42 g de hidrato en las dos, y bloqueaba.
+ *
+ * El techo es la energía que ella puso en esa comida; lo que se le cobra a una
+ * opción es sólo su carbohidrato. Son dos preguntas distintas y se miden
+ * distinto. En proteicos y grasas no cambia nada: ahí manda la grasa.
+ */
+export function topeDeLoPautado(familia: Familia, counts: ExchangeCounts): number {
+  const m = exchangesToMacros(counts);
+  return limitaLaGrasa(familia) ? m.grasa : kcalFromMacros(m);
+}
+
 /** La proteína que traen las legumbres, que no se pautó como proteína. */
 export function proteinaDeLasLegumbres(counts: ExchangeCounts): number {
   let p = 0;
@@ -249,11 +267,11 @@ export function objetivoUnificado(objetivo: ObjetivoBucket): ObjetivoFamilia {
     porciones: objetivo.porciones,
     kcalMaximas: objetivo.kcalMaximas,
     /*
-     * Por `costeDeFamilia` y no a mano: si no, el techo del pautado y el coste
-     * de las combinaciones se medirían con dos varas distintas y las legumbres
-     * volverían a bloquearse.
+     * Las kcal de lo pautado, sin descuentos: el descuento es de las opciones.
+     * Restándoselo también aquí, un reparto con legumbres se quedaba con un
+     * techo más bajo que el coste de cubrirlo con almidones.
      */
-    topeMaximo: costeDeFamilia(referencia, counts),
+    topeMaximo: topeDeLoPautado(referencia, counts),
     porSubgrupo: objetivo.porSubgrupo,
   };
 }
