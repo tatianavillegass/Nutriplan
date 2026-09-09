@@ -93,6 +93,19 @@ export interface Client {
    */
   pausa?: boolean;
   /**
+   * QUE SE MIDA ELLA
+   *
+   * A las presenciales las mide la nutricionista con el plicómetro, y pedirles
+   * además que se pasen la cinta en casa es duplicar el trabajo con peor dato.
+   * A las online no hay forma de medirlas: hasta ahora se les mandaba una
+   * planilla por correo, que se rellena una vez y se deja de rellenar.
+   *
+   * Se enciende persona a persona, como la pausa. Las participantes de un reto
+   * lo tienen encendido por defecto (`seMide`), que un reto online es
+   * exactamente este caso.
+   */
+  medidas?: boolean;
+  /**
    * QUÉ HACER EN VEZ DE COMER
    *
    * La lista de actividades de la guía. Se le ofrecen **tres**, no la lista
@@ -302,6 +315,21 @@ export interface Sesion {
   /** Cuál de las líneas del bono consume. */
   lineaId?: string;
   nota?: string;
+}
+
+/**
+ * Si le toca medirse a ella.
+ *
+ * El interruptor manda; si no se ha tocado nunca, se mide quien está en un
+ * reto —ahí no hay consulta donde medirla— y no se mide nadie más. Así las
+ * participantes que ya venían apuntándose el peso no lo pierden el día que
+ * esto se despliega.
+ */
+export function seMide(
+  client: Pick<Client, 'medidas' | 'soloReto'>,
+  enUnReto = false,
+): boolean {
+  return client.medidas ?? (!!client.soloReto || enUnReto);
 }
 
 /** Las metas que hay que marcar hoy: las jubiladas no cuentan. */

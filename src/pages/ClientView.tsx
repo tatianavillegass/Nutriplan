@@ -64,7 +64,7 @@ import {
   planParaCliente,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
-import { LABEL_MODO_CITA, metasActivas } from "../types/client";
+import { LABEL_MODO_CITA, metasActivas, seMide } from "../types/client";
 import { citaLegible, citaPasada } from "../utils/agenda";
 import {
   diaDelReto,
@@ -1026,17 +1026,21 @@ export function ClientView() {
         {tab === "resumen" && (
           <div className="space-y-5">
             {/*
-              En un reto no hay consulta, así que la báscula y la cinta las
-              lleva ella: esto es lo único que su nutricionista va a saber de
-              su cuerpo hasta que termine.
+              A las presenciales las mide la nutricionista con el plicómetro;
+              a las online no hay forma de medirlas, así que la báscula y la
+              cinta las lleva ella. Se enciende persona a persona (`seMide`):
+              a quien la mides tú, pedirle que además se mida en casa es
+              duplicar el trabajo con peor dato.
             */}
-            <MisMedidas
-              registros={mios}
-              mediciones={mediciones}
-              preparacion={preparacion}
-              deHoy={registro?.medidas}
-              onGuardar={(medidas) => guardar({ medidas })}
-            />
+            {client && seMide(client, !!reto) && (
+              <MisMedidas
+                registros={mios}
+                mediciones={mediciones}
+                preparacion={preparacion}
+                deHoy={registro?.medidas}
+                onGuardar={(medidas) => guardar({ medidas })}
+              />
+            )}
             <ResumenTab
               client={client}
               dayTypes={plan.dayTypes}

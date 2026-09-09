@@ -1,5 +1,6 @@
 import type { MacroGrams } from './calculations';
 import type { Alimento } from './food';
+import type { Bioimpedancia } from './anthropometry';
 
 /**
  * REGISTRO DIARIO
@@ -121,6 +122,58 @@ export interface MenuSemana {
  * Lo que contesta cada dos semanas. Sin nota ni media a propósito: son cinco
  * cosas para hablarlas, no un examen que aprobar.
  */
+/**
+ * LO QUE SE MIDE ELLA
+ *
+ * Son los campos de la planilla que Tats les manda por correo: peso, altura y
+ * los perímetros con su referencia escrita —cintura por el mínimo, abdominal
+ * por el máximo, cadera por el máximo, muslo medio, pierna máxima—. Están así y
+ * no «cintura» a secas porque una cinta puesta dos centímetros más arriba
+ * inventa una bajada de un centímetro, y esa es exactamente la información que
+ * se venía a recoger.
+ *
+ * A las presenciales las mide ella con el plicómetro y esto no les sale: por
+ * eso hay un interruptor en la ficha (`Client.medidas`) en vez de estar para
+ * todas.
+ *
+ * Va en el registro por lo mismo que todo lo que escribe la clienta: es lo
+ * único que sube su app. **No entra en `Medicion`**, que es la antropometría
+ * que toma la nutricionista: su báscula de casa y unos pliegues medidos en
+ * consulta no se mezclan, igual que no se mezclan la bioimpedancia y los
+ * pliegues.
+ */
+export interface MedidasDelDia {
+  peso?: number;
+  /** cm. Cambia poco, pero en adolescentes y en gente mayor sí cambia. */
+  altura?: number;
+  brazoRelajado?: number;
+  brazoContraido?: number;
+  /** Cintura por el punto MÍNIMO. */
+  cintura?: number;
+  /** Abdominal por el punto MÁXIMO, a la altura del ombligo. */
+  abdominal?: number;
+  /** Cadera por el punto MÁXIMO. */
+  cadera?: number;
+  /** Muslo medio. */
+  muslo?: number;
+  /** Pierna (pantorrilla) por el máximo. */
+  pierna?: number;
+  /**
+   * Lo que marcó su báscula, si usa una de bioimpedancia. Se copia tal cual y
+   * no se recalcula nada: su número sale de una fórmula del aparato que no
+   * conocemos.
+   */
+  bioimpedancia?: Bioimpedancia;
+  /**
+   * Las fotos de ese día, ya encogidas. Son suyas y sólo las ve su
+   * nutricionista; todas opcionales, que pedir tres fotos cada semana es la
+   * forma más rápida de que se dejen de hacer.
+   */
+  fotos?: { frente?: string; perfil?: string; espalda?: string };
+  /** Lo que quiera apuntar de ese día. */
+  nota?: string;
+}
+
 export interface CheckIn {
   /**
    * El lunes de la semana sobre la que se pregunta, en ISO. Es lo que
@@ -378,7 +431,7 @@ export interface RegistroDia {
    * a diario le va bien a quien no le da importancia y le hace daño a quien se
    * la da, así que no se pide ni rompe ninguna racha.
    */
-  medidas?: { peso?: number; cintura?: number; cadera?: number };
+  medidas?: MedidasDelDia;
   preparacion?: {
     hechos: ('medidas' | 'foto' | 'guia')[];
     cintura?: number;

@@ -26,6 +26,8 @@ import { FollowUpPanel } from "../components/client/FollowUpPanel";
 import { CheckInsDeLaClienta } from "../components/client/CheckInsDeLaClienta";
 import { PatronesDePausa } from "../components/client/PatronesDePausa";
 import { PausaDeCliente } from "../components/planning/PausaDeCliente";
+import { MedidasDeCliente } from "../components/planning/MedidasDeCliente";
+import { MedidasDeLaClienta } from "../components/client/MedidasDeLaClienta";
 import { RepartirLaSemana } from "../components/planning/RepartirLaSemana";
 import { AvituallamientoDeComida } from "../components/planning/AvituallamientoDeComida";
 import { DiaEnVivo } from "../components/client/DiaEnVivo";
@@ -322,6 +324,12 @@ export function ClientDetail() {
           */}
           <CheckInsDeLaClienta registros={registrosCliente} />
           {/*
+            Lo que se ha medido ella. Va aquí y NO en Antropometría porque son
+            dos cosas que no se comparan: tus pliegues los tomas tú con el
+            mismo plicómetro, y su cinta en el baño de su casa es otra medida.
+          */}
+          <MedidasDeLaClienta registros={registrosCliente} />
+          {/*
             Justo debajo del check-in, que es lo mismo: lo que ella siente. Los
             números de aquí no salen en ninguna pantalla suya.
           */}
@@ -604,6 +612,10 @@ export function ClientDetail() {
               onChange={(patch) => updateClient(client.id, patch)}
             />
             <MetasDeCliente
+              client={client}
+              onChange={(patch) => updateClient(client.id, patch)}
+            />
+            <MedidasDeCliente
               client={client}
               onChange={(patch) => updateClient(client.id, patch)}
             />
