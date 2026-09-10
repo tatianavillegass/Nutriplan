@@ -60,6 +60,22 @@ export function vieneDeUnEnlace(href: string): boolean {
     return false;
   }
   if (url.searchParams.get(MARCA) === '1') return true;
+  /*
+   * Y también con el código a secas, sin nuestra marca.
+   *
+   * Supabase sólo respeta la dirección de vuelta si está en su lista de
+   * permitidas; si no, se la salta y manda al «Site URL» del proyecto, con el
+   * código pero sin nada de lo que le pidamos. Pasó de verdad: el proyecto
+   * seguía apuntando al dominio viejo de Vercel, así que el enlace la sacaba
+   * a otro dominio —donde no está la llave que guardó su navegador al pedir el
+   * cambio— y se encontraba la pantalla de entrar diciéndole que la contraseña
+   * era incorrecta, sin más explicación.
+   *
+   * Eso se arregla en la configuración del servidor, no aquí. Pero si vuelve a
+   * pasar, con esto al menos se le dice lo que ha ocurrido en vez de dejarla
+   * mirando un formulario que no va a aceptarle nada.
+   */
+  if (url.searchParams.has('code')) return true;
   // El formato viejo: todo detrás de la almohadilla.
   return /(^|[#&?])type=recovery(&|$)/.test(url.hash);
 }

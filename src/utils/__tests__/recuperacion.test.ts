@@ -35,6 +35,16 @@ describe('Cuándo la app sabe que viene de un enlace', () => {
     ).toBe(true);
   });
 
+  /**
+   * Si Supabase se salta la dirección que le pedimos —porque no está en su
+   * lista de permitidas— la manda al dominio del proyecto con el código pero
+   * sin nuestra marca. Ahí se le puede decir qué ha pasado en vez de dejarla
+   * en un formulario de entrar que no le va a aceptar nada.
+   */
+  it('y con el código a secas, aunque se pierda la marca', () => {
+    expect(vieneDeUnEnlace('https://nutriplan-fawn-three.vercel.app/?code=abc')).toBe(true);
+  });
+
   it('pero no en una visita normal', () => {
     expect(vieneDeUnEnlace('https://app.tatiana-villegas.com/#/clientes')).toBe(false);
     expect(vieneDeUnEnlace('https://app.tatiana-villegas.com/')).toBe(false);
