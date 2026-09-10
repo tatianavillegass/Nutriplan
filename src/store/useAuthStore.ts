@@ -19,6 +19,7 @@ import {
 import { hayNube, nube, mensajeDeError } from '../utils/supabase';
 import { resolverPerfil, type Perfil } from '../utils/nube';
 import { nowIso } from '../utils/storage';
+import { destinoDelEnlace, urlLimpia, vieneDeUnEnlace } from '../utils/recuperacion';
 
 /**
  * CUENTAS
@@ -110,14 +111,34 @@ async function tras(user: User) {
   return { perfil, cuenta, sesion };
 }
 
+/** El oyente de Supabase se registra una vez, no en cada arranque. */
+let oyendo = false;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   cuentas: typeof window === 'undefined' || hayNube ? [] : leerCuentas(),
   sesion: typeof window === 'undefined' || hayNube ? null : leerSesion(),
   perfil: null,
   cargando: hayNube,
-  recuperando: false,
+  /*
+   * Se lee de la URL y no se espera a ningún evento: con el flujo nuevo de
+   * Supabase el enlace de contraseña llega como un `SIGNED_IN` normal, así que
+   * el aviso de que esto era una recuperación se perdía por el camino. La marca
+   * viaja en el propio enlace. Ver `utils/recuperacion.ts`.
+   */
+  recuperando:
+    typeof window !== 'undefined' && hayNube && vieneDeUnEnlace(window.location.href),
 
-  finRecuperacion: () => set({ recuperando: false }),
+  finRecuperacion: () => {
+    /*
+     * Un código de recuperación se canjea una vez. Dejándolo escrito en la
+     * barra de direcciones, recargar la página falla con un error en inglés
+     * que no dice nada.
+     */
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', urlLimpia(window.location.href));
+    }
+    set({ recuperando: false });
+  },
 
   actual: () => {
     const { cuentas, sesion } = get();
@@ -126,16 +147,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   arrancar: async () => {
     if (!hayNube) return;
+    set({ cargando: true });
     try {
-      // El enlace del email abre la app ya dentro, pero con la contraseña
-      // todavía sin cambiar: hay que pedirla antes de dejar seguir.
-      nube().auth.onAuthStateChange((evento) => {
-        if (evento === 'PASSWORD_RECOVERY') set({ recuperando: true });
-      });
+      /*
+       * El formato viejo del enlace sí avisaba con este evento. Se deja por si
+       * queda algún correo enviado de antes: `recuperando` ya viene puesto de
+       * la URL en el formato nuevo, así que esto sólo puede sumar. Se registra
+       * una sola vez, que `arrancar` se llama también al cambiar la contraseña.
+       */
+      if (!oyendo) {
+        oyendo = true;
+        nube().auth.onAuthStateChange((evento) => {
+          if (evento === 'PASSWORD_RECOVERY') set({ recuperando: true });
+        });
+      }
 
       const { data } = await nube().auth.getSession();
       const user = data.session?.user;
       if (!user) {
+        set({ cargando: false });
+        return;
+      }
+      /*
+       * VINIENDO DEL ENLACE, LO PRIMERO ES LA CONTRASEÑA
+       *
+       * Resolver el perfil aquí no aporta nada —lo único que puede hacer es
+       * fallar— y si falla se cierra la sesión, que es justo la ventana que
+       * ella necesita para escribir la contraseña nueva. Se resuelve después,
+       * al terminar de cambiarla.
+       */
+      if (get().recuperando) {
         set({ cargando: false });
         return;
       }
@@ -319,7 +360,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!emailValido(datos.email)) return { ok: false, error: 'Ese email no parece válido.' };
       try {
         const { error } = await nube().auth.resetPasswordForEmail(normEmail(datos.email), {
-          redirectTo: `${window.location.origin}${window.location.pathname}#/`,
+          /*
+           * SIN ALMOHADILLA, Y ESE ES EL ARREGLO
+           *
+           * Acababa en `#/`, así que Supabase colgaba su `?code=` detrás de la
+           * almohadilla y para el navegador eso no es un parámetro: es texto
+           * dentro del ancla. La librería no encontraba nada que canjear, no
+           * había sesión, y sin sesión no hay contraseña que cambiar.
+           */
+          redirectTo: destinoDelEnlace(window.location),
         });
         if (error) return { ok: false, error: mensajeDeError(error) };
         return { ok: true, valor: 'email-enviado' };

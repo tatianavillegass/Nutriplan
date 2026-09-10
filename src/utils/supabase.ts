@@ -97,6 +97,28 @@ export function mensajeDeError(e: unknown): string {
   if (t.includes('password should be at least')) return 'La contraseña necesita al menos 8 caracteres.';
   if (t.includes('unable to validate email') || t.includes('invalid email'))
     return 'Ese email no parece válido.';
+  /*
+   * EL ENLACE DE LA CONTRASEÑA, CUANDO YA NO VALE
+   *
+   * Son tres casos distintos y los tres acaban igual: hay que pedir otro
+   * enlace. Sin traducir salía el inglés de Supabase —«both auth code and code
+   * verifier should be non-empty»— que no le dice nada a nadie.
+   */
+  if (
+    t.includes('code verifier') ||
+    t.includes('auth session missing') ||
+    t.includes('session_not_found')
+  )
+    return 'Este enlace hay que abrirlo en el mismo móvil u ordenador donde pediste el cambio, y sin que pase por otra aplicación. Pide otro enlace y ábrelo desde el navegador.';
+  if (
+    t.includes('otp_expired') ||
+    t.includes('token has expired') ||
+    t.includes('invalid or has expired') ||
+    t.includes('expired or is invalid')
+  )
+    return 'Este enlace ya ha caducado o se ha usado. Vuelve a pedir uno nuevo desde «se me olvidó la contraseña».';
+  if (t.includes('new password should be different'))
+    return 'La contraseña nueva tiene que ser distinta de la anterior.';
   if (t.includes('for security purposes') || t.includes('rate limit'))
     return 'Demasiados intentos seguidos. Espera un minuto y vuelve a probar.';
   if (t.includes('failed to fetch') || t.includes('networkerror'))
