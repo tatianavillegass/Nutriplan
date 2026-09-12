@@ -19,6 +19,7 @@ import {
 } from "../utils/finanzas";
 import { Button, Card, Field, Input, Select } from "../components/common/ui";
 import { ResumenConsulta } from "../components/perfil/ResumenConsulta";
+import { CopiaDeSeguridad } from "../components/perfil/CopiaDeSeguridad";
 import { gastosPorCategoria } from "../utils/consulta";
 
 /**
@@ -156,6 +157,14 @@ export function PerfilPage() {
           </Card>
 
           <CambiarClave onCambiar={cambiarContrasena} />
+
+          {/*
+            LA COPIA VA AQUÍ, CON LO DEMÁS DE LA CUENTA
+            No es un dato de la consulta ni un gasto: es administración de lo
+            suyo, como la contraseña. Y el servidor no hace copias por su
+            cuenta, así que sin esto no hay ninguna.
+          */}
+          <CopiaDeSeguridad correo={cuenta?.email} />
         </div>
       )}
     </div>
