@@ -328,7 +328,12 @@ export function ClientDetail() {
             dos cosas que no se comparan: tus pliegues los tomas tú con el
             mismo plicómetro, y su cinta en el baño de su casa es otra medida.
           */}
-          <MedidasDeLaClienta registros={registrosCliente} />
+          <MedidasDeLaClienta
+            registros={registrosCliente}
+            mediciones={medicionesCliente}
+            clientId={client.id}
+            onApuntar={addMedicion}
+          />
           {/*
             Justo debajo del check-in, que es lo mismo: lo que ella siente. Los
             números de aquí no salen en ninguna pantalla suya.

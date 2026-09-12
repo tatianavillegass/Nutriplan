@@ -1,26 +1,28 @@
 import { useState } from 'react';
+import type { Medicion } from '../../types/anthropometry';
 import type { RegistroDia } from '../../types/diary';
 import {
   CAMPOS,
   CAMPOS_BIO,
   evolucionDe,
-  fotosDe,
-  medidasDe,
+  historialDeMedidas,
   semanasDePeso,
   tendenciaDePeso,
+  tomasConFoto,
   ultimasMedidas,
 } from '../../utils/misMedidas';
 import { fmt } from '../common/ui';
+import { ApuntarUnaToma } from './ApuntarUnaToma';
+import { ComparaFotos } from './ComparaFotos';
+import { EvolucionDeMedidas } from './EvolucionDeMedidas';
 
 interface Props {
   registros: RegistroDia[];
+  /** Lo que has apuntado tú: las primeras medidas y las que te lleguen. */
+  mediciones?: Medicion[];
+  clientId: string;
+  onApuntar: (m: Omit<Medicion, 'id'>) => void;
 }
-
-const ANGULOS = [
-  { id: 'frente', nombre: 'frente' },
-  { id: 'perfil', nombre: 'perfil' },
-  { id: 'espalda', nombre: 'espalda' },
-] as const;
 
 const fechaCorta = (iso: string) => {
   const d = new Date(`${iso}T12:00:00`);
@@ -50,30 +52,50 @@ const fechaCorta = (iso: string) => {
  * El peso de un día son dos kilos de agua y de lo que quedó de la cena. La
  * tendencia no se dice hasta que hay dos semanas.
  */
-export function MedidasDeLaClienta({ registros }: Props) {
+export function MedidasDeLaClienta({ registros, mediciones = [], clientId, onApuntar }: Props) {
   const [historico, setHistorico] = useState(false);
 
-  const medidas = medidasDe(registros);
-  if (!medidas.length) return null;
+  const medidas = historialDeMedidas(mediciones, registros);
 
   const evolucion = evolucionDe(medidas);
   const ultimas = ultimasMedidas(medidas);
   const semanas = semanasDePeso(medidas);
   const tendencia = tendenciaDePeso(medidas);
-  const conFoto = fotosDe(medidas);
+  const conFoto = tomasConFoto(medidas);
   const ultima = medidas[medidas.length - 1];
   const bio = CAMPOS_BIO.filter((c) => ultimas.bioimpedancia?.[c.id] != null);
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">Lo que se ha medido ella</h3>
-        <span className="text-[11px] text-slate-400">
-          Última: {fechaCorta(ultima.fecha)} · {medidas.length}{' '}
-          {medidas.length === 1 ? 'toma' : 'tomas'}
-        </span>
+        <h3 className="text-sm font-semibold text-slate-800">Medidas y fotos</h3>
+        <div className="flex items-center gap-2">
+          {ultima && (
+            <span className="text-[11px] text-slate-400">
+              Última: {fechaCorta(ultima.fecha)} · {medidas.length}{' '}
+              {medidas.length === 1 ? 'toma' : 'tomas'}
+            </span>
+          )}
+          <ApuntarUnaToma clientId={clientId} onGuardar={(m) => onApuntar(m as Omit<Medicion, 'id'>)} />
+        </div>
       </div>
 
+      {/*
+        LAS PRIMERAS LAS PONES TÚ
+        A las online se las mandan por correo antes de la primera consulta. Sin
+        poder apuntarlas, la única toma contra la que se compara todo lo demás
+        se quedaba fuera y el «desde el día 1» empezaba a contar desde la
+        segunda.
+      */}
+      {!medidas.length && (
+        <p className="mt-2 text-xs leading-snug text-slate-500">
+          Todavía no hay ninguna toma. Apunta tú las primeras —las que te mandó antes de empezar—
+          y a partir de ahí las va metiendo ella.
+        </p>
+      )}
+
+      {medidas.length > 0 && (
+        <>
       {ultima.nota && (
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm leading-snug text-amber-900">
           «{ultima.nota}»
@@ -148,26 +170,20 @@ export function MedidasDeLaClienta({ registros }: Props) {
       )}
 
       {conFoto.length > 0 && (
-        <div className="mt-3">
-          <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <p className="mb-2 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
             Sus fotos
           </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {conFoto.flatMap((m) =>
-              ANGULOS.filter((a) => m.fotos?.[a.id]).map((a) => (
-                <figure key={`${m.fecha}-${a.id}`} className="w-24 shrink-0">
-                  <img
-                    src={m.fotos![a.id]!}
-                    alt={`${fechaCorta(m.fecha)} de ${a.nombre}`}
-                    className="h-32 w-24 rounded-lg border border-slate-200 object-cover"
-                  />
-                  <figcaption className="mt-0.5 text-[9px] text-slate-500">
-                    {fechaCorta(m.fecha)} · {a.nombre}
-                  </figcaption>
-                </figure>
-              )),
-            )}
-          </div>
+          <ComparaFotos medidas={medidas} />
+        </div>
+      )}
+
+      {medidas.length > 1 && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <p className="mb-2 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+            Evolución
+          </p>
+          <EvolucionDeMedidas medidas={medidas} />
         </div>
       )}
 
@@ -207,6 +223,8 @@ export function MedidasDeLaClienta({ registros }: Props) {
               </table>
             </div>
           )}
+        </>
+      )}
         </>
       )}
     </section>

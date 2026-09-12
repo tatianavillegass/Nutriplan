@@ -28,7 +28,7 @@ describe('En Seguimiento', () => {
   ];
 
   it('sale la tabla con lo último y las dos diferencias', () => {
-    render(<MedidasDeLaClienta registros={registros} />);
+    render(<MedidasDeLaClienta registros={registros} clientId="c1" onApuntar={vi.fn()} />);
     expect(screen.getByText('Cintura (mínimo)')).toBeTruthy();
     expect(screen.getByText(/Desde la anterior/)).toBeTruthy();
     expect(screen.getByText(/Desde el día 1/)).toBeTruthy();
@@ -36,20 +36,26 @@ describe('En Seguimiento', () => {
 
   /** Casi siempre es lo más útil de todo. */
   it('y lo primero, lo que haya escrito', () => {
-    render(<MedidasDeLaClienta registros={registros} />);
+    render(<MedidasDeLaClienta registros={registros} clientId="c1" onApuntar={vi.fn()} />);
     expect(screen.getByText('«Semana de viaje»')).toBeTruthy();
   });
 
   it('el histórico se abre, no ocupa de entrada', () => {
-    render(<MedidasDeLaClienta registros={registros} />);
+    render(<MedidasDeLaClienta registros={registros} clientId="c1" onApuntar={vi.fn()} />);
     const boton = screen.getByText(/Ver las 2 tomas/);
     fireEvent.click(boton);
     expect(screen.getByText('Ocultar el histórico')).toBeTruthy();
   });
 
-  it('si no ha apuntado nada, no ocupa sitio', () => {
-    const { container } = render(<MedidasDeLaClienta registros={[]} />);
-    expect(container.firstChild).toBeNull();
+  /**
+   * Antes se escondía cuando no había nada. Ahora no puede: es donde tú
+   * apuntas las primeras medidas, las que te manda antes de la primera
+   * consulta. Escondiéndolo no habría dónde ponerlas.
+   */
+  it('sin ninguna toma, te invita a apuntar las primeras', () => {
+    render(<MedidasDeLaClienta registros={[]} clientId="c1" onApuntar={vi.fn()} />);
+    expect(screen.getByText(/Apunta tú las primeras/)).toBeTruthy();
+    expect(screen.getByText('Apuntar una toma')).toBeTruthy();
   });
 });
 
@@ -62,6 +68,8 @@ describe('La bioimpedancia va aparte', () => {
     render(
       <MedidasDeLaClienta
         registros={[dia('2026-08-17', { peso: 68, bioimpedancia: { grasaPct: 27.4 } })]}
+        clientId="c1"
+        onApuntar={vi.fn()}
       />,
     );
     expect(screen.getByText(/Su báscula de bioimpedancia/)).toBeTruthy();

@@ -1,26 +1,32 @@
 import { useState } from 'react';
 import type { MedidasDelDia, RegistroDia } from '../../types/diary';
-import type { Bioimpedancia } from '../../types/anthropometry';
+import type { Bioimpedancia, Medicion } from '../../types/anthropometry';
 import type { Preparacion } from '../../utils/preparacion';
 import {
   CAMPOS,
   CAMPOS_BIO,
   evolucionDe,
-  fotosDe,
-  medidasDe,
+  historialDeMedidas,
   semanasDePeso,
   tendenciaDePeso,
   tieneAlgo,
+  tomasConFoto,
   type Evolucion,
 } from '../../utils/misMedidas';
+import { EvolucionDeMedidas } from './EvolucionDeMedidas';
+import { ComparaFotos } from './ComparaFotos';
 import { prepararFoto } from '../../utils/imagen';
 import { Button, fmt } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
 interface Props {
   registros: RegistroDia[];
-  /** Sus mediciones: ahí está la foto si la subió antes de tener cuenta. */
-  mediciones?: { fecha: string; foto?: string; perimetros?: { cintura?: number; cadera?: number } }[];
+  /**
+   * Lo que ha apuntado su nutricionista: las primeras medidas, que se las
+   * manda ella antes de la primera consulta, y cualquier otra toma que le
+   * llegue por mensaje. Entran en la misma línea del tiempo.
+   */
+  mediciones?: Medicion[];
   /** Lo que se midió y la foto que subió antes de empezar. */
   preparacion: Preparacion;
   /** Lo de hoy, para poder corregirlo el mismo día. */
@@ -33,13 +39,6 @@ const ANGULOS = [
   { id: 'perfil', nombre: 'De perfil' },
   { id: 'espalda', nombre: 'De espalda' },
 ] as const;
-
-const fechaCorta = (iso: string) => {
-  const d = new Date(`${iso}T12:00:00`);
-  return Number.isNaN(d.getTime())
-    ? iso
-    : d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-};
 
 /**
  * TUS MEDIDAS
@@ -93,12 +92,12 @@ export function MisMedidas({
   const [nota, setNota] = useState(deHoy?.nota ?? '');
   const [subiendo, setSubiendo] = useState<string | undefined>();
 
-  const medidas = medidasDe(registros);
+  const medidas = historialDeMedidas(mediciones as Medicion[], registros);
   const evolucion = evolucionDe(medidas);
   const semanas = semanasDePeso(medidas);
   const tendencia = tendenciaDePeso(medidas);
   const estaSemana = semanas[semanas.length - 1];
-  const conFoto = fotosDe(medidas);
+  const conFoto = tomasConFoto(medidas);
 
   /**
    * El punto de partida de antes de la app: lo que se midió en la cuenta atrás
@@ -297,23 +296,30 @@ export function MisMedidas({
         )
       )}
 
+      {/*
+        CÓMO VA
+        La tabla dice los números de hoy; el gráfico dice el recorrido, que es
+        lo que de verdad cuenta cuando la báscula lleva tres semanas quieta.
+      */}
+      {medidas.length > 1 && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <p className="mb-2 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+            Cómo va
+          </p>
+          <EvolucionDeMedidas medidas={medidas} />
+        </div>
+      )}
+
       {(conFoto.length > 0 || fotoDePartida) && (
-        <div className="mt-3">
-          <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <p className="mb-2 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
             Tus fotos
           </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {fotoDePartida && <Miniatura src={fotoDePartida} pie="Día 1" />}
-            {conFoto.flatMap((m) =>
-              ANGULOS.filter((a) => m.fotos?.[a.id]).map((a) => (
-                <Miniatura
-                  key={`${m.fecha}-${a.id}`}
-                  src={m.fotos![a.id]!}
-                  pie={`${fechaCorta(m.fecha)} · ${a.nombre.toLowerCase()}`}
-                />
-              )),
-            )}
-          </div>
+          {conFoto.length > 0 ? (
+            <ComparaFotos medidas={medidas} />
+          ) : (
+            fotoDePartida && <Miniatura src={fotoDePartida} pie="Día 1" />
+          )}
         </div>
       )}
 

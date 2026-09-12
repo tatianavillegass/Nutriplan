@@ -1,4 +1,4 @@
-import type { Bioimpedancia } from '../types/anthropometry';
+import type { Bioimpedancia, Medicion, Perimetros } from '../types/anthropometry';
 import type { MedidasDelDia, RegistroDia } from '../types/diary';
 
 /**
@@ -22,7 +22,15 @@ import type { MedidasDelDia, RegistroDia } from '../types/diary';
  * Por eso hacen falta dos semanas antes de decir nada.
  */
 
-export type Medida = MedidasDelDia & { fecha: string };
+export type Medida = MedidasDelDia & {
+  fecha: string;
+  /**
+   * Quién apuntó esa toma. Las primeras se las manda la paciente por correo
+   * antes de la primera consulta y las escribe la nutricionista; a partir de
+   * ahí las mete ella misma desde su app.
+   */
+  origen?: 'nutricionista' | 'clienta';
+};
 
 /**
  * LOS CAMPOS, CON SU REFERENCIA ESCRITA
@@ -79,8 +87,64 @@ export interface SemanaDePeso {
 export function medidasDe(registros: RegistroDia[]): Medida[] {
   return registros
     .filter((r) => tieneAlgo(r.medidas))
-    .map((r) => ({ fecha: r.fecha, ...r.medidas }))
+    .map((r): Medida => ({ fecha: r.fecha, ...r.medidas, origen: 'clienta' }))
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+/**
+ * UNA TOMA DE LA NUTRICIONISTA, EN EL MISMO FORMATO
+ *
+ * Los perímetros de la antropometría se llaman distinto por dentro
+ * (`muslo_medio`, `pierna_maximo`) porque vienen del perfil ISAK. Aquí se
+ * traducen a los mismos nombres que usa la clienta, para que las dos cosas
+ * quepan en una sola línea del tiempo.
+ */
+export function deLaMedicion(m: Medicion): Medida {
+  const p = m.perimetros ?? {};
+  return {
+    fecha: m.fecha.slice(0, 10),
+    origen: 'nutricionista',
+    peso: m.peso,
+    altura: m.talla,
+    brazoRelajado: p.brazo_relajado,
+    brazoContraido: p.brazo_contraido,
+    cintura: p.cintura,
+    abdominal: p.abdominal,
+    cadera: p.cadera,
+    muslo: p.muslo_medio,
+    pierna: p.pierna_maximo,
+    bioimpedancia: m.bioimpedancia,
+    // `foto` es la de antes: una sola. Se lee como la de frente para no perderla.
+    fotos: m.fotos ?? (m.foto ? { frente: m.foto } : undefined),
+    nota: m.notas,
+  };
+}
+
+/**
+ * TODO EN UNA SOLA LÍNEA DEL TIEMPO
+ *
+ * Las primeras medidas las escribe la nutricionista —se las manda la paciente
+ * antes de la primera consulta— y las siguientes las mete ella desde su app.
+ * Son la misma cinta y la misma persona midiendo, así que compararlas no es
+ * mezclar métodos: es el seguimiento que ella lleva en su planilla de siempre.
+ *
+ * Esto **no vale para los pliegues**, que sí los toma la nutricionista con su
+ * plicómetro y siguen viviendo aparte, en la antropometría.
+ *
+ * Si dos tomas caen el mismo día, manda la de la clienta: si ha apuntado algo
+ * hoy es porque acaba de medirse.
+ */
+export function historialDeMedidas(
+  mediciones: Medicion[],
+  registros: RegistroDia[],
+): Medida[] {
+  const porFecha = new Map<string, Medida>();
+  for (const m of mediciones) {
+    const t = deLaMedicion(m);
+    if (tieneAlgo(t)) porFecha.set(t.fecha, t);
+  }
+  for (const t of medidasDe(registros)) porFecha.set(t.fecha, t);
+  return [...porFecha.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
 /** El lunes de la semana de una fecha ISO. */
@@ -192,4 +256,46 @@ export function fotosDe(medidas: Medida[]): Medida[] {
   return medidas
     .filter((m) => m.fotos?.frente || m.fotos?.perfil || m.fotos?.espalda)
     .reverse();
+}
+
+/** Las tomas que traen alguna foto, en orden, de la más vieja a la más nueva. */
+export function tomasConFoto(medidas: Medida[]): Medida[] {
+  return medidas.filter((m) => m.fotos?.frente || m.fotos?.perfil || m.fotos?.espalda);
+}
+
+/**
+ * Cómo se llama cada campo en la antropometría, para poder escribirlo.
+ * La traducción de vuelta de `deLaMedicion`.
+ */
+export const A_PERIMETRO: Partial<Record<CampoDeMedida['id'], keyof Perimetros>> = {
+  brazoRelajado: 'brazo_relajado',
+  brazoContraido: 'brazo_contraido',
+  cintura: 'cintura',
+  abdominal: 'abdominal',
+  cadera: 'cadera',
+  muslo: 'muslo_medio',
+  pierna: 'pierna_maximo',
+};
+
+export interface Punto {
+  fecha: string;
+  valor: number;
+}
+
+/**
+ * Los puntos de una medida para pintarla.
+ *
+ * Sólo las fechas en que ESA medida se apuntó: uniendo un punto de enero con
+ * otro de marzo porque en febrero no se midió la cintura, la línea diría que
+ * bajó en línea recta durante dos meses, y eso no se sabe.
+ */
+export function serieDe(medidas: Medida[], campo: CampoDeMedida['id']): Punto[] {
+  return medidas
+    .filter((m) => m[campo] != null)
+    .map((m) => ({ fecha: m.fecha, valor: m[campo] as number }));
+}
+
+/** Las medidas que tienen al menos dos puntos: con uno no hay nada que pintar. */
+export function camposConHistorial(medidas: Medida[]): CampoDeMedida[] {
+  return CAMPOS.filter((c) => serieDe(medidas, c.id).length >= 2);
 }

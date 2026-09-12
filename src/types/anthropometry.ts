@@ -23,9 +23,28 @@ export interface Perimetros {
   brazo_relajado?: number;
   brazo_contraido?: number;
   cintura?: number;
+  /**
+   * Abdominal por el punto MÁXIMO, a la altura del ombligo. No es lo mismo que
+   * la cintura —que va por el mínimo— y en su planilla de siempre van los dos:
+   * en una barriga que baja, el mínimo se mueve antes que el máximo.
+   */
+  abdominal?: number;
   cadera?: number;
   muslo_medio?: number;
   pierna_maximo?: number;
+}
+
+/**
+ * LAS TRES FOTOS DE UNA FECHA
+ *
+ * Con la misma luz, la misma ropa y el mismo sitio, que si no la comparación no
+ * vale. Todas opcionales: pedir tres fotos cada mes es la forma más rápida de
+ * que se dejen de hacer.
+ */
+export interface FotosDeProgreso {
+  frente?: string;
+  perfil?: string;
+  espalda?: string;
 }
 
 export interface Diametros {
@@ -72,6 +91,11 @@ export interface Medicion {
    * ficha dejaría sólo la última y la gracia es comparar.
    */
   foto?: string;
+  /**
+   * Las tres fotos de esa fecha. `foto` es la de antes —una sola, la que venía
+   * de la cuenta atrás de un reto— y se sigue leyendo para no perderla.
+   */
+  fotos?: FotosDeProgreso;
   notas?: string;
 }
 
@@ -94,6 +118,7 @@ export const PERIMETRO_LABELS: Record<PerimetroId, string> = {
   brazo_relajado: 'Brazo relajado',
   brazo_contraido: 'Brazo contraído',
   cintura: 'Cintura (mínimo)',
+  abdominal: 'Abdominal (máximo)',
   cadera: 'Cadera (máximo)',
   muslo_medio: 'Muslo medio',
   pierna_maximo: 'Pierna (máximo)',
