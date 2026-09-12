@@ -536,6 +536,7 @@ export function ClientDetail() {
                   <AvituallamientoDeComida
                     dayType={dayType}
                     meal={m}
+                    foods={foods}
                     onChange={(patch) => updateDayType(plan.id, dayType.id, patch)}
                   />
                   {/*

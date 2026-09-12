@@ -1,5 +1,5 @@
 import type { Alimento } from '../types/food';
-import type { Avituallamiento } from '../types/plan';
+import type { Avituallamiento, TomaPautada } from '../types/plan';
 import type { ExchangeCounts } from './exchanges';
 import { EXCHANGE_GROUPS } from '../data/exchangeGroups';
 import { hcNeto } from './portions';
@@ -148,4 +148,101 @@ export function comoVa(
   if (llevaG > objetivoG * (1 + MARGEN)) return 'pasado';
   if (llevaG >= objetivoG * (1 - MARGEN)) return 'bien';
   return 'corto';
+}
+
+/**
+ * EL RELOJ: QUÉ Y CUÁNDO
+ *
+ * En bici se elige sobre la marcha. Corriendo no: quien no lleva pautado el
+ * cuándo o se toma los tres geles en la última media hora o no se toma
+ * ninguno. Por eso una pauta es una lista de minutos con su producto.
+ *
+ * Es opcional a propósito. Sin ella, la clienta sigue sumando lo que quiera
+ * hasta llegar a los gramos — que es lo que hace falta encima de una bici.
+ */
+
+/** Cuánto dura la sesión en minutos, si se sabe. */
+export function minutosDeLaSesion(a: Avituallamiento | undefined): number | undefined {
+  const h = a?.horas;
+  return h && h > 0 ? Math.round(h * 60) : undefined;
+}
+
+/** «0:30», «1:05». Los minutos sueltos no se leen en una salida larga. */
+export function minutoLegible(minuto: number): string {
+  const h = Math.floor(minuto / 60);
+  const m = minuto % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * REPARTIR LAS TOMAS SOLAS
+ *
+ * Con los gramos pautados y lo que aporta una medida ya está todo: 90 g con
+ * geles de 25 son cuatro tomas. Lo que faltaba era el cuándo, y eso es una
+ * división — el trabajo que ella hacía con la calculadora.
+ *
+ * Se reparten en `duración / (n+1)`, así que la primera cae pronto —en una
+ * salida de hora y media con cuatro geles, a los veinte minutos— y la última
+ * no queda pegada al final. Empezar en los primeros veinte minutos es la
+ * recomendación de siempre, y llegar con el último gel a meta no sirve de nada.
+ *
+ * Redondeado a cinco minutos: nadie mira el reloj para tomarse un gel en el
+ * minuto 18.
+ */
+export function proponerPauta(
+  a: Avituallamiento | undefined,
+  food: Alimento,
+  unidadesPorToma = 1,
+): TomaPautada[] {
+  const total = gramosDelAvituallamiento(a);
+  const minutos = minutosDeLaSesion(a);
+  const porToma = hcDeUnaMedida(food) * unidadesPorToma;
+  if (!total || !minutos || porToma <= 0) return [];
+
+  const cuantas = Math.max(1, Math.round(total / porToma));
+  const cada = minutos / (cuantas + 1);
+  return Array.from({ length: cuantas }, (_, i) => ({
+    minuto: Math.max(5, Math.round(((i + 1) * cada) / 5) * 5),
+    foodId: food.id,
+    unidades: unidadesPorToma,
+  }));
+}
+
+/** Lo que suma la pauta entera, para comprobarla contra lo pautado. */
+export function gramosDeLaPauta(pauta: TomaPautada[], foods: Alimento[]): number {
+  return pauta.reduce((s, t) => {
+    const f = foods.find((x) => x.id === t.foodId);
+    return f ? s + hcDeUnaMedida(f) * t.unidades : s;
+  }, 0);
+}
+
+/**
+ * CUÁLES DE LAS TOMAS YA SE HAN HECHO
+ *
+ * No se guarda «la toma del minuto 30 está hecha»: se guarda lo que ha marcado,
+ * como en todo lo demás de la app. Dos geles iguales son dos geles iguales, así
+ * que las tomas de ese producto se van dando por hechas **en orden**.
+ *
+ * Guardar cuál en concreto obligaría a inventar un sitio nuevo donde escribirlo
+ * y a que dos pantallas dijeran lo mismo con dos números. Y en gramos —que es
+ * lo que importa— da igual cuál de los dos geles se tomó.
+ */
+export function tomasHechas(
+  pauta: TomaPautada[],
+  marcado: Record<string, number>,
+  foods: Alimento[],
+): boolean[] {
+  /** Unidades marcadas de cada alimento, que se van gastando por orden. */
+  const quedan = new Map<string, number>();
+  for (const f of foods) {
+    const u = unidadesMarcadas(f, marcado[f.id] ?? 0);
+    if (u > 0) quedan.set(f.id, u);
+  }
+
+  return pauta.map((t) => {
+    const disponibles = quedan.get(t.foodId) ?? 0;
+    if (disponibles < t.unidades) return false;
+    quedan.set(t.foodId, disponibles - t.unidades);
+    return true;
+  });
 }

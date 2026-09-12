@@ -8,10 +8,15 @@ import {
   ritmoDelAvituallamiento,
 } from '../../utils/avituallamiento';
 import { Field, Input, fmt } from '../common/ui';
+import { PautaDelAvituallamiento } from './PautaDelAvituallamiento';
+import { alimentosDeComida } from '../../utils/pantry';
+import type { Alimento } from '../../types/food';
 
 interface Props {
   dayType: DayType;
   meal: Meal;
+  /** Para poder pautar con qué: los geles salen de la despensa de esa comida. */
+  foods?: Alimento[];
   onChange: (patch: Partial<DayType>) => void;
 }
 
@@ -30,7 +35,7 @@ interface Props {
  * corto de carbohidrato en pantalla cuando no lo está. Después se puede
  * retocar a mano y esto no se lo vuelve a pisar.
  */
-export function AvituallamientoDeComida({ dayType, meal, onChange }: Props) {
+export function AvituallamientoDeComida({ dayType, meal, foods = [], onChange }: Props) {
   const actual = dayType.avituallamientos?.[meal.id];
 
   /** Se escribe el avituallamiento y, con él, las porciones que le tocan. */
@@ -190,6 +195,17 @@ export function AvituallamientoDeComida({ dayType, meal, onChange }: Props) {
         y ya están puestas en el reparto de esta comida, así que cuentan en su día. Las
         fuentes salen de la despensa: geles, isotónica, dátiles, plátano.
       </p>
+
+      {/*
+        EL RELOJ, SÓLO SI ELLA LO QUIERE
+        En bici se elige sobre la marcha; corriendo hace falta pautar el cuándo.
+        Vacío es lo de siempre. Ver `PautaDelAvituallamiento`.
+      */}
+      <PautaDelAvituallamiento
+        avituallamiento={actual}
+        fuentes={alimentosDeComida(dayType, meal, foods)}
+        onChange={guardar}
+      />
 
       <button
         onClick={() => guardar(undefined)}

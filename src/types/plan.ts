@@ -124,6 +124,22 @@ export const SLOTS_CON_COCCION: MealSlot[] = ["comida", "cena"];
  * minutos—. Es la diferencia entre una amateur y alguien que compite, así que
  * se elige persona a persona.
  */
+/**
+ * UNA TOMA CON SU MINUTO
+ *
+ * «A los 30 minutos, un gel». En bici se elige sobre la marcha —lo que apetece,
+ * lo que se lleva en el maillot— pero corriendo eso no funciona: quien no
+ * tiene pautado cuándo, o se toma los tres geles en la última media hora o no
+ * se toma ninguno.
+ */
+export interface TomaPautada {
+  /** Minutos desde que empieza la sesión. */
+  minuto: number;
+  foodId: string;
+  /** Cuántas medidas caseras: un gel, dos dátiles. */
+  unidades: number;
+}
+
 export interface Avituallamiento {
   modo: 'total' | 'hora';
   /** Gramos de hidrato de toda la sesión, cuando se pauta en total. */
@@ -132,6 +148,16 @@ export interface Avituallamiento {
   porHora?: number;
   /** Cuánto dura la sesión, en horas. */
   horas?: number;
+  /**
+   * EL RELOJ, SI ELLA LO PAUTA
+   *
+   * Vacío es lo de siempre: la clienta suma fuentes hasta llegar a los gramos,
+   * eligiendo ella. Relleno, ve **qué y cuándo** — y sigue pudiendo cambiarlo
+   * si ese día no tiene ese gel, porque lo que cuenta es lo que se tomó de
+   * verdad. Es la misma regla de las combinaciones de fase 2: lo que se pauta
+   * manda, y lo que no se pauta lo elige quien come.
+   */
+  pauta?: TomaPautada[];
 }
 
 export interface DayType {

@@ -6,7 +6,9 @@ import {
   gramosDelAvituallamiento,
   gramosMarcados,
   hcDeUnaMedida,
+  minutoLegible,
   ritmoDelAvituallamiento,
+  tomasHechas,
   unidadesMarcadas,
 } from '../../utils/avituallamiento';
 import { fmt } from '../common/ui';
@@ -52,6 +54,13 @@ export function AvituallamientoDelDia({
   const gh = ritmoDelAvituallamiento(avituallamiento);
   const lleva = gramosMarcados(marcado, fuentes);
   const estado = comoVa(lleva, objetivo);
+
+  /*
+   * Lo que le pautó su nutricionista, si lo pautó. Vacío es lo de siempre:
+   * suma lo que quiera hasta llegar a los gramos.
+   */
+  const pauta = avituallamiento.pauta ?? [];
+  const hechas = tomasHechas(pauta, marcado, fuentes);
   const mezclar = convieneMezclar(gh, marcado, fuentes);
 
   const pct = objetivo > 0 ? Math.min(100, Math.round((lleva / objetivo) * 100)) : 0;
@@ -94,6 +103,56 @@ export function AvituallamientoDelDia({
         >
           {Math.round(lleva)} de {objetivo} g de hidrato
         </p>
+
+        {/*
+          EL RELOJ, SI SE LO PAUTARON
+          En bici elige ella sobre la marcha; corriendo hace falta saber cuándo.
+          Las tomas se dan por hechas EN ORDEN según lo que lleva marcado abajo:
+          dos geles iguales son dos geles iguales, y en gramos da igual cuál se
+          tomó. Sin guardar nada nuevo y sin que dos pantallas digan lo mismo.
+        */}
+        {pauta.length > 0 && (
+          <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50/40 p-2.5">
+            <p className="text-[11px] font-medium text-brand-900">Tu pauta</p>
+            <ol className="mt-1.5 space-y-1">
+              {pauta.map((t, i) => {
+                const f = fuentes.find((x) => x.id === t.foodId);
+                return (
+                  <li
+                    key={`${t.minuto}-${t.foodId}-${i}`}
+                    className="flex items-baseline gap-2 text-[13px]"
+                  >
+                    <span
+                      className={`tnum w-10 shrink-0 text-right text-xs ${
+                        hechas[i] ? 'text-brand-700' : 'text-slate-500'
+                      }`}
+                    >
+                      {minutoLegible(t.minuto)}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] ${
+                        hechas[i]
+                          ? 'bg-brand-600 text-white'
+                          : 'border border-slate-300 text-transparent'
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className={hechas[i] ? 'text-slate-500 line-through' : 'text-slate-800'}>
+                      {t.unidades > 1 && `${t.unidades} × `}
+                      {f?.nombre ?? 'Una fuente que ya no está'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="mt-1.5 text-[10px] leading-snug text-slate-500">
+              Se van marcando solas según lo que sumes abajo. Si ese día te falta algo, suma otra
+              fuente: lo que cuenta son los gramos que te tomaste de verdad.
+            </p>
+          </div>
+        )}
 
         <ul className="mt-3 space-y-1.5">
           {fuentes.map((f) => {
