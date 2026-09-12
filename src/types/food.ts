@@ -124,6 +124,21 @@ export interface Alimento {
    * ella da de alta; el resto del catálogo no lo necesita.
    */
   conFructosa?: boolean;
+  /**
+   * ES UN PRODUCTO DE AVITUALLAMIENTO
+   *
+   * Geles, isotónica, gominolas deportivas, dátiles, plátano: lo que se lleva
+   * encima para comer durante el entreno. **No es un grupo de intercambio**:
+   * un grupo nuevo tendría que traer su porción, su equivalencia y su columna
+   * en el reparto, y esa columna estaría vacía todos los días menos el de la
+   * tirada larga. Un gel sigue siendo azúcar; lo que cambia es dónde se come.
+   *
+   * Con la marca puesta: la despensa de una comida de avituallamiento ofrece
+   * éstos y sólo éstos —y no hay que bucear en 262 alimentos—, y la lista de
+   * la compra los cuenta **en unidades**: «6 geles, 2 bidones, 8 dátiles» es
+   * lo que se mete en la mochila; «60 g de azúcares» no lo compra nadie.
+   */
+  avituallamiento?: boolean;
   notas?: string;
 }
 

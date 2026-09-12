@@ -7,6 +7,7 @@ import { diasDeLaSemana } from './menuSemana';
 import { gramosPorPieza } from './measures';
 import type { OpcionEscalada } from './mealOptions';
 import type { ExchangeGroupId } from '../data/exchangeGroups';
+import { gramosDelAvituallamiento } from './avituallamiento';
 
 /**
  * LA LISTA DE LA COMPRA
@@ -88,6 +89,12 @@ export interface LineaCompra {
   unidad: string;
   /** En piezas, para poder decir «8 huevos» y no «440 g de huevo». */
   piezas?: number;
+  /**
+   * Cómo se cuenta esa pieza cuando no es «unidad»: «bidón (500 ml)», «gel».
+   * Es de los productos de avituallamiento, que se compran y se meten en la
+   * mochila de uno en uno — «2 × bidón» se entiende y «1000 ml» no.
+   */
+  medida?: string;
   /** En cuántas comidas de la semana aparece. */
   veces: number;
   /**
@@ -103,6 +110,13 @@ export interface ListaCompra {
   lineas: LineaCompra[];
   /** Cuántas comidas de la semana han entrado en la cuenta. */
   comidas: number;
+}
+
+/** «1 bidón (500 ml)» → «bidón (500 ml)». El número lo pone la lista. */
+function sinElUno(medida: string): string | undefined {
+  const t = (medida ?? '').trim();
+  if (!t) return undefined;
+  return t.replace(/^1\s+/, '') || undefined;
 }
 
 /** Sube a la unidad que se compra: piezas enteras, y gramos a la decena. */
@@ -150,6 +164,52 @@ export function listaDeLaCompra(
     const dayType: DayType | undefined =
       plan.dayTypes.find((d) => d.id === dia.dayTypeId) ?? plan.dayTypes[0];
     if (!dayType) continue;
+
+    /**
+     * EL AVITUALLAMIENTO TAMBIÉN SE COMPRA
+     *
+     * Una tirada larga no lleva receta, así que el bucle de abajo no la ve
+     * nunca: los geles de los sábados no entraban en la lista de la compra y
+     * había que acordarse aparte. Si el reloj está puesto, se sabe exactamente
+     * qué y cuánto — cuatro geles por salida, dos salidas, ocho geles.
+     *
+     * **Sin reloj no se inventa qué compra**: en bici ella elige sobre la
+     * marcha, así que lo que entra es un recordatorio con los gramos pautados.
+     */
+    for (const avit of Object.values(dayType.avituallamientos ?? {})) {
+      const pauta = avit?.pauta ?? [];
+
+      if (!pauta.length) {
+        const g = gramosDelAvituallamiento(avit);
+        if (g <= 0) continue;
+        const clave = `gusto:avituallamiento-${g}`;
+        const ya = acumulado.get(clave);
+        acumulado.set(clave, {
+          nombre: `Avituallamiento (${g} g de hidrato)`,
+          grupo: 'azucares',
+          gramos: 0,
+          veces: (ya?.veces ?? 0) + 1,
+          unidad: '',
+          alGusto: true,
+        });
+        continue;
+      }
+
+      for (const toma of pauta) {
+        const food = porId.get(toma.foodId);
+        if (!food || !food.gramos) continue;
+        const clave = `f:${food.id}`;
+        const ya = acumulado.get(clave);
+        acumulado.set(clave, {
+          nombre: food.nombre,
+          foodId: food.id,
+          grupo: food.grupo,
+          gramos: (ya?.gramos ?? 0) + food.gramos * toma.unidades,
+          veces: (ya?.veces ?? 0) + 1,
+          unidad: food.unidad ?? 'g',
+        });
+      }
+    }
 
     for (const [mealId, recetaId] of Object.entries(dia.comidas ?? {})) {
       const receta = recetas.find((r) => r.id === recetaId);
@@ -240,7 +300,20 @@ function lineasDesde(acumulado: Acumulado, porId: Map<string, Alimento>): LineaC
         alGusto: true,
       };
 
-    const pieza = food ? gramosPorPieza(food) : undefined;
+    /*
+     * UN GEL SE COMPRA DE UNO EN UNO
+     *
+     * Lo normal es contar en piezas sólo lo que la medida casera llama unidad,
+     * huevo o loncha. Un producto de avituallamiento se cuenta siempre por su
+     * medida —el bidón, el gel, el sobre— aunque se llame de otra manera: eso
+     * es lo que se mete en la mochila y lo que se pide en la tienda. «1000 ml
+     * de isotónica» no lo compra nadie; «2 bidones» sí.
+     */
+    const pieza = food?.avituallamiento
+      ? food.gramos || undefined
+      : food
+        ? gramosPorPieza(food)
+        : undefined;
     const { cantidad, piezas } = redondearCompra(v.gramos, pieza);
     return {
       clave,
@@ -250,6 +323,7 @@ function lineasDesde(acumulado: Acumulado, porId: Map<string, Alimento>): LineaC
       cantidad,
       unidad: v.unidad,
       piezas,
+      medida: food?.avituallamiento ? sinElUno(food.medida_casera) : undefined,
       veces: v.veces,
       sinEnlazar: v.sinEnlazar,
     };

@@ -393,7 +393,10 @@ export function OrganizaTuSemana({
                                 {l.alGusto
                                   ? `al gusto · ${l.veces} ${l.veces === 1 ? 'comida' : 'comidas'}`
                                   : l.piezas
-                                    ? `${l.piezas} ${l.piezas === 1 ? 'ud' : 'uds'}`
+                                    ? /* Un gel o un bidón se cuentan por su
+                                         medida: «2 × bidón (500 ml)» se compra
+                                         y «1000 ml» no. */
+                                      `${l.piezas} ${l.medida ? `× ${l.medida}` : l.piezas === 1 ? 'ud' : 'uds'}`
                                     : `${fmt(l.cantidad, 0)} ${l.unidad}`}
                               </span>
                             </button>

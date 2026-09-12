@@ -69,6 +69,13 @@ export function FoodCatalogPage() {
       nutrientes: v.nutrientes,
       equivalencia_cocido: v.equivalencia_cocido,
       batch: v.batch,
+      /*
+        Estas dos se recogían en el formulario y se perdían aquí: marcar «aporta
+        fructosa» en un gel no llegaba a guardarse nunca, así que el aviso de
+        mezclar saltaba igual con los geles bien elegidos.
+      */
+      conFructosa: v.conFructosa,
+      avituallamiento: v.avituallamiento,
       comidas_sugeridas: v.comidas_sugeridas,
       alergenos: v.alergenos,
       apto: v.apto,

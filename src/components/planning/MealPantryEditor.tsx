@@ -2,7 +2,14 @@ import { useMemo, useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { DayType, DespensaComida, Meal } from '../../types/plan';
 import { EXCHANGE_GROUPS, type MacroBucket } from '../../data/exchangeGroups';
-import { alimentosDeComida, despensaDe, notaAceite, repartoElegible } from '../../utils/pantry';
+import {
+  alimentosDeComida,
+  despensaDe,
+  esAvituallamiento,
+  notaAceite,
+  repartoElegible,
+} from '../../utils/pantry';
+import { hcDeUnaMedida } from '../../utils/avituallamiento';
 import { objetivoDeBucket } from '../../utils/combos';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 import {
@@ -70,6 +77,20 @@ export function MealPantryEditor({
 
   const { reparto, reserva } = repartoElegible(dayType, meal);
   const grasaPautada = dayType.grid[meal.id]?.grasas ?? 0;
+
+  /**
+   * EN UN AVITUALLAMIENTO NO HAY TRES MACROS QUE ELEGIR
+   *
+   * Lo que se lleva encima de la bici es hidrato y nada más, así que las tres
+   * columnas de proteína, carbohidrato y grasa sobran: hay una lista corta de
+   * productos y se marcan de un toque. La marca del alimento es lo que decide
+   * cuáles salen — sin ella habría que bucear en 262 para encontrar el gel.
+   */
+  const avit = esAvituallamiento(dayType, meal.id);
+  const productos = useMemo(
+    () => foods.filter((f) => f.avituallamiento && !!gramosPorIntercambio(f)),
+    [foods],
+  );
 
   const porBucket = (bucket: MacroBucket) =>
     disponibles.filter((f) => !!f.grupo && EXCHANGE_GROUPS[f.grupo]?.bucket === bucket);
@@ -250,7 +271,59 @@ export function MealPantryEditor({
             </label>
           )}
 
+          {/* Un avituallamiento: una lista corta que se marca de un toque */}
+          {avit && (
+            <div>
+              <p className="mb-1 text-[11px] font-medium text-slate-700">
+                Qué se lleva
+                <span className="tnum ml-1 font-normal text-slate-400">
+                  {disponibles.length} de {productos.length}
+                </span>
+              </p>
+              <p className="mb-2 text-[11px] leading-snug text-slate-500">
+                Salen los alimentos marcados como{' '}
+                <strong className="font-medium">producto de avituallamiento</strong> en su ficha.
+                Da de alta tus geles en Alimentos con esa casilla puesta y aparecerán aquí.
+              </p>
+
+              {productos.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {productos.map((f) => {
+                    const puesto = disponibles.some((x) => x.id === f.id);
+                    const veto = motivoBloqueo?.(f);
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => (puesto ? quitar(f.id) : anadir(f.id))}
+                        aria-pressed={puesto}
+                        title={veto}
+                        className={`rounded-lg border px-2.5 py-1.5 text-left text-[11px] transition ${
+                          puesto
+                            ? 'border-brand-500 bg-brand-50 text-brand-900'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                        }`}
+                      >
+                        <span className={veto ? 'text-amber-800' : ''}>{f.nombre}</span>
+                        {/* Los gramos de hidrato de una unidad: es el número con
+                            el que se monta la pauta, y el que ella suma de cabeza. */}
+                        <span className="tnum ml-1.5 text-[10px] text-slate-400">
+                          {fmt(hcDeUnaMedida(f))} g · {f.medida_casera}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[11px] leading-snug text-amber-700">
+                  Todavía no hay ninguno marcado. Ve a Alimentos, abre tu gel (o dalo de alta) y
+                  marca «Es un producto de avituallamiento».
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Una columna por macro, cada una con su buscador */}
+          {!avit && (
           <div className="grid gap-4 md:grid-cols-3">
             {BUCKETS.map(([bucket, label, ejemplo]) => {
               const objetivo = objetivoDeBucket(reparto, bucket);
@@ -331,6 +404,7 @@ export function MealPantryEditor({
               );
             })}
           </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2">
             <p className="text-[11px] text-slate-400">

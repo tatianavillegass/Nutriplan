@@ -50,6 +50,8 @@ export interface FoodFormValue {
   batch?: boolean;
   /** Lleva glucosa y fructosa: sólo importa en el avituallamiento. */
   conFructosa?: boolean;
+  /** Se lleva encima para comer durante el entreno: gel, isotónica, dátil. */
+  avituallamiento?: boolean;
   comidas_sugeridas: MealSlot[];
   alergenos: Alergeno[];
   apto: Apto[];
@@ -78,6 +80,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const [cocido, setCocido] = useState<number | undefined>(inicial?.equivalencia_cocido);
   /** Si sale en la guía de cocinar de una vez. Sin tocar, lo decide la app. */
   const [conFructosa, setConFructosa] = useState<boolean>(!!inicial?.conFructosa);
+  const [avituallamiento, setAvituallamiento] = useState<boolean>(!!inicial?.avituallamiento);
   const [batch, setBatch] = useState<boolean>(
     inicial?.batch ?? seCocinaEnTanda({ nombre: inicial?.nombre ?? '', grupo: inicial?.grupo }),
   );
@@ -413,6 +416,30 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
       </label>
 
       {/*
+        LA MARCA DE AVITUALLAMIENTO, EN VEZ DE UN GRUPO NUEVO
+        Un grupo «geles» tendría que traer su porción, su equivalencia y su
+        columna en el reparto — y esa columna estaría vacía todos los días menos
+        el de la tirada larga. Un gel sigue siendo azúcar; lo que cambia es
+        dónde se come. Ver `Alimento.avituallamiento`.
+      */}
+      <label className="mt-2 flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={avituallamiento}
+          onChange={(e) => setAvituallamiento(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span className="text-xs leading-snug text-slate-600">
+          Es un producto de avituallamiento
+          <span className="block text-[11px] text-slate-500">
+            Lo que se lleva encima para comer entrenando: geles, isotónica, gominolas, dátiles,
+            plátano. Así sale directo en la despensa de un avituallamiento y la lista de la compra
+            lo cuenta en unidades — «6 geles» y no «60 g de azúcares».
+          </span>
+        </span>
+      </label>
+
+      {/*
         Por encima de 60 g de hidrato por hora una sola fuente satura el
         transportador, así que hay que mezclar. Se marca en los geles, bebidas y
         gominolas deportivas; el resto del catálogo no lo necesita.
@@ -615,6 +642,7 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
               equivalencia_cocido: cocido,
               batch,
               conFructosa: conFructosa || undefined,
+              avituallamiento: avituallamiento || undefined,
               comidas_sugeridas: slots,
               alergenos,
               apto,

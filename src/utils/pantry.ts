@@ -16,6 +16,11 @@ export function despensaDe(dayType: DayType, mealId: string): DespensaComida {
   return dayType.despensa?.[mealId] ?? {};
 }
 
+/** Si esa comida se pautó como avituallamiento y no como plato. */
+export function esAvituallamiento(dayType: DayType, mealId: string): boolean {
+  return !!dayType.avituallamientos?.[mealId];
+}
+
 /** Alimentos que ve el cliente en una comida, ya resueltos. */
 export function alimentosDeComida(
   dayType: DayType,
@@ -35,10 +40,15 @@ export function alimentosDeComida(
   }
 
   // 2 · Catálogo por tipo de comida, ajustado.
+  //
+  // Salvo en un avituallamiento: ahí no se come lo que toque en la merienda,
+  // se come lo que se lleva encima. La marca `avituallamiento` del alimento
+  // sustituye a la comida sugerida, así que el gel entra y la tostada no.
   const excluidos = new Set([...globalmenteExcluidos, ...(d.excluidos ?? [])]);
+  const avit = esAvituallamiento(dayType, meal.id);
   const base = foods.filter(
     (f) =>
-      f.comidas_sugeridas.includes(meal.slot) &&
+      (avit ? f.avituallamiento : f.comidas_sugeridas.includes(meal.slot)) &&
       !excluidos.has(f.id) &&
       !!f.grupo &&
       !EXCHANGE_GROUPS[f.grupo]?.ilimitado &&
