@@ -205,6 +205,86 @@ export interface CheckIn {
 }
 
 /**
+ * LOS TIPOS DE ENTRENO
+ *
+ * Una lista cerrada y corta, con «otro» al final para escribirlo. Dejarlo todo
+ * a texto libre es rapidísimo de montar y no se puede contar nada después:
+ * «fuerza», «Fuerza» y «gym» son tres cosas distintas, y entonces «este mes has
+ * hecho 6 de fuerza y 4 de correr» —que es lo que se mira en consulta— no se
+ * puede decir. Una lista propia por consulta sería otra pantalla que mantener
+ * y el primer día estaría vacía.
+ */
+export const TIPOS_DE_ENTRENO = [
+  'fuerza',
+  'correr',
+  'bici',
+  'crossfit',
+  'pilates',
+  'yoga',
+  'natacion',
+  'caminar',
+  'clase',
+  'otro',
+] as const;
+
+export type TipoDeEntreno = (typeof TIPOS_DE_ENTRENO)[number];
+
+export const TIPO_DE_ENTRENO_LABELS: Record<TipoDeEntreno, string> = {
+  fuerza: 'Fuerza',
+  correr: 'Correr',
+  bici: 'Bici',
+  crossfit: 'CrossFit',
+  pilates: 'Pilates',
+  yoga: 'Yoga',
+  natacion: 'Natación',
+  caminar: 'Caminar',
+  clase: 'Clase dirigida',
+  otro: 'Otro',
+};
+
+/**
+ * CÓMO SE SINTIÓ
+ *
+ * Tres, no del uno al diez. Un número invita a puntuarse el entrenamiento y eso
+ * lleva al mismo sitio que puntuarse el día: a competir consigo misma en la app
+ * donde además apunta lo que come. Flojo no es malo —es información— y por eso
+ * ninguno de los tres se pinta en rojo.
+ */
+export type ComoFue = 'flojo' | 'normal' | 'fuerte';
+
+export const COMO_FUE_LABELS: Record<ComoFue, string> = {
+  flojo: 'Flojo',
+  normal: 'Normal',
+  fuerte: 'Fuerte',
+};
+
+/**
+ * UN ENTRENO SUYO
+ *
+ * Qué hizo, cuánto y cómo se sintió. Lo único obligatorio es el tipo: si para
+ * apuntar una salida hay que rellenar tres casillas, se deja de apuntar — y un
+ * registro a medias sigue contando como entreno, que es lo que se mira.
+ *
+ * Se llama `Actividad` porque `EntrenoDeReto` ya es otra cosa: los vídeos que
+ * ella monta para un reto. Esto es lo que la clienta hace por su cuenta.
+ *
+ * Vive en el registro del día porque el registro es lo único que sube el
+ * cliente: en su ficha se lo pisaría la nutricionista.
+ */
+export interface Actividad {
+  id: string;
+  tipo: TipoDeEntreno;
+  /** Sólo cuando el tipo es «otro»: padel, escalada, baile. */
+  otro?: string;
+  /** Minutos. Opcional: hay quien no lo mira y apuntarlo a ojo es peor. */
+  minutos?: number;
+  comoFue?: ComoFue;
+  /** Lo que quiera contar. Suele ser lo más útil en consulta. */
+  nota?: string;
+  createdAt: string;
+}
+
+/**
  * UNA PAUSA
  *
  * Lo que queda cuando la clienta pulsa «Pausa»: qué sentía, qué estaba
@@ -334,6 +414,18 @@ export interface RegistroDia {
    * porque son de ese día concreto, como las comidas hechas.
    */
   metas?: string[];
+  /**
+   * Lo que entrenó ese día. Pueden ser varios: hay quien corre por la mañana y
+   * va a pilates por la tarde, y juntarlos en uno perdería los dos.
+   *
+   * **Se llama `actividad` y no `entrenos` porque `entrenos` ya existe** ahí
+   * abajo y es otra cosa: los vídeos de entreno de un reto que ella ha dado por
+   * hechos. Esto es lo que hace por su cuenta —su clase de pilates, su carrera—
+   * y no hay ninguna lista de la que marcar. En pantalla los dos se llaman
+   * entrenos, que es como se llaman. Ver `utils/entrenos.ts` y
+   * `Client.entrenos`.
+   */
+  actividad?: Actividad[];
   /**
    * Las veces que pulsó «Pausa» ese día. Se guardan todas —también las de
    * después de comer— y **no se cuentan en ninguna pantalla suya**: ver

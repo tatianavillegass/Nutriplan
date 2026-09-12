@@ -49,6 +49,7 @@ import { ComidaLibre } from "../components/client/ComidaLibre";
 import { ResumenTab } from "../components/client/ResumenTab";
 import { MisMedidas } from "../components/client/MisMedidas";
 import { MetasDiarias } from "../components/client/MetasDiarias";
+import { EntrenosDelDia } from "../components/client/EntrenosDelDia";
 import { BotonPausa } from "../components/client/BotonPausa";
 import { MisPausas } from "../components/client/MisPausas";
 import { RecursosTab } from "../components/client/RecursosTab";
@@ -1207,6 +1208,22 @@ export function ClientView() {
               hechas={registro?.metas ?? []}
               onAlternar={alternarMeta}
             />
+
+            {/*
+              LOS ENTRENOS VAN CON LAS METAS, NO DENTRO DE ELLAS
+              Es la otra mitad del trabajo y se apunta durante el día, igual que
+              el agua. Pero no se cumple: aquí no hay «2 de 3». Ver
+              `utils/entrenos.ts`.
+            */}
+            {client.entrenos && (
+              <EntrenosDelDia
+                registros={mios}
+                fecha={fecha}
+                entrenos={registro?.actividad ?? []}
+                onGuardar={(actividad) => guardar({ actividad })}
+                soloLectura={!soyElCliente}
+              />
+            )}
 
             {/*
               ARRIBA Y FUERA DE LAS COMIDAS, COMO EL ANTOJO

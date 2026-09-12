@@ -106,6 +106,21 @@ export interface Client {
    */
   medidas?: boolean;
   /**
+   * APUNTAR LOS ENTRENOS
+   *
+   * Qué hizo, cuánto duró y cómo se sintió. Se enciende persona a persona, como
+   * la pausa y las medidas: a quien viene por una patología digestiva,
+   * preguntarle cada día si ha entrenado le mete una exigencia que no traía.
+   *
+   * **No lleva objetivo semanal a propósito.** El día de comidas y el de metas
+   * se cierran porque se cumplen; un entrenamiento no: una semana de tres es
+   * buena para quien venía de cero y floja para quien prepara una carrera, y un
+   * «2 de 4» en rojo un jueves no enseña nada — sólo dice que va tarde a quien
+   * a lo mejor está lesionada. Se cuenta lo que hace y punto. Ver
+   * `utils/entrenos.ts`.
+   */
+  entrenos?: boolean;
+  /**
    * QUÉ HACER EN VEZ DE COMER
    *
    * La lista de actividades de la guía. Se le ofrecen **tres**, no la lista

@@ -28,6 +28,8 @@ import { PatronesDePausa } from "../components/client/PatronesDePausa";
 import { PausaDeCliente } from "../components/planning/PausaDeCliente";
 import { MedidasDeCliente } from "../components/planning/MedidasDeCliente";
 import { MedidasDeLaClienta } from "../components/client/MedidasDeLaClienta";
+import { EntrenosDeCliente } from "../components/planning/EntrenosDeCliente";
+import { SusEntrenos } from "../components/client/SusEntrenos";
 import { RepartirLaSemana } from "../components/planning/RepartirLaSemana";
 import { AvituallamientoDeComida } from "../components/planning/AvituallamientoDeComida";
 import { DiaEnVivo } from "../components/client/DiaEnVivo";
@@ -335,6 +337,12 @@ export function ClientDetail() {
             onApuntar={addMedicion}
           />
           {/*
+            Lo que entrena. Aquí sí hay medias y comparaciones —en su app no—
+            porque es lo que hace falta para preguntar bien en consulta. Ver
+            `utils/entrenos.ts`.
+          */}
+          {client.entrenos && <SusEntrenos registros={registrosCliente} />}
+          {/*
             Justo debajo del check-in, que es lo mismo: lo que ella siente. Los
             números de aquí no salen en ninguna pantalla suya.
           */}
@@ -626,6 +634,10 @@ export function ClientDetail() {
               onChange={(patch) => updateClient(client.id, patch)}
             />
             <PausaDeCliente
+              client={client}
+              onChange={(patch) => updateClient(client.id, patch)}
+            />
+            <EntrenosDeCliente
               client={client}
               onChange={(patch) => updateClient(client.id, patch)}
             />
