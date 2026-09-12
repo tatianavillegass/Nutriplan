@@ -10,13 +10,13 @@ import {
 import type { Client } from '../../types/client';
 import type { Alimento, MealSlot } from '../../types/food';
 import { matchRecipes } from '../../utils/recipeMatcher';
-import { coincide } from '../../utils/similitud';
+import { porQueCoincide, recetaCoincide } from '../../utils/buscarRecetas';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { ScaledRecipeView } from './ScaledRecipeView';
 import { RecipeQuickEditor } from './RecipeQuickEditor';
 import { AjustarCantidades } from './AjustarCantidades';
 import { Badge, Button, EmptyState, Input } from '../common/ui';
-import { RecipeMeta } from '../common/RecipeMeta';
+import { RecipeCard } from '../recipes/RecipeCard';
 
 interface Props {
   dayType: DayType;
@@ -47,6 +47,9 @@ const SLOTS: { id: MealSlot; nombre: string }[] = [
   { id: 'cena', nombre: 'Cena' },
   { id: 'extra', nombre: 'Extra' },
 ];
+
+/** De doce en doce: lo que cabe en una pantalla sin que tarde en pintarse. */
+const PASO = 12;
 
 /** Cuántas recetas del banco llevan cada tag, para no ofrecer filtros vacíos. */
 function tagsDisponibles(recetas: Receta[]): string[] {
@@ -98,78 +101,89 @@ export function RecipeRecommender({
   const [tags, setTags] = useState<string[]>([]);
   /** Ir a por una receta concreta, esté donde esté en la puntuación. */
   const [busqueda, setBusqueda] = useState('');
+  /**
+   * CUÁNTAS SE ENSEÑAN DE GOLPE
+   *
+   * Antes eran ocho y punto: el resto del banco no existía desde aquí. Ahora
+   * están todas y se van pidiendo de doce en doce — que con foto es lo que
+   * entra en una pantalla sin que tarde en pintarse. Es el mismo gesto de
+   * cualquier tienda: bajas y sigue habiendo.
+   */
+  const [cuantas, setCuantas] = useState(PASO);
   const reparto = dayType.grid[meal.id] ?? {};
 
   const todosLosTags = useMemo(() => tagsDisponibles(recetas), [recetas]);
 
-  /** El filtro de tags es un Y: «dulce» + «huevos» son las que llevan ambos. */
-  const candidatas = useMemo(
+  /**
+   * Los acompañamientos van al lado del plato y los postres son otra cosa:
+   * ninguno de los dos es «la cena». El filtro de tags es un Y: «dulce» +
+   * «huevos» son las que llevan ambos.
+   */
+  const delBanco = useMemo(
     () =>
       recetas.filter(
-        (r) =>
-          // Los acompañamientos van al lado del plato y los postres son otra
-          // cosa: ninguno de los dos es «la cena».
-          !r.acompanamiento &&
-          !r.postre &&
-          (slot === 'todas' || r.categorias.includes(slot)) &&
-          tags.every((t) => r.tags.includes(t)),
+        (r) => !r.acompanamiento && !r.postre && tags.every((t) => r.tags.includes(t)),
       ),
-    [recetas, slot, tags],
+    [recetas, tags],
+  );
+
+  const candidatas = useMemo(
+    () => delBanco.filter((r) => slot === 'todas' || r.categorias.includes(slot)),
+    [delBanco, slot],
   );
 
   /**
-   * BUSCAR UNA RECETA CONCRETA
+   * BUSCAR POR NOMBRE O POR INGREDIENTE
    *
-   * El recomendador sólo enseña las ocho que mejor encajan con el reparto, y
-   * un batido de proteína pierde puntos por cada grupo que no cubre: puede
-   * quedar el decimocuarto y no verse nunca. Buscando por nombre se salta la
-   * puntuación entera y se busca en todo el banco, sin filtros.
-   *
-   * Las bloqueadas por las restricciones del cliente salen también, con el
-   * motivo: esconderlas sin explicación es lo que hacía parecer que faltaban.
+   * Al pautar la pregunta casi nunca es «¿cómo se llamaba?» sino «¿qué tengo
+   * con salmón?»: se busca una idea para esta persona, no un plato concreto.
+   * Buscando se salta también el filtro de comida — si la escribes, la quieres,
+   * esté donde esté.
    */
-  const encontradas = useMemo(() => {
-    const q = busqueda.trim();
-    if (q.length < 2) return [];
-    return matchRecipes(
-      recetas.filter((r) => !r.acompanamiento && !r.postre && coincide(r.nombre, q)),
-      reparto,
-      // Sin filtrar por comida: buscando por nombre se salta la puntuación
-      // entera, y también el filtro. Si la escribes, la quieres.
-      { slot: 'todas', limite: 12, client, foods, incluirBloqueadas: true },
-    );
-  }, [busqueda, recetas, reparto, client, foods]);
+  const buscando = busqueda.trim().length >= 2;
 
-  /*
-   * El filtro por comida ya lo ha hecho `candidatas` arriba, con el selector
-   * que ella puede poner en «Todas». Pasándole `meal.slot` al recomendador
-   * —que desde ahora también filtra— ese «Todas» dejaba de funcionar: se
-   * volvían a caer las recetas de otra comida.
+  /**
+   * UNA SOLA LISTA, CON TODO, ORDENADA POR LO QUE MEJOR CUADRA
+   *
+   * Antes eran dos: ocho tarjetas recomendadas y, si buscabas, una lista de
+   * nombres sin foto. Eso obligaba a elegir a ciegas en cuanto lo que querías
+   * no estaba entre las ocho — y con doscientas recetas en el banco, eso es
+   * casi siempre.
+   *
+   * Ahora están **todas**, en tarjetas con su foto y ordenadas por lo que
+   * cubre del reparto. Las primeras son las que la app propondría; a partir de
+   * ahí se sigue bajando, que es lo que hace falta cuando ya sabes lo que
+   * buscas y sólo quieres verlo.
+   *
+   * Las bloqueadas por una alergia o una patología salen al final, en gris y
+   * con el motivo: esconderlas sin explicación es lo que hacía parecer que
+   * faltaban del banco.
    */
-  const sugerencias = useMemo(
+  const todas = useMemo(
     () =>
-      matchRecipes(candidatas, reparto, {
-        slot,
-        preferencias: client.preferencias,
-        yaAsignadas,
-        limite: 8,
-        client,
-        foods,
-      }),
-    [candidatas, reparto, slot, client, foods, yaAsignadas],
+      matchRecipes(
+        /* Buscando se mira el banco entero, no sólo lo de esta comida. */
+        buscando ? delBanco.filter((r) => recetaCoincide(r, busqueda, foods)) : candidatas,
+        reparto,
+        {
+          /* Buscando no se filtra por comida: la quieres esté donde esté. */
+          slot: buscando ? 'todas' : slot,
+          preferencias: client.preferencias,
+          yaAsignadas,
+          limite: Number.POSITIVE_INFINITY,
+          client,
+          foods,
+          incluirBloqueadas: true,
+        },
+      ),
+    [candidatas, delBanco, reparto, slot, client, foods, yaAsignadas, buscando, busqueda],
   );
 
-  const bloqueadas = useMemo(
-    () =>
-      matchRecipes(candidatas, reparto, {
-        slot,
-        limite: 6,
-        client,
-        foods,
-        incluirBloqueadas: true,
-      }).filter((r) => r.bloqueada),
-    [candidatas, reparto, slot, client, foods],
-  );
+  const bloqueadas = useMemo(() => todas.filter((r) => r.bloqueada), [todas]);
+
+  /** Lo pintado ahora mismo. El resto está a un botón. */
+  const visibles = todas.slice(0, cuantas);
+  const hayMas = todas.length > visibles.length;
 
   const filtrando = slot !== meal.slot || tags.length > 0;
   const alternarTag = (t: string) =>
@@ -177,7 +191,11 @@ export function RecipeRecommender({
 
   /** Cuántas se están escondiendo por no ser de este tipo de comida. */
   const ocultasPorSlot =
-    slot === 'todas' ? 0 : recetas.filter((r) => !r.categorias.includes(slot)).length;
+    slot === 'todas'
+      ? 0
+      : /* Sobre las que se podrían elegir: los acompañamientos y los postres
+           nunca son «la cena», así que ofrecerlos sería mentir en la cuenta. */
+        delBanco.filter((r) => !r.categorias.includes(slot)).length;
 
   const elegidas = seleccionadas
     .map((id) => recetas.find((r) => r.id === id))
@@ -285,164 +303,118 @@ export function RecipeRecommender({
         )}
       </div>
 
-      {/* ── Buscar una receta concreta ────────────────────── */}
+      {/* ── Buscar por nombre o por ingrediente ───────────── */}
       <div className="mb-3">
         <Input
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="¿Buscas una receta concreta? Escribe su nombre…"
+          onChange={(e) => {
+            setBusqueda(e.target.value);
+            /* Al cambiar la búsqueda se vuelve arriba: si no, una búsqueda
+               con tres resultados heredaría el «ver más» de la anterior. */
+            setCuantas(PASO);
+          }}
+          placeholder="Busca por nombre o por ingrediente: salmón, avena, huevo…"
           className="w-full text-sm"
         />
-
-        {busqueda.trim().length >= 2 && (
-          <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/40 p-2.5">
-            {encontradas.length === 0 ? (
-              <p className="text-[11px] text-slate-500">
-                No hay ninguna receta con ese nombre en el banco.
-              </p>
-            ) : (
-              <>
-                <p className="mb-1.5 text-[10px] tracking-wide text-brand-700 uppercase">
-                  En todo el banco, sin filtros
-                </p>
-                <ul className="space-y-1">
-                  {encontradas.map((s) => {
-                    const activa = seleccionadas.includes(s.receta.id);
-                    return (
-                      <li key={s.receta.id}>
-                        <button
-                          onClick={() => !s.bloqueada && onToggle(s.receta.id)}
-                          disabled={s.bloqueada}
-                          className={`flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left text-xs transition disabled:cursor-not-allowed ${
-                            activa
-                              ? 'bg-brand-600 text-white'
-                              : s.bloqueada
-                                ? 'bg-white text-slate-400'
-                                : 'bg-white text-slate-700 hover:bg-brand-100'
-                          }`}
-                        >
-                          <span className="flex-1">
-                            {s.receta.nombre}
-                            {!!s.faltantes.length && !s.bloqueada && (
-                              <span
-                                className={`ml-1.5 text-[10px] ${activa ? 'text-brand-100' : 'text-amber-600'}`}
-                              >
-                                no cubre{' '}
-                                {s.faltantes.map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase()).join(', ')}
-                              </span>
-                            )}
-                            {s.bloqueada && (
-                              <span className="ml-1.5 text-[10px] text-red-600">
-                                bloqueada — {s.motivosBloqueo?.join(' · ')}
-                              </span>
-                            )}
-                          </span>
-                          {activa && <span className="shrink-0 text-[10px]">✓ elegida</span>}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <p className="mt-1.5 text-[10px] leading-snug text-slate-500">
-                  Aquí sale el banco entero: puedes asignar una receta aunque no cubra todo lo
-                  pautado. Lo que falte se completa con otra opción o en otra comida.
-                </p>
-              </>
-            )}
-          </div>
+        {buscando && (
+          <p className="mt-1 text-[11px] text-slate-500">
+            {visibles.length === 0
+              ? 'Nada en el banco con eso, ni en el nombre ni en los ingredientes.'
+              : `${todas.length} ${todas.length === 1 ? 'receta' : 'recetas'} en todo el banco, sin filtrar por comida.`}
+          </p>
         )}
       </div>
 
-      <div className="grid gap-2.5 sm:grid-cols-2">
-        {sugerencias.map((s) => {
+      {/* ── Todas, con foto y ordenadas por lo que mejor cuadra ── */}
+      <div className="grid gap-2.5 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {visibles.map((s) => {
           const activa = seleccionadas.includes(s.receta.id);
+          const porQue = buscando ? porQueCoincide(s.receta, busqueda, foods) : undefined;
           return (
-            <button
+            <RecipeCard
               key={s.receta.id}
+              receta={s.receta}
+              seleccionada={activa}
+              bloqueada={s.bloqueada}
               onClick={() => onToggle(s.receta.id)}
-              disabled={false}
-              className={`rounded-xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                activa
-                  ? 'border-brand-500 bg-brand-50'
-                  : 'border-slate-200 bg-white hover:border-brand-400 hover:shadow-sm'
-              }`}
-            >
-              {s.receta.foto_url && (
-                <img
-                  src={s.receta.foto_url}
-                  alt={s.receta.nombre}
-                  className="mb-2.5 h-24 w-full rounded-lg object-cover"
-                />
-              )}
-              <div className="flex items-start justify-between gap-2">
-                <h4 className="text-sm font-semibold text-slate-800">{s.receta.nombre}</h4>
-                <div className="flex shrink-0 items-center gap-1">
-                  {s.faltantes.length === 0 && s.sobrantes.length === 0 && (
-                    <Badge tone="brand">exacta</Badge>
+              esquina={
+                s.faltantes.length === 0 && s.sobrantes.length === 0 ? (
+                  <Badge tone="brand">exacta</Badge>
+                ) : undefined
+              }
+              pie={
+                <>
+                  {/*
+                    Qué cubre y qué falta, no un porcentaje: un 96 % no dice si
+                    lo que falla es la proteína o el hidrato, y con eso no se
+                    decide nada. Con «falta grasa» ya sabes que le pones un
+                    yogur al lado.
+                  */}
+                  {s.bloqueada ? (
+                    <span className="block text-[10px] leading-snug text-red-600">
+                      {s.motivosBloqueo?.join(' · ')}
+                    </span>
+                  ) : (
+                    <span
+                      className={`block text-[10px] leading-snug ${
+                        s.faltantes.length ? 'text-amber-600' : 'text-emerald-700'
+                      }`}
+                    >
+                      Cubre {s.cubiertos} de {s.requeridos}
+                      {!!s.faltantes.length && (
+                        <>
+                          {' · falta '}
+                          {s.faltantes
+                            .map((g) => EXCHANGE_GROUPS[g].nombre.toLowerCase())
+                            .join(', ')}
+                        </>
+                      )}
+                    </span>
                   )}
-                  <span
-                    className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
-                      activa ? 'bg-brand-600 text-white' : 'border border-slate-300 text-transparent'
-                    }`}
-                  >
-                    ✓
-                  </span>
-                </div>
-              </div>
-              <RecipeMeta receta={s.receta} className="mt-1 gap-x-3 text-[10px]" />
-              <p className="mt-1 flex flex-wrap gap-1">
-                {s.receta.tags.slice(0, 4).map((t) => (
-                  <span
-                    key={t}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500"
-                  >
-                    {t}
-                  </span>
-                ))}
-              </p>
-              {!!s.motivos.length && (
-                <p className="mt-1.5 text-[11px] text-slate-400">{s.motivos.join(' · ')}</p>
-              )}
-              {!!s.faltantes.length && (
-                <p className="mt-1 text-[11px] text-amber-600">
-                  No cubre: {s.faltantes.map((g) => EXCHANGE_GROUPS[g].nombre).join(', ')}
-                </p>
-              )}
-            </button>
+                  {porQue && (
+                    <span className="block text-[10px] text-slate-400">{porQue}</span>
+                  )}
+                </>
+              }
+            />
           );
         })}
-
-        {!sugerencias.length && (
-          <EmptyState title="Sin recetas compatibles">
-            {slot !== 'todas' && ocultasPorSlot > 0 ? (
-              <p>
-                No hay recetas de {SLOTS.find((s) => s.id === slot)?.nombre.toLowerCase()} que
-                encajen con este reparto. Pon «Todas» en el tipo de comida para ver el resto del
-                banco, o búscala por su nombre.
-              </p>
-            ) : tags.length > 0 ? (
-              <p>Con estos tags no queda ninguna que encaje con el reparto.</p>
-            ) : bloqueadas.length > 0 ? (
-              <>
-                <p>
-                  {bloqueadas.length}{' '}
-                  {bloqueadas.length === 1 ? 'receta encajaba' : 'recetas encajaban'} por macros, pero
-                  las restricciones del cliente las descartan.
-                </p>
-                <ul className="mt-2 space-y-0.5 text-left">
-                  {bloqueadas.slice(0, 4).map((b) => (
-                    <li key={b.receta.id} className="text-[11px] text-red-600">
-                      {b.receta.nombre}: {b.motivosBloqueo?.join(' · ')}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : (
-              'Añade recetas al banco cuyo perfil de grupos encaje con este reparto.'
-            )}
-          </EmptyState>
-        )}
       </div>
+
+      {!todas.length && (
+        <EmptyState title={buscando ? 'Sin resultados' : 'Sin recetas para esta comida'}>
+          {buscando ? (
+            <p>Prueba con el nombre de un ingrediente: salmón, avena, garbanzo.</p>
+          ) : slot !== 'todas' && ocultasPorSlot > 0 ? (
+            <p>
+              No hay recetas de {SLOTS.find((s) => s.id === slot)?.nombre.toLowerCase()} en el
+              banco. Pon «Todas» en el tipo de comida para ver el resto.
+            </p>
+          ) : tags.length > 0 ? (
+            <p>Con estos tags no queda ninguna.</p>
+          ) : (
+            'Añade recetas al banco para poder asignarlas.'
+          )}
+        </EmptyState>
+      )}
+
+      {/*
+        VER MÁS, QUE NO ES LO MISMO QUE VER OTRAS
+        Aquí sigue estando el banco entero de esta comida: sólo se han pintado
+        las primeras. El botón de abajo es el que cruza a las otras comidas, y
+        por eso son dos botones y no uno.
+      */}
+      {hayMas && (
+        <button
+          onClick={() => setCuantas((n) => n + PASO)}
+          className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-brand-300 hover:text-brand-700"
+        >
+          Ver más recetas
+          <span className="tnum ml-1 text-slate-400">
+            ({visibles.length} de {todas.length})
+          </span>
+        </button>
+      )}
 
       {minimoPuesto && (
         <p className="mt-2 text-[11px] text-slate-400">
@@ -452,38 +424,25 @@ export function RecipeRecommender({
       )}
 
       {/*
-        Antes esto sólo se decía cuando no quedaba ninguna sugerencia: si había
-        ocho válidas, una receta descartada por una alergia desaparecía sin más
-        y parecía que faltaba del banco.
+        Las bloqueadas ya salen en la cuadrícula, en gris y con su motivo. Este
+        resumen sigue porque con treinta tarjetas en pantalla una en gris se
+        pasa por alto, y lo que hay que saber es *cuántas* se están perdiendo
+        por lo que no puede tomar.
       */}
-      {sugerencias.length > 0 && bloqueadas.length > 0 && (
-        <details className="mt-2">
-          <summary className="cursor-pointer text-[11px] text-slate-400 hover:text-slate-600">
-            {bloqueadas.length}{' '}
-            {bloqueadas.length === 1
-              ? 'receta encajaba pero está descartada'
-              : 'recetas encajaban pero están descartadas'}{' '}
-            por lo que {client.nombre.split(' ')[0]} no puede tomar
-          </summary>
-          <ul className="mt-1 space-y-0.5">
-            {bloqueadas.map((b) => (
-              <li key={b.receta.id} className="text-[11px] text-red-600">
-                {b.receta.nombre}: {b.motivosBloqueo?.join(' · ')}
-              </li>
-            ))}
-          </ul>
-        </details>
+      {bloqueadas.length > 0 && (
+        <p className="mt-2 text-[11px] text-slate-400">
+          {bloqueadas.length}{' '}
+          {bloqueadas.length === 1 ? 'receta está descartada' : 'recetas están descartadas'} por lo
+          que {client.nombre.split(' ')[0]} no puede tomar; salen en gris y no se pueden elegir.
+        </p>
       )}
 
-      {sugerencias.length > 0 && slot !== 'todas' && ocultasPorSlot > 0 && (
+      {!buscando && slot !== 'todas' && ocultasPorSlot > 0 && (
         <p className="mt-1 text-[11px] text-slate-400">
-          Se están enseñando sólo recetas de{' '}
+          Sólo se enseñan recetas de{' '}
           {SLOTS.find((s) => s.id === slot)?.nombre.toLowerCase()}.{' '}
-          <button
-            onClick={() => setSlot('todas')}
-            className="underline hover:text-slate-600"
-          >
-            Ver las {ocultasPorSlot} restantes
+          <button onClick={() => setSlot('todas')} className="underline hover:text-slate-600">
+            Ver también las de otras comidas ({ocultasPorSlot})
           </button>
         </p>
       )}

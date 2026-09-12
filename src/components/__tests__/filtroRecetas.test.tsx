@@ -93,7 +93,7 @@ describe('Filtrar las recetas al pautar', () => {
     );
     expect(screen.queryByText('Gyro bowl')).toBeNull();
     // Y se avisa de que hay más banco detrás del filtro.
-    expect(screen.getByText(/Ver la 1 restantes|Ver las 1 restantes/)).toBeTruthy();
+    expect(screen.getByText(/Ver también las de otras comidas \(1\)/)).toBeTruthy();
   });
 
   it('poniendo «Todas» vuelve a salir', () => {
@@ -149,9 +149,9 @@ describe('Filtrar las recetas al pautar', () => {
 });
 
 /**
- * El batido de proteína pierde puntos por cada grupo que no cubre y se queda
- * fuera de las ocho sugerencias. Buscándolo por su nombre se salta la
- * puntuación: si no, no habría manera de asignarlo.
+ * El batido de proteína pierde puntos por cada grupo que no cubre, así que
+ * queda el último de una cuadrícula larga. Buscándolo se salta la puntuación
+ * entera y también el filtro de comida: si lo escribes, lo quieres.
  */
 describe('Buscar una receta concreta por su nombre', () => {
   const batido = receta('r9', 'Batido de café y proteína', ['dulce']);
@@ -163,10 +163,10 @@ describe('Buscar una receta concreta por su nombre', () => {
       <RecipeRecommender
         dayType={DIA}
         meal={DESAYUNO}
-        // Banco grande: el batido nunca llegaría al top 8.
+        // Banco grande: el batido queda el último y no entra en la primera tanda.
         recetas={[
           ...BANCO,
-          ...Array.from({ length: 10 }, (_, i) => receta(`x${i}`, `Relleno ${i}`, ['salado'])),
+          ...Array.from({ length: 20 }, (_, i) => receta(`x${i}`, `Relleno ${i}`, ['salado'])),
           batido,
         ]}
         client={CLIENTE}
@@ -181,7 +181,7 @@ describe('Buscar una receta concreta por su nombre', () => {
     conBatido();
     expect(screen.queryByText('Batido de café y proteína')).toBeNull();
 
-    fireEvent.change(screen.getByPlaceholderText(/Buscas una receta concreta/), {
+    fireEvent.change(screen.getByPlaceholderText(/Busca por nombre o por ingrediente/), {
       target: { value: 'batido' },
     });
     expect(screen.getByText('Batido de café y proteína')).toBeTruthy();
@@ -201,7 +201,7 @@ describe('Buscar una receta concreta por su nombre', () => {
         foods={FOOD_CATALOG}
       />,
     );
-    fireEvent.change(screen.getByPlaceholderText(/Buscas una receta concreta/), {
+    fireEvent.change(screen.getByPlaceholderText(/Busca por nombre o por ingrediente/), {
       target: { value: 'batido' },
     });
     // El de la lista de búsqueda, no el de las sugerencias.
@@ -211,9 +211,9 @@ describe('Buscar una receta concreta por su nombre', () => {
 
   it('si no existe, lo dice en vez de callarse', () => {
     conBatido();
-    fireEvent.change(screen.getByPlaceholderText(/Buscas una receta concreta/), {
+    fireEvent.change(screen.getByPlaceholderText(/Busca por nombre o por ingrediente/), {
       target: { value: 'paella' },
     });
-    expect(screen.getByText(/No hay ninguna receta con ese nombre/)).toBeTruthy();
+    expect(screen.getByText(/Nada en el banco con eso/)).toBeTruthy();
   });
 });

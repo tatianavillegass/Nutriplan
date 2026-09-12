@@ -30,6 +30,14 @@ export interface MatchResult {
   faltantes: ExchangeGroupId[];
   /** Grupos que la receta aporta y el reparto no pide. */
   sobrantes: ExchangeGroupId[];
+  /**
+   * Cuántos de los grupos pautados cubre, y cuántos había. Es lo que se enseña
+   * en la tarjeta —«cubre 3 de 4»— en vez de un porcentaje: un 96 % no dice si
+   * lo que falla es la proteína o el hidrato, y con eso no se decide nada. Con
+   * «falta grasa» ya sabes que le pones un yogur al lado.
+   */
+  cubiertos: number;
+  requeridos: number;
   motivos: string[];
   /** Bloqueada por patología, alergia o aversión del cliente. */
   bloqueada?: boolean;
@@ -179,6 +187,8 @@ export function matchRecipes(
         score,
         faltantes,
         sobrantes,
+        cubiertos,
+        requeridos: req.length,
         motivos,
         bloqueada: ev?.bloqueado ?? false,
         motivosBloqueo: ev?.motivos ?? [],
