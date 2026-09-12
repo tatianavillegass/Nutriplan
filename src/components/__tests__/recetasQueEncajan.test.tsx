@@ -4,6 +4,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { RecipeShortcuts } from '../client/RecipeShortcuts';
 import type { Receta } from '../../types/recipe';
 import type { Client } from '../../types/client';
+import type { Plan } from '../../types/plan';
 import type { DayType, Meal } from '../../types/plan';
 import { FOOD_CATALOG } from '../../data/foodCatalog';
 
@@ -49,9 +50,13 @@ const receta = (extra: Partial<Receta> = {}): Receta =>
 
 const CLIENTA = { id: 'c1', nombre: 'Ana', preferencias: [] } as unknown as Client;
 
+/** Sin recetas elegidas a mano: se proponen las que encajan. */
+const PLAN = { id: 'p1', fase: 2, dayTypes: [DIA] } as unknown as Plan;
+
 const pintar = (r: Receta) =>
   render(
     <RecipeShortcuts
+      plan={PLAN}
       dayType={DIA}
       meal={COMIDA}
       recetas={[r]}

@@ -7,7 +7,8 @@ import type { ExchangeCounts } from './exchanges';
 import { evaluarReceta, puntuarPreferencias } from './restrictions';
 
 export interface MatchOptions {
-  slot: MealSlot;
+  /** `'todas'` para buscar por el banco entero, ignorando la comida. */
+  slot: MealSlot | 'todas';
   /** Tags/preferencias del cliente. */
   preferencias?: string[];
   /** Tags a evitar (alergias, rechazos). */
@@ -77,6 +78,20 @@ export function matchRecipes(
      * así que nunca se sugiere como opción de desayuno o de cena.
      */
     .filter((r) => !r.acompanamiento && !r.postre)
+    /**
+     * LA COMIDA FILTRA, NO PUNTÚA
+     *
+     * La categoría sólo sumaba veinticinco puntos, así que un café proteico de
+     * desayuno se colaba en la cena si cubría bien los macros. En la pantalla
+     * de fase 1 esto ya estaba arreglado, pero en el componente y no aquí, así
+     * que la hoja de la nevera y las ideas de la app seguían con el fallo.
+     * Puesto en el recomendador, vale para todos.
+     *
+     * Una receta **sin categorías** sigue entrando en todas: no se ha dicho
+     * dónde va, y esconderla sería borrarle recetas del banco sin avisar. Lo
+     * que se filtra es lo que sí declaró y no incluye esta comida.
+     */
+    .filter((r) => slot === 'todas' || !r.categorias.length || r.categorias.includes(slot))
     .filter((r) => !r.tags.some((t) => evitar.includes(t)))
     .map((r) => {
       // 0. Restricciones del cliente: mandan sobre cualquier puntuación.
@@ -125,8 +140,11 @@ export function matchRecipes(
       }
       score += (req.length - porFamilia.length) * 10;
 
-      // 2. Categoría de comida.
-      if (r.categorias.includes(slot)) {
+      /*
+       * 2. Categoría de comida. Ya se ha filtrado arriba, así que esto sólo
+       * separa a las que dicen ser de esta comida de las que no dicen nada.
+       */
+      if (slot !== 'todas' && r.categorias.includes(slot)) {
         score += 25;
         motivos.push(`Apta para ${slot}`);
       }

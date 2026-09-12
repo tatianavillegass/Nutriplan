@@ -1729,6 +1729,7 @@ export function ClientView() {
                       acciones={accionesDe(m.id, m.nombre)}
                     />
                     <RecipeShortcuts
+                      plan={plan}
                       dayType={dayType}
                       meal={m}
                       recetas={recipes}
@@ -1765,6 +1766,7 @@ export function ClientView() {
                       {/* Lo de siempre: repetir esta comida o usar una guardada. */}
                       {atajosDeComida(m)}
                       <RecipeShortcuts
+                        plan={plan}
                         dayType={dayType}
                         meal={m}
                         recetas={recipes}

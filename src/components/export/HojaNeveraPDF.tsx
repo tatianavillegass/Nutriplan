@@ -6,7 +6,7 @@ import { MIN_VERDURA_G } from '../../data/exchangeGroups';
 import { columnasDeComida } from '../../utils/combosGuardados';
 import { BUCKET_LABEL, textoItem } from '../../utils/mealOptions';
 import { notaAceite, repartoElegible } from '../../utils/pantry';
-import { matchRecipes } from '../../utils/recipeMatcher';
+import { ideasDeLaComida } from '../../utils/ideasDeReceta';
 import { CabeceraDeMarca, MARCA, MarcaDeAgua } from '../brand/Marca';
 import { fechaLarga } from './printing';
 
@@ -81,6 +81,7 @@ export function HojaNeveraPDF({
               {d.meals.map((m) => (
                 <ComidaDeLaNevera
                   key={m.id}
+                  plan={plan}
                   dayType={d}
                   meal={m}
                   foods={foods}
@@ -123,12 +124,14 @@ export function HojaNeveraPDF({
  * quedaría en la página de detrás, que en la nevera no se ve.
  */
 function ComidaDeLaNevera({
+  plan,
   dayType,
   meal,
   foods,
   recetas,
   client,
 }: {
+  plan: Plan;
   dayType: DayType;
   meal: Meal;
   foods: Alimento[];
@@ -143,13 +146,7 @@ function ComidaDeLaNevera({
   const nota = dayType.notas?.[meal.id];
   const postre = meal.slot === 'cena' ? dayType.postre : undefined;
 
-  const ideas = matchRecipes(recetas, reparto, {
-    slot: meal.slot,
-    preferencias: client.preferencias,
-    limite: 3,
-    client,
-    foods,
-  });
+  const ideas = ideasDeLaComida(plan, meal, reparto, recetas, foods, client);
 
   return (
     <section

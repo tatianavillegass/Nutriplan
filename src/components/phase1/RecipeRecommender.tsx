@@ -134,33 +134,41 @@ export function RecipeRecommender({
     return matchRecipes(
       recetas.filter((r) => !r.acompanamiento && !r.postre && coincide(r.nombre, q)),
       reparto,
-      { slot: meal.slot, limite: 12, client, foods, incluirBloqueadas: true },
+      // Sin filtrar por comida: buscando por nombre se salta la puntuación
+      // entera, y también el filtro. Si la escribes, la quieres.
+      { slot: 'todas', limite: 12, client, foods, incluirBloqueadas: true },
     );
-  }, [busqueda, recetas, reparto, meal.slot, client, foods]);
+  }, [busqueda, recetas, reparto, client, foods]);
 
+  /*
+   * El filtro por comida ya lo ha hecho `candidatas` arriba, con el selector
+   * que ella puede poner en «Todas». Pasándole `meal.slot` al recomendador
+   * —que desde ahora también filtra— ese «Todas» dejaba de funcionar: se
+   * volvían a caer las recetas de otra comida.
+   */
   const sugerencias = useMemo(
     () =>
       matchRecipes(candidatas, reparto, {
-        slot: meal.slot,
+        slot,
         preferencias: client.preferencias,
         yaAsignadas,
         limite: 8,
         client,
         foods,
       }),
-    [candidatas, reparto, meal.slot, client, foods, yaAsignadas],
+    [candidatas, reparto, slot, client, foods, yaAsignadas],
   );
 
   const bloqueadas = useMemo(
     () =>
       matchRecipes(candidatas, reparto, {
-        slot: meal.slot,
+        slot,
         limite: 6,
         client,
         foods,
         incluirBloqueadas: true,
       }).filter((r) => r.bloqueada),
-    [candidatas, reparto, meal.slot, client, foods],
+    [candidatas, reparto, slot, client, foods],
   );
 
   const filtrando = slot !== meal.slot || tags.length > 0;

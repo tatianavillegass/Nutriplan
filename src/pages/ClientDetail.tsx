@@ -700,10 +700,23 @@ export function ClientDetail() {
             </Card>
           )}
 
-          {plan.fase === 1 && !suReto && (
+          {/*
+            TAMBIÉN EN FASE 2, Y AHÍ SON LAS «IDEAS»
+            En fase 1 son los platos que come. En fase 2 no: ahí come
+            combinaciones que elige ella, y estas recetas son las ideas que le
+            salen en la hoja de la nevera y en «¿sin ideas?». Sin esta tarjeta
+            las elegía el recomendador por su cuenta y no había forma de
+            quitarle una que no encaja. Y `RepartirLaSemana`, que ya se enseña
+            en fase 2, leía estas mismas recetas sin que hubiera dónde ponerlas.
+          */}
+          {plan.fase <= 2 && !suReto && (
             <Card
-              title="Recetas por comida"
-              subtitle={`Al menos ${RECETAS_POR_COMIDA} opciones por comida, y en cada seguimiento puedes sumar más sin quitar las que ya se sabe`}
+              title={plan.fase === 1 ? 'Recetas por comida' : 'Ideas de receta por comida'}
+              subtitle={
+                plan.fase === 1
+                  ? `Al menos ${RECETAS_POR_COMIDA} opciones por comida, y en cada seguimiento puedes sumar más sin quitar las que ya se sabe`
+                  : 'Las que le salen en la hoja de la nevera y al pedir ideas. Si no eliges ninguna, la app propone las que encajan con lo pautado'
+              }
             >
               {/*
                 LOS PLATOS SON DE TODO EL PLAN

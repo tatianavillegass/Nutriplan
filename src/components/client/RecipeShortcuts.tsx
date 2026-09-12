@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import type { Client } from '../../types/client';
-import type { DayType, Meal } from '../../types/plan';
+import type { DayType, Meal, Plan } from '../../types/plan';
 import type { PorcionesMarcadas } from '../../types/diary';
-import { matchRecipes } from '../../utils/recipeMatcher';
+import { ideasDeLaComida } from '../../utils/ideasDeReceta';
 import { scaleRecipe } from '../../utils/recipeScaling';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { exchangesToMacros } from '../../utils/exchanges';
@@ -12,6 +12,8 @@ import { kcalFromMacros } from '../../utils/macros';
 import { fmt } from '../common/ui';
 
 interface Props {
+  /** Para saber qué recetas ha elegido ella para esta comida. */
+  plan: Plan;
   dayType: DayType;
   meal: Meal;
   recetas: Receta[];
@@ -30,6 +32,7 @@ interface Props {
  * marcan de golpe todos sus ingredientes.
  */
 export function RecipeShortcuts({
+  plan,
   dayType,
   meal,
   recetas,
@@ -43,16 +46,13 @@ export function RecipeShortcuts({
   const [como, setComo] = useState<string | null>(null);
   const reparto = dayType.grid[meal.id] ?? {};
 
+  /*
+   * Manda lo que la nutricionista haya elegido para esta comida; si no ha
+   * elegido nada, se proponen las que encajan. Ver `ideasDeLaComida`.
+   */
   const sugerencias = useMemo(
-    () =>
-      matchRecipes(recetas, reparto, {
-        slot: meal.slot,
-        preferencias: client.preferencias,
-        limite: 4,
-        client,
-        foods,
-      }),
-    [recetas, reparto, meal.slot, client, foods],
+    () => ideasDeLaComida(plan, meal, reparto, recetas, foods, client, 4),
+    [plan, meal, recetas, reparto, client, foods],
   );
 
   const vacio = Object.values(reparto).every((v) => !v);
