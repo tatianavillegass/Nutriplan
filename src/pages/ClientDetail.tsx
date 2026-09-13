@@ -99,6 +99,12 @@ export function ClientDetail() {
   const [verPlanId, setVerPlanId] = useState<string | null>(null);
   const [creandoPlan, setCreandoPlan] = useState(false);
   const [dtIndex, setDtIndex] = useState(0);
+  /**
+   * Qué comida tiene abierto el selector de recetas. Empieza cerrada del todo:
+   * al abrir la pestaña lo primero es ver cómo está el plan entero, no meterse
+   * en el desayuno.
+   */
+  const [comidaAbierta, setComidaAbierta] = useState<string | null>(null);
   const calc = useEnergy(client);
 
   if (!client) return <EmptyState title="Cliente no encontrado" />;
@@ -749,8 +755,16 @@ export function ClientDetail() {
                   mano, que sí son de «{dayType.nombre}».
                 </p>
               )}
-              <div className="space-y-6">
-                {dayType.meals.map((m) => (
+              {/*
+                UNA COMIDA ABIERTA A LA VEZ
+                Con las recetas en cuadrícula, cinco comidas abiertas son cinco
+                pantallas de fotos: elegir el desayuno y bajar a la cena era un
+                viaje y volver arriba otro. Se abre la que se está trabajando y
+                el resto se queda en una fila con sus miniaturas, que además
+                deja repasar el plan entero de un vistazo.
+              */}
+              <div className="space-y-2.5">
+                {dayType.meals.map((m, i) => (
                   <RecipeRecommender
                     key={m.id}
                     dayType={dayType}
@@ -758,6 +772,16 @@ export function ClientDetail() {
                     recetas={recipes}
                     client={client}
                     foods={foodsPermitidos}
+                    abierto={comidaAbierta === m.id}
+                    onAlternar={() =>
+                      setComidaAbierta((v) => (v === m.id ? null : m.id))
+                    }
+                    onSiguiente={
+                      dayType.meals[i + 1]
+                        ? () => setComidaAbierta(dayType.meals[i + 1].id)
+                        : /* En la última, «siguiente» sería mentira: se cierra. */
+                          undefined
+                    }
                     seleccionadas={recetasEnUso[m.id] ?? []}
                     yaAsignadas={dayType.meals
                       .filter((otra) => otra.id !== m.id)

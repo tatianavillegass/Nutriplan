@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Receta } from '../../types/recipe';
 import type { Meal, DayType } from '../../types/plan';
 import {
@@ -28,6 +28,20 @@ interface Props {
   /** Recetas usadas en otras comidas, para dar variedad. */
   yaAsignadas: string[];
   onToggle: (recetaId: string) => void;
+  /**
+   * PLEGADA, SALVO LA QUE SE ESTÁ TRABAJANDO
+   *
+   * Con todas las recetas en cuadrícula, cinco comidas abiertas son cinco
+   * pantallas de fotos: elegir el desayuno y bajar a la cena era un viaje, y
+   * volver arriba otro. Se abre una, se eligen sus opciones y se cierra.
+   *
+   * Sin estas props se comporta como antes —siempre abierta—, que es como la
+   * usan los tests y cualquier pantalla que sólo tenga una comida.
+   */
+  abierto?: boolean;
+  onAlternar?: () => void;
+  /** Cerrar ésta y abrir la siguiente, que es lo que se hace de verdad. */
+  onSiguiente?: () => void;
   foods?: Alimento[];
   /** Guardar cambios en la receta del banco. */
   onEditarReceta?: (recetaId: string, patch: Partial<Receta>) => void;
@@ -81,11 +95,22 @@ export function RecipeRecommender({
   seleccionadas,
   yaAsignadas,
   onToggle,
+  abierto = true,
+  onAlternar,
+  onSiguiente,
   foods = [],
   onEditarReceta,
   onAjustarCantidades,
 }: Props) {
   const [editando, setEditando] = useState<string | null>(null);
+  /**
+   * Al cerrar se vuelve a su cabecera. Sin esto te quedas donde estabas —a
+   * media pantalla de fotos que acaba de desaparecer— y hay que buscar dónde
+   * estás: justo el viaje que esto viene a quitar.
+   */
+  const caja = useRef<HTMLDivElement>(null);
+  const volverArriba = () =>
+    caja.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   /** Receta cuyas cantidades se están ajustando para esta clienta. */
   const [ajustando, setAjustando] = useState<string | null>(null);
   /**
@@ -210,6 +235,12 @@ export function RecipeRecommender({
     );
   }
 
+  /** El resumen del reparto, que se enseña abierta y cerrada. */
+  const loPautado = (Object.entries(reparto) as [keyof typeof EXCHANGE_GROUPS, number][])
+    .filter(([, n]) => n > 0)
+    .map(([g, n]) => `${n} ${EXCHANGE_GROUPS[g].nombre.toLowerCase()}`)
+    .join(' · ');
+
   /**
    * EL REPERTORIO CRECE, NO SE SUSTITUYE
    *
@@ -221,34 +252,99 @@ export function RecipeRecommender({
    */
   const minimoPuesto = elegidas.length >= RECETAS_POR_COMIDA;
 
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <div className="flex items-baseline gap-2">
-          <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-            {meal.nombre}
-          </p>
-          <span
-            className={`rounded px-1.5 py-0.5 text-[10px] ${
-              minimoPuesto
-                ? 'bg-emerald-50 text-emerald-700'
-                : elegidas.length > 0
-                  ? 'bg-amber-50 text-amber-700'
-                  : 'bg-slate-100 text-slate-500'
-            }`}
-          >
-            {elegidas.length}{' '}
-            {elegidas.length === 1 ? 'opción' : 'opciones'}
-            {!minimoPuesto && ` · mínimo ${RECETAS_POR_COMIDA}`}
+  const cabecera = (
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex items-baseline gap-2">
+        {onAlternar && (
+          <span aria-hidden className="text-[10px] text-slate-400">
+            {abierto ? '▾' : '▸'}
           </span>
-        </div>
-        <p className="tnum text-[11px] text-slate-400">
-          {(Object.entries(reparto) as [keyof typeof EXCHANGE_GROUPS, number][])
-            .filter(([, n]) => n > 0)
-            .map(([g, n]) => `${n} ${EXCHANGE_GROUPS[g].nombre.toLowerCase()}`)
-            .join(' · ')}
+        )}
+        <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          {meal.nombre}
         </p>
+        <span
+          className={`rounded px-1.5 py-0.5 text-[10px] ${
+            minimoPuesto
+              ? 'bg-emerald-50 text-emerald-700'
+              : elegidas.length > 0
+                ? 'bg-amber-50 text-amber-700'
+                : 'bg-slate-100 text-slate-500'
+          }`}
+        >
+          {elegidas.length} {elegidas.length === 1 ? 'opción' : 'opciones'}
+          {!minimoPuesto && ` · mínimo ${RECETAS_POR_COMIDA}`}
+        </span>
       </div>
+      <p className="tnum text-[11px] text-slate-400">{loPautado}</p>
+    </div>
+  );
+
+  /**
+   * CERRADA: EL NOMBRE, LA CUENTA Y LO QUE YA LE PUSISTE
+   *
+   * Una fila plegada que sólo dijera «Desayuno» obligaría a abrirla para
+   * acordarse de qué le habías puesto. Con las miniaturas se repasa el plan
+   * entero de un vistazo, que es justo lo que no se podía hacer con cinco
+   * cuadrículas abiertas.
+   */
+  if (onAlternar && !abierto) {
+    return (
+      <div ref={caja} className="rounded-xl border border-slate-200 bg-white">
+        <button onClick={onAlternar} className="w-full px-4 py-3 text-left">
+          {cabecera}
+          {elegidas.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {elegidas.map((r) => (
+                <span
+                  key={r.id}
+                  title={r.nombre}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 py-0.5 pr-2 pl-0.5 text-[11px] text-slate-600"
+                >
+                  {r.foto_url ? (
+                    <img
+                      src={r.foto_url}
+                      alt=""
+                      loading="lazy"
+                      className="h-6 w-6 rounded object-cover"
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="flex h-6 w-6 items-center justify-center rounded bg-slate-200 text-[10px] text-slate-400"
+                    >
+                      🍽
+                    </span>
+                  )}
+                  <span className="max-w-[10rem] truncate">{r.nombre}</span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1.5 text-[11px] text-amber-700">
+              Sin recetas todavía. Pulsa para elegirlas.
+            </p>
+          )}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={caja} className="rounded-xl border border-slate-200 bg-white p-4">
+      {onAlternar ? (
+        <button
+          onClick={() => {
+            onAlternar();
+            volverArriba();
+          }}
+          className="mb-3 w-full text-left"
+        >
+          {cabecera}
+        </button>
+      ) : (
+        <div className="mb-3">{cabecera}</div>
+      )}
 
       {/* ── Filtros: tipo de comida y tags ───────────────── */}
       <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2">
@@ -512,6 +608,34 @@ export function RecipeRecommender({
               ),
             )}
           </div>
+        </div>
+      )}
+
+      {/*
+        CERRAR SIN TENER QUE SUBIR
+        Después de elegir las recetas estás abajo del todo, y volver a la
+        cabecera para plegarla es el viaje que esto viene a quitar. «Siguiente
+        comida» es lo que se hace de verdad: cierra ésta y abre la de abajo.
+      */}
+      {onAlternar && (
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+          <button
+            onClick={() => {
+              onAlternar();
+              volverArriba();
+            }}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition hover:border-slate-300"
+          >
+            Cerrar {meal.nombre.toLowerCase()}
+          </button>
+          {onSiguiente && (
+            <button
+              onClick={onSiguiente}
+              className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-700"
+            >
+              Siguiente comida →
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -182,3 +182,85 @@ describe('Buscar', () => {
     expect(screen.getByText(/Nada en el banco con eso/)).toBeTruthy();
   });
 });
+
+/**
+ * PLEGADA, SALVO LA QUE SE ESTÁ TRABAJANDO
+ *
+ * Con las recetas en cuadrícula, cinco comidas abiertas son cinco pantallas de
+ * fotos: elegir el desayuno y bajar a la cena era un viaje, y volver arriba
+ * otro.
+ */
+describe('Plegar la comida', () => {
+  const plegada = (abierto: boolean, onAlternar = vi.fn(), onSiguiente = vi.fn()) => {
+    const r = render(
+      <RecipeRecommender
+        dayType={DIA}
+        meal={CENA}
+        recetas={[EXACTA]}
+        client={CLIENTA}
+        seleccionadas={['r1']}
+        yaAsignadas={[]}
+        onToggle={vi.fn()}
+        abierto={abierto}
+        onAlternar={onAlternar}
+        onSiguiente={onSiguiente}
+      />,
+    );
+    return { ...r, onAlternar, onSiguiente };
+  };
+
+  it('cerrada no enseña la cuadrícula', () => {
+    plegada(false);
+    expect(screen.queryByPlaceholderText(/Busca por nombre/)).toBeNull();
+  });
+
+  /** Una fila que sólo dijera «Cena» obligaría a abrirla para acordarse. */
+  it('pero sí lo que ya le pusiste, en miniatura', () => {
+    plegada(false);
+    expect(screen.getByText('Salmón con patata y aceite')).toBeTruthy();
+    expect(screen.getByText(/1 opción/)).toBeTruthy();
+  });
+
+  it('y avisa si esa comida se quedó sin recetas', () => {
+    render(
+      <RecipeRecommender
+        dayType={DIA}
+        meal={CENA}
+        recetas={[EXACTA]}
+        client={CLIENTA}
+        seleccionadas={[]}
+        yaAsignadas={[]}
+        onToggle={vi.fn()}
+        abierto={false}
+        onAlternar={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Sin recetas todavía/)).toBeTruthy();
+  });
+
+  it('se abre pulsando su nombre', () => {
+    const { onAlternar } = plegada(false);
+    fireEvent.click(screen.getByText('Cena'));
+    expect(onAlternar).toHaveBeenCalled();
+  });
+
+  /** Después de elegir estás abajo del todo: subir a la cabecera era el viaje. */
+  it('y se cierra desde abajo, sin tener que subir', () => {
+    const { onAlternar } = plegada(true);
+    fireEvent.click(screen.getByText(/Cerrar cena/));
+    expect(onAlternar).toHaveBeenCalled();
+  });
+
+  it('«siguiente comida» cierra ésta y abre la de abajo', () => {
+    const { onSiguiente } = plegada(true);
+    fireEvent.click(screen.getByText(/Siguiente comida/));
+    expect(onSiguiente).toHaveBeenCalled();
+  });
+
+  /** Sin las props se comporta como siempre: una sola comida, siempre abierta. */
+  it('sin plegado no aparece ningún botón de cerrar', () => {
+    pintar([EXACTA]);
+    expect(screen.queryByText(/Cerrar cena/)).toBeNull();
+    expect(screen.getByPlaceholderText(/Busca por nombre/)).toBeTruthy();
+  });
+});
