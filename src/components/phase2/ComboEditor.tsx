@@ -32,6 +32,12 @@ interface Props {
   onNota?: (texto: string) => void;
   /** Por qué un alimento está vetado para este cliente. */
   motivoBloqueo?: (food: Alimento) => string | undefined;
+  /**
+   * Sin su propia fila plegable: va dentro de la de la comida, como segundo
+   * paso. Con dos tarjetas —una de despensa y otra de combinaciones— había que
+   * abrir el desayuno dos veces en dos sitios distintos.
+   */
+  sinCabecera?: boolean;
 }
 
 const BUCKETS: MacroBucket[] = ['proteina', 'carbohidrato', 'grasa'];
@@ -51,6 +57,7 @@ export function ComboEditor({
   onAceite,
   onNota,
   motivoBloqueo,
+  sinCabecera = false,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [borrador, setBorrador] = useState<Record<string, { foodId: string; porciones: number }[]>>(
@@ -94,24 +101,32 @@ export function ComboEditor({
     setBorrador((b) => ({ ...b, [bucket]: next }));
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
-      <button
-        onClick={() => setAbierto((v) => !v)}
-        className="flex w-full items-baseline justify-between gap-2 px-4 py-2.5 text-left"
-      >
-        <span className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
-          {meal.nombre}
-        </span>
-        <span className="text-[11px] text-slate-400">
-          {totalGuardadas > 0
-            ? `${totalGuardadas} combinaciones propias`
-            : 'usando las propuestas'}
-          <span className="ml-2 text-brand-600">{abierto ? 'ocultar' : 'editar'}</span>
-        </span>
-      </button>
+    <div className={sinCabecera ? '' : 'rounded-xl border border-slate-200 bg-white'}>
+      {!sinCabecera && (
+        <button
+          onClick={() => setAbierto((v) => !v)}
+          className="flex w-full items-baseline justify-between gap-2 px-4 py-2.5 text-left"
+        >
+          <span className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
+            {meal.nombre}
+          </span>
+          <span className="text-[11px] text-slate-400">
+            {totalGuardadas > 0
+              ? `${totalGuardadas} combinaciones propias`
+              : 'usando las propuestas'}
+            <span className="ml-2 text-brand-600">{abierto ? 'ocultar' : 'editar'}</span>
+          </span>
+        </button>
+      )}
 
-      {abierto && (
-        <div className="space-y-5 border-t border-slate-100 px-4 py-3">
+      {(abierto || sinCabecera) && (
+        <div
+          className={
+            sinCabecera
+              ? 'space-y-5'
+              : 'space-y-5 border-t border-slate-100 px-4 py-3'
+          }
+        >
           {(dayType.grid[meal.id]?.grasas ?? 0) > 0 && onAceite && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-amber-50/60 px-3 py-2 text-[11px] text-slate-700">
               <span>Reservar para aceite de cocción</span>

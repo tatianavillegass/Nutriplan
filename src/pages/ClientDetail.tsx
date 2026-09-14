@@ -45,7 +45,7 @@ import { RepartosGuardados } from "../components/planning/RepartosGuardados";
 import { RecetasDeLaParticipante } from "../components/retos/RecetasDeLaParticipante";
 import { MealPantryEditor } from "../components/planning/MealPantryEditor";
 import { DayTemplateBar } from "../components/planning/DayTemplateBar";
-import { ComboEditor } from "../components/phase2/ComboEditor";
+import { ComidaDeFase2 } from "../components/phase2/ComidaDeFase2";
 import { catalogoPermitido, evaluarAlimento } from "../utils/restrictions";
 import {
   RECETAS_POR_COMIDA,
@@ -848,22 +848,10 @@ export function ClientDetail() {
             />
           )}
 
-          {/*
-            LA DESPENSA TAMBIÉN SE EDITA EN FASE 2
-            Sólo salía en fase 3, y en fase 2 hace *más* falta: de ella salen
-            las combinaciones que la app propone y, sobre todo, las
-            alternativas que le aparecen a la clienta al pulsar un alimento
-            para cambiarlo. Sin esto, qué frutas le sale poder elegir lo
-            decidía el catálogo y no ella.
-          */}
-          {(plan.fase === 2 || plan.fase === 3) && (
+          {plan.fase === 3 && (
             <Card
               title="Qué puede elegir el cliente"
-              subtitle={
-                plan.fase === 2
-                  ? "Comida a comida: los alimentos que quieras incluir. De aquí salen las combinaciones que se le proponen y las alternativas que ve al pulsar un alimento para cambiarlo."
-                  : "Comida a comida: escribe los alimentos que quieras incluir y se colocan solos en su grupo. Lo que quede aquí es exactamente lo que verá."
-              }
+              subtitle="Comida a comida: escribe los alimentos que quieras incluir y se colocan solos en su grupo. Lo que quede aquí es exactamente lo que verá."
               actions={
                 <Input
                   value={dayType.postre ?? ""}
@@ -913,19 +901,29 @@ export function ClientDetail() {
             </Card>
           )}
 
+          {/*
+            UNA SOLA TARJETA, DOS PASOS POR COMIDA
+            Eran dos —la despensa y las combinaciones—, o sea dos listas de las
+            mismas comidas en las que había que abrir el desayuno dos veces en
+            dos sitios distintos, y sin que nada dijera que la primera alimenta
+            a la segunda. Son dos pasos de lo mismo. Ver `ComidaDeFase2`.
+          */}
           {plan.fase === 2 && (
             <Card
-              title="Combinaciones que verá el cliente"
-              subtitle="Acepta las propuestas o busca cualquier alimento y compón la tuya"
+              title="Qué come en cada comida"
+              subtitle="Primero los alimentos que tiene, y con ellos las combinaciones que le propones"
             >
               <div className="space-y-2">
                 {dayType.meals.map((m) => (
-                  <ComboEditor
+                  <ComidaDeFase2
                     key={m.id}
                     dayType={dayType}
                     meal={m}
                     foods={foods}
                     motivoBloqueo={motivoBloqueo}
+                    onDespensa={(despensa) =>
+                      updateDayType(plan.id, dayType.id, { despensa })
+                    }
                     onCombinaciones={(combinaciones) =>
                       updateDayType(plan.id, dayType.id, { combinaciones })
                     }

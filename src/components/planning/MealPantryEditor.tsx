@@ -34,6 +34,12 @@ interface Props {
   onNota?: (texto: string) => void;
   /** Por qué un alimento está vetado para este cliente. */
   motivoBloqueo?: (food: Alimento) => string | undefined;
+  /**
+   * Sin su propia fila plegable: va dentro de la de la comida, como primer
+   * paso. En fase 2 la despensa y las combinaciones son dos pasos de lo mismo,
+   * y en dos tarjetas había que abrir el desayuno dos veces en dos sitios.
+   */
+  sinCabecera?: boolean;
 }
 
 const BUCKETS: [MacroBucket, string, string][] = [
@@ -60,6 +66,7 @@ export function MealPantryEditor({
   onAceite,
   onNota,
   motivoBloqueo,
+  sinCabecera = false,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [plantillas, setPlantillas] = useState<PlantillaDespensa[]>(() => leerPlantillas());
@@ -134,23 +141,27 @@ export function MealPantryEditor({
     : `${d.seleccion?.length ?? 0} alimentos`;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
-      <button
-        onClick={() => setAbierto((v) => !v)}
-        className="flex w-full items-baseline justify-between gap-2 px-4 py-2.5 text-left"
-      >
-        <span className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
-          {meal.nombre}
-        </span>
-        <span className="text-[11px] text-slate-400">
-          {resumen}
-          {reserva > 0 && ` · ${fmt(reserva, reserva % 1 ? 1 : 0)} grasa de cocción`}
-          <span className="ml-2 text-brand-600">{abierto ? 'ocultar' : 'editar'}</span>
-        </span>
-      </button>
+    <div className={sinCabecera ? '' : 'rounded-xl border border-slate-200 bg-white'}>
+      {!sinCabecera && (
+        <button
+          onClick={() => setAbierto((v) => !v)}
+          className="flex w-full items-baseline justify-between gap-2 px-4 py-2.5 text-left"
+        >
+          <span className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
+            {meal.nombre}
+          </span>
+          <span className="text-[11px] text-slate-400">
+            {resumen}
+            {reserva > 0 && ` · ${fmt(reserva, reserva % 1 ? 1 : 0)} grasa de cocción`}
+            <span className="ml-2 text-brand-600">{abierto ? 'ocultar' : 'editar'}</span>
+          </span>
+        </button>
+      )}
 
-      {abierto && (
-        <div className="space-y-4 border-t border-slate-100 px-4 py-3">
+      {(abierto || sinCabecera) && (
+        <div
+          className={sinCabecera ? 'space-y-4' : 'space-y-4 border-t border-slate-100 px-4 py-3'}
+        >
           {/* Plantillas */}
           <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2">
             <span className="text-[10px] tracking-wide text-slate-500 uppercase">Plantillas</span>
