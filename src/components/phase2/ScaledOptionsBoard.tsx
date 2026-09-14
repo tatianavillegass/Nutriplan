@@ -171,13 +171,44 @@ export function ScaledOptionsBoard({
                     );
 
                     if (!interactivo) {
+                      /*
+                        LO QUE PODRÁ CAMBIAR, EN LA VISTA PREVIA
+                        Aquí no hay nada pulsable —esta pantalla es para mirar—
+                        así que ninguna opción llega a estar elegida y el botón
+                        de cambiar no aparecía nunca: desde la ficha parecía que
+                        la función no existía. Se dice en gris, sin poder
+                        tocarlo, que es lo que hace falta para comprobar que le
+                        has dejado bastantes frutas donde elegir.
+                      */
+                      const cambiables =
+                        modo === 'editor'
+                          ? o.items
+                              .map((it) => ({
+                                it,
+                                otras: alternativasDe(it, dayType, meal, foods),
+                              }))
+                              .filter((x) => x.otras.length > 0)
+                          : [];
+
                       return (
-                        <li
-                          key={o.id}
-                          className="flex items-baseline gap-1.5 text-[13px] leading-snug"
-                        >
-                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
-                          <span className="text-slate-700">{contenido}</span>
+                        <li key={o.id} className="text-[13px] leading-snug">
+                          <span className="flex items-baseline gap-1.5">
+                            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
+                            <span className="text-slate-700">{contenido}</span>
+                          </span>
+                          {cambiables.map(({ it, otras }) => (
+                            <span
+                              key={it.foodId}
+                              className="mt-0.5 ml-3.5 block text-[10px] leading-snug text-slate-400 no-print"
+                            >
+                              puede cambiar {it.nombre.toLowerCase()} por{' '}
+                              {otras
+                                .slice(0, 4)
+                                .map((a) => a.nombre.toLowerCase())
+                                .join(', ')}
+                              {otras.length > 4 && ` y ${otras.length - 4} más`}
+                            </span>
+                          ))}
                         </li>
                       );
                     }

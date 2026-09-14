@@ -116,3 +116,85 @@ describe('Cambiar un alimento de la opción elegida', () => {
     expect(nueva.cubre).toEqual(opcion.cubre);
   });
 });
+
+/**
+ * EL CASO DE VERDAD: UNA COMBINACIÓN COMPUESTA A MANO
+ *
+ * En cuanto la nutricionista guarda «avena con arándanos», `columnasDeComida`
+ * deja de proponer y ésa es la única que ve la clienta. Es justo el caso para
+ * el que se hizo el cambio, así que tiene que funcionar igual con las suyas.
+ */
+describe('Con una combinación guardada por la nutricionista', () => {
+  const CON_PROPIA = {
+    ...DIA,
+    combinaciones: {
+      d: [
+        {
+          id: 'cb_1',
+          bucket: 'carbohidrato',
+          items: [
+            { foodId: 'a-avena-copos', porciones: 1 },
+            { foodId: 'a-arandanos', porciones: 1 },
+          ],
+        },
+      ],
+    },
+  } as unknown as DayType;
+
+  const pintarPropia = (porciones: PorcionesMarcadas = {}, onElegir = vi.fn()) => {
+    const r = render(
+      <ScaledOptionsBoard
+        dayType={CON_PROPIA}
+        meal={DESAYUNO}
+        foods={FOOD_CATALOG}
+        porciones={porciones}
+        onElegir={onElegir}
+      />,
+    );
+    return { ...r, onElegir };
+  };
+
+  it('sale sólo la suya', () => {
+    pintarPropia();
+    /* Una única opción en la columna de carbohidrato. */
+    expect(screen.getAllByRole('button', { pressed: false }).length).toBe(1);
+  });
+
+  it('y al elegirla se le puede cambiar la fruta', () => {
+    const marcadas: PorcionesMarcadas = {
+      d: { 'a-avena-copos': 1, 'a-arandanos': 1 },
+    };
+    const { onElegir } = pintarPropia(marcadas);
+
+    expect(screen.getByText('Cambiar:')).toBeTruthy();
+    fireEvent.click(screen.getByText('Arándanos ⇄'));
+
+    const lista = document.querySelector('ul.bg-brand-50\\/40');
+    fireEvent.click(lista!.querySelector('button')!);
+
+    const nueva = onElegir.mock.calls.at(-1)![0];
+    /* La avena de ella se queda; la fruta cambia. */
+    expect(nueva.items.some((i: { foodId: string }) => i.foodId === 'a-avena-copos')).toBe(true);
+    expect(nueva.items.some((i: { foodId: string }) => i.foodId === 'a-arandanos')).toBe(false);
+  });
+});
+
+/**
+ * La vista previa de la nutricionista no es pulsable, así que ninguna opción
+ * llega a estar elegida y el botón de cambiar no aparecía nunca: desde la ficha
+ * parecía que la función no existía.
+ */
+describe('La vista previa de la nutricionista', () => {
+  it('dice lo que la clienta podrá cambiar, sin poder tocarlo', () => {
+    render(
+      <ScaledOptionsBoard dayType={DIA} meal={DESAYUNO} foods={FOOD_CATALOG} modo="editor" />,
+    );
+    expect(screen.getAllByText(/puede cambiar/).length).toBeGreaterThan(0);
+  });
+
+  /** En el PDF no: ahí las cantidades ya vienen hechas y esto sería ruido. */
+  it('y en el documento no sale', () => {
+    render(<ScaledOptionsBoard dayType={DIA} meal={DESAYUNO} foods={FOOD_CATALOG} />);
+    expect(screen.queryByText(/puede cambiar/)).toBeNull();
+  });
+});
