@@ -63,6 +63,7 @@ import {
   ajustesDeReceta,
   acompanamientosDeReceta,
   quitadosDeReceta,
+  anadidosDeReceta,
   planParaCliente,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
@@ -1689,6 +1690,7 @@ export function ClientView() {
                           foods={foods}
                           ajustes={ajustesDeReceta(dayType, m.id, receta.id)}
                           quitados={quitadosDeReceta(dayType, m.id, receta.id)}
+                          anadidos={anadidosDeReceta(dayType, m.id, receta.id)}
                           acompanamientos={acompanamientosDeReceta(
                             dayType,
                             m.id,

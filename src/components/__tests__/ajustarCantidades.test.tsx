@@ -88,7 +88,7 @@ describe('Cambiar una cantidad', () => {
     fireEvent.change(screen.getByDisplayValue('120'), { target: { value: '150' } });
     fireEvent.click(screen.getByText('Guardar cantidades'));
 
-    expect(onGuardar).toHaveBeenCalledWith({ 'i-pollo': 150 }, [], []);
+    expect(onGuardar).toHaveBeenCalledWith({ 'i-pollo': 150 }, [], [], []);
   });
 
   it('los macros se recalculan con lo escrito, no con lo pautado', () => {
@@ -102,7 +102,7 @@ describe('Cambiar una cantidad', () => {
     const onGuardar = pintar({ 'i-pollo': 999 });
     fireEvent.click(screen.getByText('Volver a lo calculado'));
     fireEvent.click(screen.getByText('Guardar cantidades'));
-    expect(onGuardar).toHaveBeenCalledWith({}, [], []);
+    expect(onGuardar).toHaveBeenCalledWith({}, [], [], []);
   });
 });
 
@@ -228,7 +228,7 @@ describe('Poner algo al lado de la receta', () => {
       />,
     );
     fireEvent.click(screen.getByText('Guardar cantidades'));
-    expect(onGuardar).toHaveBeenCalledWith({}, conYogur, []);
+    expect(onGuardar).toHaveBeenCalledWith({}, conYogur, [], []);
   });
 
   it('se pueden quitar', () => {
@@ -246,6 +246,6 @@ describe('Poner algo al lado de la receta', () => {
     );
     fireEvent.click(screen.getByLabelText(new RegExp(`Quitar ${yogur.nombre}`)));
     fireEvent.click(screen.getByText('Guardar cantidades'));
-    expect(onGuardar).toHaveBeenCalledWith({}, [], []);
+    expect(onGuardar).toHaveBeenCalledWith({}, [], [], []);
   });
 });

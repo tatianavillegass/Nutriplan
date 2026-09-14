@@ -110,6 +110,54 @@ describe('Un ingrediente quitado para esta clienta', () => {
     expect(arrozDe(sin)).toBe(arrozDe(con));
   });
 
+  /**
+   * LA OTRA MITAD: PONER OTRA COSA
+   *
+   * «Quito pimentón y pongo zanahoria.» Y la zanahoria va DENTRO de la receta
+   * —se pica y se cocina con lo demás—, no bajo «Además» como un yogur.
+   */
+  it('lo que ella mete entra en la lista de ingredientes', () => {
+    const r = scaleRecipe(RECETA, PAUTA, ALIMENTOS, {}, [], ['i-pimenton'], [
+      { id: 'ing_1', nombre: 'Zanahoria', gramos: 80, unidad: 'g' },
+    ]);
+    const zanahoria = r.ingredientes.find((i) => i.nombre === 'Zanahoria');
+    expect(zanahoria).toBeTruthy();
+    /* Como ingrediente, no como acompañamiento: eso es lo que lo pone en la
+       lista del plato en todas las pantallas. */
+    expect(zanahoria!.acompanamiento).toBeUndefined();
+    expect(zanahoria!.anadido).toBe(true);
+    expect(zanahoria!.cantidad_final).toBe(80);
+  });
+
+  /** Lo que ella escribe son los gramos: no se escala a nada. */
+  it('y no se escala con la receta', () => {
+    const doble = scaleRecipe(
+      RECETA,
+      { proteicos_grasos: 4, almidones: 4 },
+      ALIMENTOS,
+      {},
+      [],
+      [],
+      [{ id: 'ing_1', nombre: 'Zanahoria', gramos: 80, unidad: 'g' }],
+    );
+    expect(doble.ingredientes.find((i) => i.id === 'ing_1')!.cantidad_final).toBe(80);
+  });
+
+  /** Si lo que mete trae proteína, el plato vuelve a cubrirla. */
+  it('y si tapa el hueco que dejó lo quitado, deja de faltar', () => {
+    const r = scaleRecipe(
+      RECETA,
+      PAUTA,
+      ALIMENTOS,
+      {},
+      [],
+      ['i-salmon'],
+      [{ id: 'ing_1', foodId: 'f-salmon', nombre: 'Salmón fresco', gramos: 100, unidad: 'g' }],
+    );
+    expect(r.gruposSinCubrir).not.toContain('proteicos_grasos');
+    expect(r.cubiertos.proteicos_grasos ?? 0).toBeGreaterThan(0);
+  });
+
   /** Sin quitar nada, todo sigue exactamente igual que antes. */
   it('sin quitados, el escalado no cambia', () => {
     const antes = scaleRecipe(RECETA, PAUTA, ALIMENTOS);

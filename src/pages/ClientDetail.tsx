@@ -48,6 +48,7 @@ import { RestrictionsPanel } from "../components/common/RestrictionsPanel";
 import { SuggestedDistribution } from "../components/planning/SuggestedDistribution";
 import { RepartosGuardados } from "../components/planning/RepartosGuardados";
 import { RecetasDeLaParticipante } from "../components/retos/RecetasDeLaParticipante";
+import type { Acompanamiento, IngredienteAnadido } from "../types/plan";
 import { MealPantryEditor } from "../components/planning/MealPantryEditor";
 import { DayTemplateBar } from "../components/planning/DayTemplateBar";
 import { ComboEditor } from "../components/phase2/ComboEditor";
@@ -185,6 +186,42 @@ export function ClientDetail() {
     const b = evaluarAlimento(f, client);
     return b.bloqueado ? b.motivos.join(" · ") : undefined;
   };
+  /**
+   * LOS RETOQUES DE UNA RECETA PARA ESTA CLIENTA
+   *
+   * Los gramos a mano, lo que le pusiste al lado, lo que le quitaste y lo que
+   * le metiste: cuatro cosas de la misma clase —la receta del banco no se
+   * toca— y por eso se guardan juntas. Estaba escrito dos veces (aquí y en la
+   * tarjeta del reto) y la del reto se quedó a medias: se perdían lo quitado y
+   * lo añadido sin decir nada.
+   */
+  const guardarRetoques = (
+    mealId: string,
+    recetaId: string,
+    ajustes: Record<string, number>,
+    acompanamientos: Acompanamiento[],
+    quitados: string[],
+    anadidos: IngredienteAnadido[],
+  ) =>
+    updateDayType(plan.id, dayType.id, {
+      ajustesReceta: {
+        ...(dayType.ajustesReceta ?? {}),
+        [mealId]: { ...(dayType.ajustesReceta?.[mealId] ?? {}), [recetaId]: ajustes },
+      },
+      acompanamientos: {
+        ...(dayType.acompanamientos ?? {}),
+        [mealId]: { ...(dayType.acompanamientos?.[mealId] ?? {}), [recetaId]: acompanamientos },
+      },
+      ingredientesQuitados: {
+        ...(dayType.ingredientesQuitados ?? {}),
+        [mealId]: { ...(dayType.ingredientesQuitados?.[mealId] ?? {}), [recetaId]: quitados },
+      },
+      ingredientesAnadidos: {
+        ...(dayType.ingredientesAnadidos ?? {}),
+        [mealId]: { ...(dayType.ingredientesAnadidos?.[mealId] ?? {}), [recetaId]: anadidos },
+      },
+    });
+
   const registrosCliente = registros.filter((r) => r.clientId === client.id);
   /** Si está en un reto, aquí sólo se calcula y se reparte: lo demás es del reto. */
   const suReto = retos.find((r) => r.participantes.includes(client.id));
@@ -774,24 +811,7 @@ export function ClientDetail() {
                 dayType={dayType}
                 recetas={recipes}
                 foods={foodsPermitidos}
-                onAjustar={(mealId, recetaId, ajustes, acompanamientos) =>
-                  updateDayType(plan.id, dayType.id, {
-                    ajustesReceta: {
-                      ...(dayType.ajustesReceta ?? {}),
-                      [mealId]: {
-                        ...(dayType.ajustesReceta?.[mealId] ?? {}),
-                        [recetaId]: ajustes,
-                      },
-                    },
-                    acompanamientos: {
-                      ...(dayType.acompanamientos ?? {}),
-                      [mealId]: {
-                        ...(dayType.acompanamientos?.[mealId] ?? {}),
-                        [recetaId]: acompanamientos,
-                      },
-                    },
-                  })
-                }
+                onAjustar={guardarRetoques}
               />
             </Card>
           )}
@@ -899,30 +919,8 @@ export function ClientDetail() {
                      * en la receta del banco: la misma receta se cuadra
                      * distinto según a quién se le pauta.
                      */
-                    onAjustarCantidades={(rid, ajustes, acompanamientos, quitados) =>
-                      updateDayType(plan.id, dayType.id, {
-                        ingredientesQuitados: {
-                          ...(dayType.ingredientesQuitados ?? {}),
-                          [m.id]: {
-                            ...(dayType.ingredientesQuitados?.[m.id] ?? {}),
-                            [rid]: quitados,
-                          },
-                        },
-                        ajustesReceta: {
-                          ...(dayType.ajustesReceta ?? {}),
-                          [m.id]: {
-                            ...(dayType.ajustesReceta?.[m.id] ?? {}),
-                            [rid]: ajustes,
-                          },
-                        },
-                        acompanamientos: {
-                          ...(dayType.acompanamientos ?? {}),
-                          [m.id]: {
-                            ...(dayType.acompanamientos?.[m.id] ?? {}),
-                            [rid]: acompanamientos,
-                          },
-                        },
-                      })
+                    onAjustarCantidades={(rid, ajustes, acompanamientos, quitados, anadidos) =>
+                      guardarRetoques(m.id, rid, ajustes, acompanamientos, quitados, anadidos)
                     }
                     onToggle={(rid) => {
                       const actuales = recetasEnUso[m.id] ?? [];

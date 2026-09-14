@@ -15,7 +15,11 @@ import { roundPortion } from '../../utils/macros';
 import { escalarMedida } from '../../utils/measures';
 import { Button } from '../common/ui';
 import { RecipeMeta, MacroBar } from '../common/RecipeMeta';
-import { LABEL_ACOMPANAMIENTO, type Acompanamiento } from '../../types/plan';
+import {
+  LABEL_ACOMPANAMIENTO,
+  type Acompanamiento,
+  type IngredienteAnadido,
+} from '../../types/plan';
 
 /**
  * Parte la preparación en pasos numerados. Acepta tanto una línea por paso
@@ -67,6 +71,8 @@ interface Props {
    * lista ni en lo que el plato cubre. Ver `DayType.ingredientesQuitados`.
    */
   quitados?: string[];
+  /** Y los que ella le metió: la zanahoria donde estaba el pimentón. */
+  anadidos?: IngredienteAnadido[];
   /**
    * El banco, para poder enseñar el acompañamiento como lo que es: su foto,
    * sus ingredientes y su preparación. Sin él sale la lista de alimentos
@@ -89,6 +95,7 @@ export function ScaledRecipeView({
   ajustes,
   acompanamientos,
   quitados,
+  anadidos,
   recetas = [],
 }: Props) {
   /** Un acompañamiento se abre para ver qué lleva y cómo se hace. */
@@ -100,8 +107,9 @@ export function ScaledRecipeView({
   const [caseras, setCaseras] = useState(false);
 
   const escalada = useMemo(
-    () => scaleRecipe(receta, requeridos, foods, ajustes, acompanamientos, quitados),
-    [receta, requeridos, foods, ajustes, acompanamientos, quitados],
+    () =>
+      scaleRecipe(receta, requeridos, foods, ajustes, acompanamientos, quitados, anadidos),
+    [receta, requeridos, foods, ajustes, acompanamientos, quitados, anadidos],
   );
   const resultado = useMemo(
     () => applyCustomization(escalada, requeridos, EMPTY_CUSTOMIZATION, foods),

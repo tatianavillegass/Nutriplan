@@ -82,6 +82,30 @@ describe('Quitarle un ingrediente a esta clienta', () => {
     expect(quitados).toEqual(['i-pimenton']);
   });
 
+  /**
+   * Y LO QUE PONE EN SU LUGAR VA EN LA RECETA
+   *
+   * «Quito pimentón y pongo zanahoria»: la zanahoria es parte del plato, no un
+   * yogur que se come al lado. Por eso el buscador está pegado a la lista de
+   * ingredientes y no dentro de «Acompañamientos».
+   */
+  it('se busca un alimento y entra en la lista', () => {
+    const onGuardar = pintar();
+    fireEvent.change(screen.getByPlaceholderText(/Añadir un ingrediente a la receta/i), {
+      target: { value: 'zanahoria' },
+    });
+    fireEvent.click(screen.getAllByText(/Zanahoria/i)[0]);
+
+    /* Ya se puede quitar como cualquier otro ingrediente de la lista. */
+    expect(screen.getAllByLabelText(/^Quitar Zanahoria/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByText('Guardar cantidades'));
+    const [, , , anadidos] = onGuardar.mock.calls[0];
+    expect(anadidos).toHaveLength(1);
+    expect(anadidos[0].nombre).toMatch(/Zanahoria/i);
+    expect(anadidos[0].gramos).toBeGreaterThan(0);
+  });
+
   /** Lo ya quitado se abre quitado: es lo que tiene guardado. */
   it('lo quitado de antes sale al abrir', () => {
     pintar(['i-pimenton']);

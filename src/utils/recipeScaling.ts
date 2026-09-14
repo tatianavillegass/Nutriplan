@@ -2,7 +2,7 @@ import type { ExchangeGroupId, MacroBucket } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS, bucketsDeGrupo } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
 import type { Alimento } from '../types/food';
-import type { Acompanamiento } from '../types/plan';
+import type { Acompanamiento, IngredienteAnadido } from '../types/plan';
 import { exchangesToMacros, aporteDeAlimento, type ExchangeCounts } from './exchanges';
 import { kcalFromMacros, roundPortion } from './macros';
 import { gramosPorPieza, redondearAPiezas } from './measures';
@@ -186,6 +186,14 @@ export function scaleRecipe(
    * pimentón no engorda el arroz.
    */
   quitados: string[] = [],
+  /**
+   * Ingredientes que ella le ha metido a la receta para esta clienta: la
+   * zanahoria que va donde estaba el pimentón. Entran **en la lista de
+   * ingredientes**, no bajo «Además», porque forman parte del plato: se pican
+   * y se cocinan con lo demás. No escalan —son los gramos que ella escribió— y
+   * cuentan en lo que el plato cubre, como los acompañamientos.
+   */
+  anadidos: IngredienteAnadido[] = [],
 ): RecetaEscalada {
   const factores: Partial<Record<ExchangeGroupId, number>> = {};
   const gruposSinCubrir: ExchangeGroupId[] = [];
@@ -488,6 +496,45 @@ export function scaleRecipe(
      * en cero viene de un recorte del cálculo y eso ya se avisa con su nota.
      */
     else if (quitados.length) gruposSinCubrir.push(gid);
+  }
+
+  /**
+   * LO QUE ELLA LE METIÓ A LA RECETA
+   *
+   * Va delante de los acompañamientos y sin marca de acompañamiento, así que
+   * sale en la lista de ingredientes como uno más: es parte del plato. Suma a
+   * lo cubierto igual que todo lo que se come.
+   */
+  for (const a of anadidos) {
+    const food = a.foodId ? porId.get(a.foodId) : undefined;
+    const gpi = food?.grupo ? gramosPorIntercambio(food) : 0;
+    if (food?.grupo && gpi && a.gramos) {
+      const aporte = aporteDeAlimento(food, a.gramos / gpi);
+      for (const [gid, n] of Object.entries(aporte) as [ExchangeGroupId, number][]) {
+        if (!n || EXCHANGE_GROUPS[gid]?.ilimitado) continue;
+        cubiertos[gid] = (cubiertos[gid] ?? 0) + n;
+      }
+    }
+
+    const unidad = a.unidad ?? food?.unidad ?? 'g';
+
+    ingredientes.push({
+      id: a.id,
+      nombre: a.nombre,
+      foodId: a.foodId,
+      cantidad_base: a.gramos || null,
+      cantidad_final: a.gramos || null,
+      unidad,
+      /* Sin subgrupo es un alimento libre —una especia, un chorro de limón—:
+         entra en la lista y suma cero, que es lo que aporta. */
+      grupo: food?.grupo ?? 'condimento',
+      /* No escala: son los gramos que ella escribió para esta clienta. */
+      escalable: false,
+      opcional: false,
+      factor: 1,
+      display: a.gramos ? `${a.gramos} ${unidad}` : 'al gusto',
+      anadido: true,
+    });
   }
 
   /**

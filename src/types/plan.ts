@@ -233,6 +233,44 @@ export interface DayType {
    * clienta sobre un plato que sigue siendo el del banco.
    */
   ingredientesQuitados?: Record<string, Record<string, string[]>>;
+  /**
+   * INGREDIENTES QUE ESA CLIENTA SÍ LLEVA
+   *
+   * La otra mitad de lo de arriba: se le quita el pimentón y se le pone
+   * zanahoria. Y la zanahoria va **dentro de la receta**, no al lado: forma
+   * parte del plato, se pica con lo demás y se cocina con lo demás.
+   *
+   * Por eso no son acompañamientos, aunque se parezcan por dentro. Un
+   * acompañamiento es el yogur que se come después; esto es el sofrito.
+   *
+   * mealId → recetaId → lista.
+   */
+  ingredientesAnadidos?: Record<string, Record<string, IngredienteAnadido[]>>;
+}
+
+/**
+ * ALGO QUE ENTRA EN LA RECETA, SÓLO PARA ESTA CLIENTA
+ *
+ * No escala: son los gramos que ella escriba. La receta del banco no se toca,
+ * igual que con los gramos a mano y con lo quitado.
+ */
+export interface IngredienteAnadido {
+  id: string;
+  /** Vacío cuando no está en el catálogo: una especia, un chorro de limón. */
+  foodId?: string;
+  /** Copia del nombre, por si el alimento se renombra o se borra. */
+  nombre: string;
+  gramos: number;
+  unidad?: string;
+}
+
+/** Lo que Tats le haya metido a esa receta para esta clienta. */
+export function anadidosDeReceta(
+  dayType: DayType,
+  mealId: string,
+  recetaId: string,
+): IngredienteAnadido[] {
+  return dayType.ingredientesAnadidos?.[mealId]?.[recetaId] ?? [];
 }
 
 /** Los gramos que Tats haya fijado a mano para esa receta en esa comida. */

@@ -5,6 +5,7 @@ import {
   ajustesDeReceta,
   acompanamientosDeReceta,
   quitadosDeReceta,
+  anadidosDeReceta,
 } from '../types/plan';
 import type { Receta } from '../types/recipe';
 import { scaleRecipe } from './recipeScaling';
@@ -235,6 +236,7 @@ export function listaDeLaCompra(
         ajustesDeReceta(dayType, mealId, receta.id),
         acompanamientosDeReceta(dayType, mealId, receta.id),
         quitadosDeReceta(dayType, mealId, receta.id),
+        anadidosDeReceta(dayType, mealId, receta.id),
       );
 
       for (const ing of escalada.ingredientes) {

@@ -5,6 +5,7 @@ import {
   ajustesDeReceta,
   acompanamientosDeReceta,
   quitadosDeReceta,
+  anadidosDeReceta,
 } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
@@ -84,6 +85,7 @@ export function RecipeSheetPDF({
                           ajustes={ajustesDeReceta(d, m.id, receta.id)}
                           acompanamientos={acompanamientosDeReceta(d, m.id, receta.id)}
                           quitados={quitadosDeReceta(d, m.id, receta.id)}
+                          anadidos={anadidosDeReceta(d, m.id, receta.id)}
                           soloLectura
                         />
                       ))}

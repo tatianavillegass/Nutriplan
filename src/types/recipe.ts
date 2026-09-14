@@ -102,6 +102,13 @@ export interface IngredienteEscalado extends Ingrediente {
   acompanamiento?: string;
   /** Y si eso que se puso al lado es un acompañamiento del banco, cuál. */
   deReceta?: string;
+  /**
+   * Si no venía en la receta del banco sino que se lo metió la nutricionista a
+   * esta clienta: la zanahoria que puso donde había pimentón. Va en la lista
+   * de ingredientes como cualquier otro —forma parte del plato— y sólo sirve
+   * para poder quitarlo otra vez desde donde se puso.
+   */
+  anadido?: boolean;
 }
 
 export interface RecetaEscalada {

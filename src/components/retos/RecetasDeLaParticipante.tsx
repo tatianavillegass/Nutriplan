@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import type { Alimento } from '../../types/food';
-import type { Acompanamiento, DayType } from '../../types/plan';
-import { ajustesDeReceta, acompanamientosDeReceta, quitadosDeReceta } from '../../types/plan';
+import type { Acompanamiento, IngredienteAnadido, DayType } from '../../types/plan';
+import {
+  ajustesDeReceta,
+  acompanamientosDeReceta,
+  quitadosDeReceta,
+  anadidosDeReceta,
+} from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Reto } from '../../types/reto';
 import { semanaDeDia } from '../../utils/retos';
@@ -19,6 +24,10 @@ interface Props {
     recetaId: string,
     ajustes: Record<string, number>,
     acompanamientos: Acompanamiento[],
+    /** Lo que esta participante no se come. */
+    quitados: string[],
+    /** Y lo que ella le metió a la receta. */
+    anadidos: IngredienteAnadido[],
   ) => void;
 }
 
@@ -67,6 +76,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
           const requeridos = dayType.grid[meal.id] ?? {};
           const ajustes = ajustesDeReceta(dayType, meal.id, receta.id);
           const quitados = quitadosDeReceta(dayType, meal.id, receta.id);
+          const anadidos = anadidosDeReceta(dayType, meal.id, receta.id);
 
           return (
             <li key={clave}>
@@ -102,9 +112,10 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
                       ajustes={ajustes}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, receta.id)}
                       quitados={quitados}
+                      anadidos={anadidos}
                       recetas={recetas}
-                      onGuardar={(a, ac) => {
-                        onAjustar(meal.id, receta.id, a, ac);
+                      onGuardar={(a, ac, q, an) => {
+                        onAjustar(meal.id, receta.id, a, ac, q, an);
                         setAjustando(null);
                       }}
                       onCerrar={() => setAjustando(null)}
@@ -119,6 +130,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
                         ajustes={ajustes}
                         acompanamientos={acompanamientosDeReceta(dayType, meal.id, receta.id)}
                         quitados={quitados}
+                        anadidos={anadidos}
                         paraNutricionista
                         soloLectura
                       />

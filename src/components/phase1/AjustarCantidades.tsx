@@ -12,6 +12,7 @@ import {
   TIPOS_ACOMPANAMIENTO,
   LABEL_ACOMPANAMIENTO,
   type Acompanamiento,
+  type IngredienteAnadido,
   type TipoAcompanamiento,
 } from '../../types/plan';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
@@ -30,6 +31,8 @@ interface Props {
   acompanamientos?: Acompanamiento[];
   /** Ingredientes ya quitados para esta clienta (ingredienteId). */
   quitados?: string[];
+  /** Ingredientes que ya le metió a la receta a esta clienta. */
+  anadidos?: IngredienteAnadido[];
   /**
    * El banco entero, para poder poner al lado un acompañamiento ya escrito
    * —la ensalada de tomate, el puré— en vez de sus alimentos uno a uno.
@@ -39,6 +42,7 @@ interface Props {
     ajustes: Record<string, number>,
     acompanamientos: Acompanamiento[],
     quitados: string[],
+    anadidos: IngredienteAnadido[],
   ) => void;
   onCerrar: () => void;
 }
@@ -79,6 +83,7 @@ export function AjustarCantidades({
   ajustes,
   acompanamientos: inicial = [],
   quitados: quitadosIniciales = [],
+  anadidos: anadidosIniciales = [],
   recetas = [],
   onGuardar,
   onCerrar,
@@ -86,6 +91,7 @@ export function AjustarCantidades({
   const [valores, setValores] = useState<Record<string, number>>(ajustes);
   const [acompanamientos, setAcompanamientos] = useState<Acompanamiento[]>(inicial);
   const [quitados, setQuitados] = useState<string[]>(quitadosIniciales);
+  const [anadidos, setAnadidos] = useState<IngredienteAnadido[]>(anadidosIniciales);
   const [tipo, setTipo] = useState<TipoAcompanamiento>('acompanamiento');
 
   /**
@@ -107,6 +113,38 @@ export function AjustarCantidades({
 
   const devolver = (id: string) => setQuitados((q) => q.filter((x) => x !== id));
 
+  /**
+   * METERLE UN INGREDIENTE A LA RECETA
+   *
+   * La otra mitad de lo de arriba: se le quita el pimentón y se le pone
+   * zanahoria. Y la zanahoria va **en la receta**, no bajo «Además»: se pica y
+   * se cocina con lo demás, así que aparece en la lista de ingredientes como
+   * cualquier otro. Un acompañamiento es el yogur que se come después.
+   *
+   * Entra con una porción, que es la medida con la que se piensa; desde ahí se
+   * le cambian los gramos como a los demás.
+   */
+  const meter = (f: Alimento) => {
+    const gpi = gramosPorIntercambio(f);
+    setAnadidos((prev) => [
+      ...prev,
+      {
+        id: uid('ing_'),
+        foodId: f.id,
+        nombre: f.nombre,
+        gramos: gpi ? Math.round(gpi) : f.gramos || 100,
+        unidad: f.unidad ?? 'g',
+      },
+    ]);
+  };
+
+  const sacar = (id: string) => setAnadidos((prev) => prev.filter((a) => a.id !== id));
+
+  const gramosDelAnadido = (id: string, v: string) =>
+    setAnadidos((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, gramos: Math.max(0, Number(v) || 0) } : a)),
+    );
+
   /** Lo que propone la app, sin ajustes: es el punto de partida. */
   const propuesta = useMemo(
     () => scaleRecipe(receta, requeridos, foods),
@@ -115,8 +153,9 @@ export function AjustarCantidades({
 
   /** Lo que hay ahora mismo, con lo escrito a mano y los acompañamientos. */
   const actual = useMemo(
-    () => scaleRecipe(receta, requeridos, foods, valores, acompanamientos, quitados),
-    [receta, requeridos, foods, valores, acompanamientos, quitados],
+    () =>
+      scaleRecipe(receta, requeridos, foods, valores, acompanamientos, quitados, anadidos),
+    [receta, requeridos, foods, valores, acompanamientos, quitados, anadidos],
   );
 
   /**
@@ -254,7 +293,20 @@ export function AjustarCantidades({
                 </span>
               </span>
 
-              {libre ? (
+              {ing.anadido ? (
+                /* Los suyos llevan sus gramos escritos, no un factor. */
+                <>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={ing.cantidad_final ?? ''}
+                    onChange={(e) => gramosDelAnadido(ing.id, e.target.value)}
+                    className="w-20 text-sm"
+                  />
+                  <span className="w-8 text-[11px] text-slate-400">{ing.unidad}</span>
+                </>
+              ) : libre ? (
                 <span className="text-xs text-emerald-700">{ing.display}</span>
               ) : (
                 <>
@@ -289,7 +341,7 @@ export function AjustarCantidades({
                 peor que no leer nada.
               */}
               <button
-                onClick={() => quitar(ing.id)}
+                onClick={() => (ing.anadido ? sacar(ing.id) : quitar(ing.id))}
                 aria-label={`Quitar ${ing.nombre}`}
                 title="Quitárselo a esta clienta"
                 className="rounded px-1 text-sm leading-none text-slate-300 transition hover:bg-rose-50 hover:text-rose-600"
@@ -300,6 +352,25 @@ export function AjustarCantidades({
           );
         })}
       </ul>
+
+      {/*
+        METERLE UN INGREDIENTE A LA RECETA
+        Va aquí, pegado a la lista, y no en «Acompañamientos»: la zanahoria
+        que pones donde estaba el pimentón es parte del plato —se pica y se
+        cocina con lo demás—, no algo que se come al lado.
+      */}
+      <div className="mt-2">
+        <FoodPicker
+          foods={foods}
+          placeholder="Añadir un ingrediente a la receta…"
+          limpiarTrasElegir
+          onSelect={meter}
+        />
+        <p className="mt-1 text-[10px] leading-snug text-slate-400">
+          Entra en la receta con una porción y luego le cambias los gramos. Sólo para esta
+          clienta: el banco no se toca. La preparación sí la tendrás que retocar tú.
+        </p>
+      </div>
 
       {/*
         LO QUITADO SIGUE A LA VISTA
@@ -551,7 +622,7 @@ export function AjustarCantidades({
         <Button variant="outline" onClick={onCerrar}>
           Cancelar
         </Button>
-        <Button onClick={() => onGuardar(valores, acompanamientos, quitados)}>
+        <Button onClick={() => onGuardar(valores, acompanamientos, quitados, anadidos)}>
           Guardar cantidades
         </Button>
       </div>
