@@ -62,6 +62,7 @@ import {
   comidasDeLaSemana,
   ajustesDeReceta,
   acompanamientosDeReceta,
+  quitadosDeReceta,
   planParaCliente,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
@@ -1687,6 +1688,7 @@ export function ClientView() {
                           requeridos={dayType.grid[m.id] ?? {}}
                           foods={foods}
                           ajustes={ajustesDeReceta(dayType, m.id, receta.id)}
+                          quitados={quitadosDeReceta(dayType, m.id, receta.id)}
                           acompanamientos={acompanamientosDeReceta(
                             dayType,
                             m.id,

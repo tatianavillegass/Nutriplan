@@ -221,6 +221,18 @@ export interface DayType {
    * mealId → recetaId → lista.
    */
   acompanamientos?: Record<string, Record<string, Acompanamiento[]>>;
+  /**
+   * INGREDIENTES QUE ESA CLIENTA NO SE COME
+   *
+   * «Le cuadra todo menos el pimentón.» La receta del banco es la misma para
+   * todas y el plato de ella no, así que se quita aquí y no allí: cambiarla en
+   * el banco se la cambiaría a las otras treinta.
+   *
+   * mealId → recetaId → ingredienteId[]. Mismo sitio y misma forma que
+   * `ajustesReceta`, porque es la misma clase de cosa: retoques de esta
+   * clienta sobre un plato que sigue siendo el del banco.
+   */
+  ingredientesQuitados?: Record<string, Record<string, string[]>>;
 }
 
 /** Los gramos que Tats haya fijado a mano para esa receta en esa comida. */
@@ -230,6 +242,15 @@ export function ajustesDeReceta(
   recetaId: string,
 ): Record<string, number> {
   return dayType.ajustesReceta?.[mealId]?.[recetaId] ?? {};
+}
+
+/** Los ingredientes que Tats le ha quitado a esa receta para esta clienta. */
+export function quitadosDeReceta(
+  dayType: DayType,
+  mealId: string,
+  recetaId: string,
+): string[] {
+  return dayType.ingredientesQuitados?.[mealId]?.[recetaId] ?? [];
 }
 
 export const TIPOS_ACOMPANAMIENTO = [

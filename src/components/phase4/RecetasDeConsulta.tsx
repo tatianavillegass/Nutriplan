@@ -6,6 +6,7 @@ import {
   recetasDeLaComida,
   ajustesDeReceta,
   acompanamientosDeReceta,
+  quitadosDeReceta,
 } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
@@ -97,6 +98,7 @@ export function RecetasDeConsulta({ plan, dayType, recipes, foods }: Props) {
                       foods={foods}
                       ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}
+                      quitados={quitadosDeReceta(dayType, meal.id, r.id)}
                       soloLectura
                     />
                   </div>

@@ -63,6 +63,11 @@ interface Props {
   /** Lo que la nutricionista le ha puesto al lado a esta receta. */
   acompanamientos?: Acompanamiento[];
   /**
+   * Ingredientes que esta clienta no se come y que por tanto no salen ni en la
+   * lista ni en lo que el plato cubre. Ver `DayType.ingredientesQuitados`.
+   */
+  quitados?: string[];
+  /**
    * El banco, para poder enseñar el acompañamiento como lo que es: su foto,
    * sus ingredientes y su preparación. Sin él sale la lista de alimentos
    * sueltos, que es lo que había antes.
@@ -83,6 +88,7 @@ export function ScaledRecipeView({
   sinCabecera = false,
   ajustes,
   acompanamientos,
+  quitados,
   recetas = [],
 }: Props) {
   /** Un acompañamiento se abre para ver qué lleva y cómo se hace. */
@@ -94,8 +100,8 @@ export function ScaledRecipeView({
   const [caseras, setCaseras] = useState(false);
 
   const escalada = useMemo(
-    () => scaleRecipe(receta, requeridos, foods, ajustes, acompanamientos),
-    [receta, requeridos, foods, ajustes, acompanamientos],
+    () => scaleRecipe(receta, requeridos, foods, ajustes, acompanamientos, quitados),
+    [receta, requeridos, foods, ajustes, acompanamientos, quitados],
   );
   const resultado = useMemo(
     () => applyCustomization(escalada, requeridos, EMPTY_CUSTOMIZATION, foods),

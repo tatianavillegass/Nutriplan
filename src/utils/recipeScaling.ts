@@ -170,6 +170,22 @@ export function scaleRecipe(
    * sin tener que enterarse cada pantalla por separado.
    */
   acompanamientos: Acompanamiento[] = [],
+  /**
+   * Ingredientes que esta clienta no se come (ingredienteId). No le gusta el
+   * pimentón, es alérgica al fruto seco, no tiene en casa el queso feta: la
+   * receta del banco es la misma para todas y el plato de ella no.
+   *
+   * **Se quita, no se pone a cero.** Un ingrediente con «0 g» sigue en la
+   * lista de la compra mental de quien cocina y en la hoja que se cuelga en la
+   * nevera, y leer «pimentón: 0 g» es peor que no leer nada.
+   *
+   * **Y lo que el plato cubre se recalcula sin él**, igual que con un gramaje
+   * escrito a mano: si lo que se quita era el salmón, esa receta deja de
+   * traer la proteína y hay que verlo — callarlo sería enviar un plan que no
+   * cuadra. Lo que NO pasa es que el resto crezca para compensar: quitar el
+   * pimentón no engorda el arroz.
+   */
+  quitados: string[] = [],
 ): RecetaEscalada {
   const factores: Partial<Record<ExchangeGroupId, number>> = {};
   const gruposSinCubrir: ExchangeGroupId[] = [];
@@ -337,7 +353,11 @@ export function scaleRecipe(
     for (const gid of Object.keys(pautado) as ExchangeGroupId[]) gruposSinCubrir.push(gid);
   }
 
-  const ingredientes: IngredienteEscalado[] = receta.ingredientes.map((ing) => {
+  const fuera = new Set(quitados);
+
+  const ingredientes: IngredienteEscalado[] = receta.ingredientes
+    .filter((ing) => !fuera.has(ing.id))
+    .map((ing) => {
     const esVerdura = ing.grupo === 'verduras';
 
     /**
@@ -426,6 +446,24 @@ export function scaleRecipe(
    */
   const enElPlato = new Map<ExchangeGroupId, { base: number; final: number }>();
   const aMano = new Set<ExchangeGroupId>();
+
+  /*
+   * Lo quitado entra en esta cuenta con sus gramos de base y cero en el plato:
+   * es exactamente lo mismo que escribir a mano un gramaje, sólo que el
+   * gramaje es ninguno. Así el «cubre 2 de 3» de la tarjeta y el «falta
+   * proteína» de la ficha salen de lo que de verdad queda en el plato.
+   */
+  for (const ing of receta.ingredientes) {
+    if (!fuera.has(ing.id)) continue;
+    const gid = ing.grupo as ExchangeGroupId;
+    if (!gid || gid === 'verduras' || (ing.grupo as string) === 'condimento') continue;
+    if (!ing.cantidad_base) continue;
+    aMano.add(gid);
+    const s = enElPlato.get(gid) ?? { base: 0, final: 0 };
+    s.base += ing.cantidad_base;
+    enElPlato.set(gid, s);
+  }
+
   for (const ing of ingredientes) {
     const gid = ing.grupo as ExchangeGroupId;
     if (!gid || gid === 'verduras' || (ing.grupo as string) === 'condimento') continue;
@@ -443,6 +481,13 @@ export function scaleRecipe(
     const factor = real && real.base > 0 ? real.final / real.base : factores[gid] ?? 1;
     const v = n * factor;
     if (v > 0.001) cubiertos[gid] = v;
+    /*
+     * Si al quitar un ingrediente ese grupo se queda en nada, la receta ya no
+     * lo trae y hay que decirlo: es lo que hace que salga «falta proteína» y
+     * que ella le ponga algo al lado. Sólo con quitados: sin ellos, un grupo
+     * en cero viene de un recorte del cálculo y eso ya se avisa con su nota.
+     */
+    else if (quitados.length) gruposSinCubrir.push(gid);
   }
 
   /**

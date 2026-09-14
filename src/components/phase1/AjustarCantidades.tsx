@@ -28,12 +28,18 @@ interface Props {
   ajustes: Record<string, number>;
   /** Lo que ya se le ha puesto al lado. */
   acompanamientos?: Acompanamiento[];
+  /** Ingredientes ya quitados para esta clienta (ingredienteId). */
+  quitados?: string[];
   /**
    * El banco entero, para poder poner al lado un acompañamiento ya escrito
    * —la ensalada de tomate, el puré— en vez de sus alimentos uno a uno.
    */
   recetas?: Receta[];
-  onGuardar: (ajustes: Record<string, number>, acompanamientos: Acompanamiento[]) => void;
+  onGuardar: (
+    ajustes: Record<string, number>,
+    acompanamientos: Acompanamiento[],
+    quitados: string[],
+  ) => void;
   onCerrar: () => void;
 }
 
@@ -72,13 +78,34 @@ export function AjustarCantidades({
   foods,
   ajustes,
   acompanamientos: inicial = [],
+  quitados: quitadosIniciales = [],
   recetas = [],
   onGuardar,
   onCerrar,
 }: Props) {
   const [valores, setValores] = useState<Record<string, number>>(ajustes);
   const [acompanamientos, setAcompanamientos] = useState<Acompanamiento[]>(inicial);
+  const [quitados, setQuitados] = useState<string[]>(quitadosIniciales);
   const [tipo, setTipo] = useState<TipoAcompanamiento>('acompanamiento');
+
+  /**
+   * QUITARLE UN INGREDIENTE A ESTA CLIENTA
+   *
+   * «Le cuadra todo menos el pimentón.» Se quita aquí y no en el banco, que
+   * allí se lo quitaría a las otras treinta. Se puede quitar **cualquiera**,
+   * también el salmón: quien pauta sabe lo que hace, y si el plato se queda
+   * sin proteína el resumen de abajo lo dice y se le pone algo al lado.
+   *
+   * Al quitarlo se le quita también el gramaje escrito a mano: si vuelve,
+   * vuelve con lo que calcula la app, que es lo que se espera de algo que se
+   * acaba de reponer.
+   */
+  const quitar = (id: string) => {
+    setQuitados((q) => [...q, id]);
+    setValores(({ [id]: _fuera, ...resto }) => resto);
+  };
+
+  const devolver = (id: string) => setQuitados((q) => q.filter((x) => x !== id));
 
   /** Lo que propone la app, sin ajustes: es el punto de partida. */
   const propuesta = useMemo(
@@ -88,8 +115,8 @@ export function AjustarCantidades({
 
   /** Lo que hay ahora mismo, con lo escrito a mano y los acompañamientos. */
   const actual = useMemo(
-    () => scaleRecipe(receta, requeridos, foods, valores, acompanamientos),
-    [receta, requeridos, foods, valores, acompanamientos],
+    () => scaleRecipe(receta, requeridos, foods, valores, acompanamientos, quitados),
+    [receta, requeridos, foods, valores, acompanamientos, quitados],
   );
 
   /**
@@ -254,10 +281,52 @@ export function AjustarCantidades({
                     )}
                 </>
               )}
+
+              {/*
+                QUITARLO PARA ESTA CLIENTA
+                No se pone a cero: un ingrediente con «0 g» sigue saliendo en
+                la receta, en el PDF y en la nevera, y leer «pimentón: 0 g» es
+                peor que no leer nada.
+              */}
+              <button
+                onClick={() => quitar(ing.id)}
+                aria-label={`Quitar ${ing.nombre}`}
+                title="Quitárselo a esta clienta"
+                className="rounded px-1 text-sm leading-none text-slate-300 transition hover:bg-rose-50 hover:text-rose-600"
+              >
+                ×
+              </button>
             </li>
           );
         })}
       </ul>
+
+      {/*
+        LO QUITADO SIGUE A LA VISTA
+        Un cambio que no se puede deshacer da miedo de hacer, y además al
+        repasar el plan hay que poder acordarse de qué le quitaste y por qué la
+        receta cubre menos de lo que dice el banco.
+      */}
+      {quitados.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2">
+          <span className="text-[10px] tracking-wide text-slate-500 uppercase">
+            No se lo pones:
+          </span>
+          {quitados.map((id) => {
+            const ing = receta.ingredientes.find((i) => i.id === id);
+            return (
+              <button
+                key={id}
+                onClick={() => devolver(id)}
+                title="Devolvérselo"
+                className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600 transition hover:border-brand-300 hover:text-brand-700"
+              >
+                {ing?.nombre ?? id} <span aria-hidden>↩</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Lo que se le pone al lado ─────────────────────── */}
       <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50/40 p-2.5">
@@ -482,7 +551,9 @@ export function AjustarCantidades({
         <Button variant="outline" onClick={onCerrar}>
           Cancelar
         </Button>
-        <Button onClick={() => onGuardar(valores, acompanamientos)}>Guardar cantidades</Button>
+        <Button onClick={() => onGuardar(valores, acompanamientos, quitados)}>
+          Guardar cantidades
+        </Button>
       </div>
     </div>
   );

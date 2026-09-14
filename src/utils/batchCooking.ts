@@ -1,6 +1,11 @@
 import type { MenuSemana } from '../types/diary';
 import type { Alimento } from '../types/food';
 import type { DayType, Plan } from '../types/plan';
+import {
+  ajustesDeReceta,
+  acompanamientosDeReceta,
+  quitadosDeReceta,
+} from '../types/plan';
 import type { Receta } from '../types/recipe';
 import { scaleRecipe } from './recipeScaling';
 import { diasDeLaSemana, nombreDelDia } from './menuSemana';
@@ -145,7 +150,21 @@ export function queCocinar(
       const receta = recetas.find((r) => r.id === recetaId);
       if (!receta) continue;
 
-      const escalada = scaleRecipe(receta, dayType.grid[mealId] ?? {}, foods);
+      /*
+       * Con lo que ella haya retocado para esta clienta: los gramos escritos a
+       * mano, lo que le puso al lado y lo que le quitó. Sin esto la compra era
+       * la de la receta del banco y no la del plato que se va a comer — se
+       * compraba el pimentón que se le quitó y faltaba el yogur que se le
+       * añadió.
+       */
+      const escalada = scaleRecipe(
+        receta,
+        dayType.grid[mealId] ?? {},
+        foods,
+        ajustesDeReceta(dayType, mealId, receta.id),
+        acompanamientosDeReceta(dayType, mealId, receta.id),
+        quitadosDeReceta(dayType, mealId, receta.id),
+      );
 
       for (const ing of escalada.ingredientes) {
         const food = ing.foodId ? porId.get(ing.foodId) : undefined;

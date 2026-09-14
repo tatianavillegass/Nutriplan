@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { Acompanamiento, DayType } from '../../types/plan';
-import { ajustesDeReceta, acompanamientosDeReceta } from '../../types/plan';
+import { ajustesDeReceta, acompanamientosDeReceta, quitadosDeReceta } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Reto } from '../../types/reto';
 import { semanaDeDia } from '../../utils/retos';
@@ -66,6 +66,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
           const clave = `${r.recetaId}-${r.slot}`;
           const requeridos = dayType.grid[meal.id] ?? {};
           const ajustes = ajustesDeReceta(dayType, meal.id, receta.id);
+          const quitados = quitadosDeReceta(dayType, meal.id, receta.id);
 
           return (
             <li key={clave}>
@@ -100,6 +101,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
                       foods={foods}
                       ajustes={ajustes}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, receta.id)}
+                      quitados={quitados}
                       recetas={recetas}
                       onGuardar={(a, ac) => {
                         onAjustar(meal.id, receta.id, a, ac);
@@ -116,6 +118,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
                         foods={foods}
                         ajustes={ajustes}
                         acompanamientos={acompanamientosDeReceta(dayType, meal.id, receta.id)}
+                        quitados={quitados}
                         paraNutricionista
                         soloLectura
                       />

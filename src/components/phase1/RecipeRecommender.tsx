@@ -5,6 +5,7 @@ import {
   RECETAS_POR_COMIDA,
   ajustesDeReceta,
   acompanamientosDeReceta,
+  quitadosDeReceta,
   type Acompanamiento,
 } from '../../types/plan';
 import type { Client } from '../../types/client';
@@ -50,6 +51,8 @@ interface Props {
     recetaId: string,
     ajustes: Record<string, number>,
     acompanamientos: Acompanamiento[],
+    /** Ingredientes que esta clienta no se come. */
+    quitados: string[],
   ) => void;
 }
 
@@ -575,9 +578,10 @@ export function RecipeRecommender({
                       foods={foods}
                       ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}
+                      quitados={quitadosDeReceta(dayType, meal.id, r.id)}
                       recetas={recetas}
-                      onGuardar={(a, ac) => {
-                        onAjustarCantidades(r.id, a, ac);
+                      onGuardar={(a, ac, q) => {
+                        onAjustarCantidades(r.id, a, ac, q);
                         setAjustando(null);
                       }}
                       onCerrar={() => setAjustando(null)}
@@ -590,6 +594,7 @@ export function RecipeRecommender({
                       foods={foods}
                       ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}
+                      quitados={quitadosDeReceta(dayType, meal.id, r.id)}
                       paraNutricionista
                       acciones={
                         <>

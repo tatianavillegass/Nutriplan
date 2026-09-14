@@ -899,8 +899,15 @@ export function ClientDetail() {
                      * en la receta del banco: la misma receta se cuadra
                      * distinto según a quién se le pauta.
                      */
-                    onAjustarCantidades={(rid, ajustes, acompanamientos) =>
+                    onAjustarCantidades={(rid, ajustes, acompanamientos, quitados) =>
                       updateDayType(plan.id, dayType.id, {
+                        ingredientesQuitados: {
+                          ...(dayType.ingredientesQuitados ?? {}),
+                          [m.id]: {
+                            ...(dayType.ingredientesQuitados?.[m.id] ?? {}),
+                            [rid]: quitados,
+                          },
+                        },
                         ajustesReceta: {
                           ...(dayType.ajustesReceta ?? {}),
                           [m.id]: {

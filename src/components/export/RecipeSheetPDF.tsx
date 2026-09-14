@@ -1,6 +1,11 @@
 import type { Client } from '../../types/client';
 import type { Plan } from '../../types/plan';
-import { recetasDeLaComida, ajustesDeReceta, acompanamientosDeReceta } from '../../types/plan';
+import {
+  recetasDeLaComida,
+  ajustesDeReceta,
+  acompanamientosDeReceta,
+  quitadosDeReceta,
+} from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
@@ -78,6 +83,7 @@ export function RecipeSheetPDF({
                           foods={foods}
                           ajustes={ajustesDeReceta(d, m.id, receta.id)}
                           acompanamientos={acompanamientosDeReceta(d, m.id, receta.id)}
+                          quitados={quitadosDeReceta(d, m.id, receta.id)}
                           soloLectura
                         />
                       ))}
