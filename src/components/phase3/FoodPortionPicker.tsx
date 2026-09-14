@@ -12,6 +12,7 @@ import { gramosMarcados } from '../../utils/diary';
 import { describeEquivalencia } from '../../utils/exchanges';
 import { escalarMedida } from '../../utils/measures';
 import { coincide } from '../../utils/similitud';
+import { SUBGRUPOS_ABIERTOS } from '../../utils/subgruposAbiertos';
 import { PortionRing, SubgrupoBarra } from '../common/PortionRing';
 import { fmt } from '../common/ui';
 
@@ -43,11 +44,12 @@ function enPorciones(n: number): string {
   return entero === 0 ? '½' : `${entero}½`;
 }
 
-/** Subgrupos que se presentan con su nombre general y se concretan al pulsar. */
-const GENERICOS: Partial<Record<ExchangeGroupId, string>> = {
-  fruta: 'Fruta',
-  verduras: 'Verdura',
-};
+/**
+ * Subgrupos que se presentan con su nombre general y se concretan al pulsar.
+ * La regla vive en `utils/subgruposAbiertos.ts` porque la fase 2 usa la misma
+ * al cambiar la fruta de una combinación.
+ */
+const GENERICOS = SUBGRUPOS_ABIERTOS;
 
 type Entrada =
   | { tipo: 'alimento'; food: Alimento }

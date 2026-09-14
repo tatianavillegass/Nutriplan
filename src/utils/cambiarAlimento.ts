@@ -2,7 +2,8 @@ import type { Alimento } from '../types/food';
 import type { DayType, Meal } from '../types/plan';
 import type { ItemOpcion, OpcionEscalada } from './mealOptions';
 import { opcionDeItems } from './combos';
-import { alimentosDeComida } from './pantry';
+import { alimentosDeComida, tachadoAMano } from './pantry';
+import { esAbierto } from './subgruposAbiertos';
 import { gramosPorIntercambio } from './recipeComposition';
 import { escalarMedida } from './measures';
 import { roundPortion } from './macros';
@@ -34,12 +35,21 @@ import { roundPortion } from './macros';
  * gramos se queda. Meterlo aquí mezclaría una sustitución exacta con una que
  * cambia lo que se pautó, y en el mismo gesto.
  *
- * Y SALEN DE SU DESPENSA, NO DEL CATÁLOGO
- * =======================================
- * Lo que puede elegir lo decide la nutricionista comida a comida, como en todo
- * lo demás: ahí es donde ya están filtrados sus alérgenos, sus patologías y lo
- * que no le gusta. Ofrecerle el catálogo entero sería saltarse eso justo en el
- * momento de comer.
+ * LA DESPENSA MANDA, SALVO EN LA FRUTA Y LA VERDURA
+ * =================================================
+ * Lo que puede elegir lo decide la nutricionista comida a comida: ahí es donde
+ * ya están filtrados sus alérgenos, sus patologías y lo que no le gusta. Con
+ * una excepción, que es la misma que ya tenía la fase 3: **una porción de
+ * fruta es cualquier fruta**. Si en la despensa del desayuno sólo le cupieron
+ * arándanos, esta pantalla decía «no hay nada que cambiar» — y la clienta se
+ * quedaba comiendo arándanos todos los días porque la app no le dejaba otra
+ * cosa. En esos subgrupos (`SUBGRUPOS_ABIERTOS`) se ofrece el catálogo entero,
+ * con las de su despensa primero, que son las que ella le sugirió.
+ *
+ * Lo que ella haya **quitado a mano** sigue fuera, también del catálogo: una
+ * exclusión es una decisión, no un hueco por rellenar. Y en los demás
+ * subgrupos no cambia nada: pollo y gambas no son la misma cena, así que ahí
+ * la lista corta de la despensa es justo lo que ella decide.
  */
 
 /** Las otras opciones para ese alimento, ya escaladas a sus mismas porciones. */
@@ -49,11 +59,35 @@ export function alternativasDe(
   meal: Meal,
   foods: Alimento[],
 ): ItemOpcion[] {
-  return alimentosDeComida(dayType, meal, foods)
-    .filter((f) => f.grupo === item.grupo && f.id !== item.foodId && !!gramosPorIntercambio(f))
+  const suyos = alimentosDeComida(dayType, meal, foods).filter((f) => f.grupo === item.grupo);
+
+  /*
+   * El resto del subgrupo, detrás de las suyas y sin lo que ella haya tachado.
+   * Sólo en fruta y verdura: ver la cabecera.
+   */
+  const resto = esAbierto(item.grupo)
+    ? foods.filter(
+        (f) =>
+          f.grupo === item.grupo &&
+          !suyos.some((s) => s.id === f.id) &&
+          !tachadoAMano(dayType, meal.id, f.id),
+      )
+    : [];
+
+  const deSuDespensa = new Set(suyos.map((f) => f.id));
+
+  return [...suyos, ...resto]
+    .filter((f) => f.id !== item.foodId && !!gramosPorIntercambio(f))
     .map((f) => escalarA(f, item.intercambios))
     .filter((x): x is ItemOpcion => !!x)
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    /* Las de su despensa primero —son las que ella le sugirió— y dentro de
+       cada grupo por orden alfabético, que con cuarenta frutas es lo único
+       que se recorre con el dedo. */
+    .sort(
+      (a, b) =>
+        Number(deSuDespensa.has(b.foodId)) - Number(deSuDespensa.has(a.foodId)) ||
+        a.nombre.localeCompare(b.nombre),
+    );
 }
 
 /** El alimento con los gramos de esas porciones. */

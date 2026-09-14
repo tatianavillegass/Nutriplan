@@ -76,6 +76,22 @@ export function alimentosDeBucket(
   );
 }
 
+/**
+ * Si ella lo quitó **a propósito** de esa comida.
+ *
+ * No es lo mismo que `estaExcluido`: con una lista propia («sólo esto»), todo
+ * lo que no esté en la lista sale excluido, y eso incluye las cuarenta frutas
+ * del catálogo que nadie ha mirado. Para abrir la fruta al catálogo entero
+ * (ver `cambiarAlimento`) hace falta distinguir lo tachado de lo que
+ * simplemente no cupo en la despensa.
+ */
+export function tachadoAMano(dayType: DayType, mealId: string, foodId: string): boolean {
+  const d = despensaDe(dayType, mealId);
+  return (
+    (d.excluidos ?? []).includes(foodId) || (dayType.alimentosExcluidos ?? []).includes(foodId)
+  );
+}
+
 export function estaExcluido(dayType: DayType, mealId: string, foodId: string): boolean {
   const d = despensaDe(dayType, mealId);
   if (d.seleccion) return !d.seleccion.includes(foodId);

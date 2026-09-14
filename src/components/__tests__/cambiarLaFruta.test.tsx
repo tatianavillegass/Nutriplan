@@ -105,8 +105,8 @@ describe('Cambiar un alimento de la opción elegida', () => {
     fireEvent.click(screen.getByText(`${fruta.nombre} ⇄`));
 
     /* La primera alternativa de la lista que se acaba de abrir. */
-    const lista = document.querySelector('ul.bg-brand-50\\/40');
-    const primera = lista?.querySelector('button');
+    const lista = document.querySelector('div.bg-brand-50\\/40');
+    const primera = lista?.querySelector('li button');
     fireEvent.click(primera!);
 
     const nueva = onElegir.mock.calls.at(-1)![0];
@@ -169,13 +169,109 @@ describe('Con una combinación guardada por la nutricionista', () => {
     expect(screen.getByText('Cambiar:')).toBeTruthy();
     fireEvent.click(screen.getByText('Arándanos ⇄'));
 
-    const lista = document.querySelector('ul.bg-brand-50\\/40');
-    fireEvent.click(lista!.querySelector('button')!);
+    const lista = document.querySelector('div.bg-brand-50\\/40');
+    fireEvent.click(lista!.querySelector('li button')!);
 
     const nueva = onElegir.mock.calls.at(-1)![0];
     /* La avena de ella se queda; la fruta cambia. */
     expect(nueva.items.some((i: { foodId: string }) => i.foodId === 'a-avena-copos')).toBe(true);
     expect(nueva.items.some((i: { foodId: string }) => i.foodId === 'a-arandanos')).toBe(false);
+  });
+});
+
+/**
+ * EL CASO QUE ELLA TENÍA: UNA SOLA FRUTA EN LA DESPENSA
+ *
+ * «Cuando escojo avena y arándanos no me aparece la opción de cambiar
+ * arándanos.» Y era verdad: si en el desayuno sólo cupieron arándanos, no
+ * había ninguna otra fruta suya que ofrecer y el botón no salía. Una porción
+ * de fruta es cualquier fruta, así que se abre el catálogo entero — lo mismo
+ * que ya hacía la fase 3.
+ */
+describe('Con una sola fruta en la despensa', () => {
+  const SOLO_ARANDANOS = {
+    ...DIA,
+    despensa: { d: { seleccion: ['a-arandanos', 'a-avena-copos'] } },
+    combinaciones: {
+      d: [
+        {
+          id: 'cb_1',
+          bucket: 'carbohidrato',
+          items: [
+            { foodId: 'a-avena-copos', porciones: 1 },
+            { foodId: 'a-arandanos', porciones: 1 },
+          ],
+        },
+      ],
+    },
+  } as unknown as DayType;
+
+  const marcadas: PorcionesMarcadas = { d: { 'a-avena-copos': 1, 'a-arandanos': 1 } };
+
+  it('igualmente se puede cambiar la fruta', () => {
+    render(
+      <ScaledOptionsBoard
+        dayType={SOLO_ARANDANOS}
+        meal={DESAYUNO}
+        foods={FOOD_CATALOG}
+        porciones={marcadas}
+        onElegir={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Arándanos ⇄')).toBeTruthy();
+  });
+
+  /** Con cuarenta frutas en pantalla no se encuentra ninguna. */
+  it('y con tantas se busca escribiendo', () => {
+    const onElegir = vi.fn();
+    render(
+      <ScaledOptionsBoard
+        dayType={SOLO_ARANDANOS}
+        meal={DESAYUNO}
+        foods={FOOD_CATALOG}
+        porciones={marcadas}
+        onElegir={onElegir}
+      />,
+    );
+    fireEvent.click(screen.getByText('Arándanos ⇄'));
+
+    const caja = screen.getByPlaceholderText(/Buscar fruta/);
+    fireEvent.change(caja, { target: { value: 'plátano' } });
+
+    const lista = document.querySelector('div.bg-brand-50\\/40')!;
+    const botones = [...lista.querySelectorAll('li button')];
+    expect(botones.length).toBeGreaterThan(0);
+    expect(botones.every((b) => /pl[áa]tano/i.test(b.textContent ?? ''))).toBe(true);
+
+    fireEvent.click(botones[0]);
+    const nueva = onElegir.mock.calls.at(-1)![0];
+    /* La avena de ella se queda; la fruta es la que buscó. */
+    expect(nueva.items.some((i: { foodId: string }) => i.foodId === 'a-avena-copos')).toBe(true);
+    expect(nueva.items.some((i: { foodId: string }) => i.foodId === 'a-arandanos')).toBe(false);
+  });
+
+  /** Lo que ella tachó a mano sigue fuera, también del catálogo. */
+  it('pero no sale lo que ella quitó a propósito', () => {
+    const sinPlatano = {
+      ...SOLO_ARANDANOS,
+      alimentosExcluidos: ['a-platano'],
+    } as unknown as DayType;
+
+    render(
+      <ScaledOptionsBoard
+        dayType={sinPlatano}
+        meal={DESAYUNO}
+        foods={FOOD_CATALOG}
+        porciones={marcadas}
+        onElegir={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Arándanos ⇄'));
+    fireEvent.change(screen.getByPlaceholderText(/Buscar fruta/), {
+      target: { value: 'plátano' },
+    });
+    const lista = document.querySelector('div.bg-brand-50\\/40')!;
+    expect(lista.querySelectorAll('li button').length).toBe(0);
   });
 });
 

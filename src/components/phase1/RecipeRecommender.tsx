@@ -110,7 +110,10 @@ export function RecipeRecommender({
    */
   const caja = useRef<HTMLDivElement>(null);
   const volverArriba = () =>
-    caja.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    /* El `typeof` es por los tests: jsdom no implementa scrollIntoView y sin
+       esto cerrar una comida reventaba con un error suelto en la consola. */
+    typeof caja.current?.scrollIntoView === 'function' &&
+    caja.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   /** Receta cuyas cantidades se están ajustando para esta clienta. */
   const [ajustando, setAjustando] = useState<string | null>(null);
   /**

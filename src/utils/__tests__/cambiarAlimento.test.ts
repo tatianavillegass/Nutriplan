@@ -40,15 +40,36 @@ const primeraOpcion = (dayType: DayType) => {
 const laFruta = (items: ItemOpcion[]) => items.find((i) => i.grupo === 'fruta')!;
 
 describe('Las alternativas de un alimento', () => {
-  it('son las otras de su mismo subgrupo, de su despensa', () => {
+  it('son las otras de su mismo subgrupo, nunca de otro', () => {
     const dayType = dia();
     const fruta = laFruta(primeraOpcion(dayType).items);
     const otras = alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG);
 
-    /* Las otras dos frutas, ni ella misma ni los almidones. */
     expect(otras.every((a) => a.grupo === 'fruta')).toBe(true);
     expect(otras.some((a) => a.foodId === fruta.foodId)).toBe(false);
-    expect(otras.length).toBe(2);
+  });
+
+  /** Son las que ella le sugirió: van delante de las demás del catálogo. */
+  it('y las de su despensa salen primero', () => {
+    const dayType = dia();
+    const fruta = laFruta(primeraOpcion(dayType).items);
+    const otras = alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG);
+    const suyas = ['a-platano', 'a-manzana', 'a-arandanos'].filter((id) => id !== fruta.foodId);
+
+    expect(otras.slice(0, suyas.length).map((a) => a.foodId).sort()).toEqual([...suyas].sort());
+  });
+
+  /**
+   * Un almidón no es intercambiable así —el pan y la avena no se desayunan
+   * igual— y ahí la lista corta que ella dejó es justo lo que decide.
+   */
+  it('en los demás subgrupos se queda en su despensa', () => {
+    const dayType = dia();
+    const almidon = primeraOpcion(dayType).items.find((i) => i.grupo === 'almidones')!;
+    const otras = alternativasDe(almidon, dayType, DESAYUNO, FOOD_CATALOG);
+    /* Ni uno solo de fuera de la lista que ella dejó. */
+    expect(otras.every((a) => DESPENSA.includes(a.foodId))).toBe(true);
+    expect(otras.length).toBeLessThan(3);
   });
 
   /** 125 g de arándanos y 65 g de plátano son la misma porción. */
@@ -63,14 +84,35 @@ describe('Las alternativas de un alimento', () => {
   });
 
   /**
-   * Lo que puede elegir lo decide ella comida a comida: ahí ya están filtrados
-   * sus alérgenos y sus patologías. Ofrecerle el catálogo entero se los saltaría
-   * justo en el momento de comer.
+   * EL CASO QUE ELLA TENÍA
+   *
+   * «Cuando escojo avena y arándanos no me aparece la opción de cambiar
+   * arándanos»: con una sola fruta en la despensa no había ninguna otra suya
+   * que ofrecer. Una porción de fruta es cualquier fruta —es la regla que ya
+   * tenía la fase 3—, así que se abre el catálogo entero.
    */
-  it('y no salen del catálogo: si su despensa tiene una fruta, no hay alternativa', () => {
+  it('con una sola fruta en la despensa, se abren todas las del catálogo', () => {
     const dayType = dia(['a-arandanos', 'a-avena-copos']);
     const fruta = laFruta(primeraOpcion(dayType).items);
-    expect(alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG)).toEqual([]);
+    const otras = alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG);
+
+    expect(otras.length).toBeGreaterThan(5);
+    expect(otras.every((a) => a.grupo === 'fruta')).toBe(true);
+    /* Con sus gramos hechos, como las de su despensa. */
+    expect(otras.every((a) => a.intercambios === fruta.intercambios && a.gramos > 0)).toBe(true);
+  });
+
+  /** Una exclusión es una decisión suya, no un hueco por rellenar. */
+  it('pero lo que ella tachó a mano no vuelve por la puerta de atrás', () => {
+    const dayType = {
+      ...dia(['a-arandanos', 'a-avena-copos']),
+      alimentosExcluidos: ['a-platano'],
+    } as unknown as DayType;
+    const fruta = laFruta(primeraOpcion(dayType).items);
+    const otras = alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG);
+
+    expect(otras.some((a) => a.foodId === 'a-platano')).toBe(false);
+    expect(otras.length).toBeGreaterThan(5);
   });
 });
 

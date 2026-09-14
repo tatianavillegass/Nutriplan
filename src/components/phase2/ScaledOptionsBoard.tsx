@@ -3,7 +3,15 @@ import type { Alimento } from '../../types/food';
 import type { DayType, Meal } from '../../types/plan';
 import type { PorcionesMarcadas } from '../../types/diary';
 import { MIN_VERDURA_G } from '../../data/exchangeGroups';
-import { BUCKET_LABEL, describirReparto, textoItem, type OpcionEscalada } from '../../utils/mealOptions';
+import {
+  BUCKET_LABEL,
+  describirReparto,
+  textoItem,
+  type ItemOpcion,
+  type OpcionEscalada,
+} from '../../utils/mealOptions';
+import { coincide } from '../../utils/similitud';
+import { SUBGRUPOS_ABIERTOS } from '../../utils/subgruposAbiertos';
 import { columnasDeComida } from '../../utils/combosGuardados';
 import { notaAceite, repartoElegible } from '../../utils/pantry';
 import { marcadoDeBucket, opcionElegida } from '../../utils/marcado';
@@ -23,6 +31,65 @@ interface Props {
   onPostre?: (texto: string) => void;
   /** Marcar como hecha y comida libre, junto al nombre de la comida. */
   acciones?: React.ReactNode;
+}
+
+/**
+ * LA LISTA QUE SALE AL PULSAR UN ALIMENTO
+ *
+ * En la fruta y la verdura salen todas las del catálogo, no sólo las de su
+ * despensa (ver `utils/cambiarAlimento.ts`), así que pueden ser cuarenta: con
+ * cuarenta en pantalla la lista es ilegible y hay que poder escribir «pera».
+ * Es el mismo buscador que la fase 3 pone en «Fruta».
+ *
+ * Con pocas —un cambio de almidón entre los tres que ella dejó— no sale nada:
+ * una caja de búsqueda sobre cuatro líneas es un paso inventado.
+ */
+const CON_BUSCADOR = 8;
+
+function ListaDeCambio({
+  item,
+  alternativas,
+  onElegir,
+}: {
+  item: ItemOpcion;
+  alternativas: ItemOpcion[];
+  onElegir: (alt: ItemOpcion) => void;
+}) {
+  const [q, setQ] = useState('');
+  const buscar = alternativas.length > CON_BUSCADOR;
+  const visibles = q.trim() ? alternativas.filter((a) => coincide(a.nombre, q)) : alternativas;
+  const comoSeLlama = SUBGRUPOS_ABIERTOS[item.grupo]?.toLowerCase() ?? 'alimento';
+
+  return (
+    <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-1.5">
+      {buscar && (
+        <input
+          autoFocus
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={`Buscar ${comoSeLlama}…`}
+          className="mb-1 w-full rounded-md border border-brand-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-brand-400"
+        />
+      )}
+      <ul className="max-h-44 space-y-0.5 overflow-auto">
+        {visibles.map((alt) => (
+          <li key={alt.foodId}>
+            <button
+              onClick={() => onElegir(alt)}
+              className="w-full rounded px-1.5 py-1 text-left text-[12px] text-slate-700 transition hover:bg-white"
+            >
+              {textoItem(alt)}
+            </button>
+          </li>
+        ))}
+        {!visibles.length && (
+          <li className="px-1.5 py-1 text-[11px] text-slate-500">
+            Nada con «{q.trim()}» en {comoSeLlama}.
+          </li>
+        )}
+      </ul>
+    </div>
+  );
 }
 
 /**
@@ -201,12 +268,22 @@ export function ScaledOptionsBoard({
                               key={it.foodId}
                               className="mt-0.5 ml-3.5 block text-[10px] leading-snug text-slate-400 no-print"
                             >
+                              {/*
+                                En la fruta y la verdura la lista es el
+                                catálogo entero: enumerar cuatro y «y 36 más»
+                                haría pensar que hay una lista corta que
+                                revisar, cuando lo que hay que saber es que
+                                puede elegir la que quiera.
+                              */}
                               puede cambiar {it.nombre.toLowerCase()} por{' '}
-                              {otras
-                                .slice(0, 4)
-                                .map((a) => a.nombre.toLowerCase())
-                                .join(', ')}
-                              {otras.length > 4 && ` y ${otras.length - 4} más`}
+                              {SUBGRUPOS_ABIERTOS[it.grupo]
+                                ? `cualquier ${SUBGRUPOS_ABIERTOS[it.grupo]!.toLowerCase()}`
+                                : `${otras
+                                    .slice(0, 4)
+                                    .map((a) => a.nombre.toLowerCase())
+                                    .join(', ')}${
+                                    otras.length > 4 ? ` y ${otras.length - 4} más` : ''
+                                  }`}
                             </span>
                           ))}
                         </li>
@@ -287,29 +364,19 @@ export function ScaledOptionsBoard({
 
                             {o.items.map((it) => {
                               if (cambiando !== `${o.id}:${it.foodId}`) return null;
-                              const otras = alternativasDe(it, dayType, meal, foods);
                               return (
-                                <ul
+                                <ListaDeCambio
                                   key={it.foodId}
-                                  className="space-y-0.5 rounded-lg border border-brand-200 bg-brand-50/40 p-1.5"
-                                >
-                                  {otras.map((alt) => (
-                                    <li key={alt.foodId}>
-                                      <button
-                                        onClick={() => {
-                                          /* Elegir la nueva sustituye a la de
-                                             este macro: no hay que quitar la
-                                             vieja a mano. */
-                                          onElegir?.(conAlimentoCambiado(o, it.foodId, alt));
-                                          setCambiando(null);
-                                        }}
-                                        className="w-full rounded px-1.5 py-1 text-left text-[12px] text-slate-700 transition hover:bg-white"
-                                      >
-                                        {textoItem(alt)}
-                                      </button>
-                                    </li>
-                                  ))}
-                                </ul>
+                                  item={it}
+                                  alternativas={alternativasDe(it, dayType, meal, foods)}
+                                  onElegir={(alt) => {
+                                    /* Elegir la nueva sustituye a la de este
+                                       macro: no hay que quitar la vieja a
+                                       mano. */
+                                    onElegir?.(conAlimentoCambiado(o, it.foodId, alt));
+                                    setCambiando(null);
+                                  }}
+                                />
                               );
                             })}
                           </div>
