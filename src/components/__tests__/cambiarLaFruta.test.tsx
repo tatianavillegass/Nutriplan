@@ -276,6 +276,76 @@ describe('Con una sola fruta en la despensa', () => {
 });
 
 /**
+ * EL FALLO QUE VIO TATS EN PRUEBAS
+ *
+ * «Pongo buscar, agrego manzana y la hundo: se desaparece y no se me actualiza
+ * la selección.» Y es verdad: la lista de opciones sale de lo que ella guardó
+ * —avena con arándanos— y «avena con manzana» no está en esa lista, así que al
+ * cambiar la fruta la comida se quedaba sin nada marcado. Parecía que el
+ * cambio no había hecho nada.
+ */
+describe('Después de cambiar la fruta', () => {
+  const CON_PROPIA = {
+    ...DIA,
+    combinaciones: {
+      d: [
+        {
+          id: 'cb_1',
+          bucket: 'carbohidrato',
+          items: [
+            { foodId: 'a-avena-copos', porciones: 1 },
+            { foodId: 'a-arandanos', porciones: 1 },
+          ],
+        },
+      ],
+    },
+  } as unknown as DayType;
+
+  const pintarCon = (porciones: PorcionesMarcadas, onElegir = vi.fn()) => {
+    const r = render(
+      <ScaledOptionsBoard
+        dayType={CON_PROPIA}
+        meal={DESAYUNO}
+        foods={FOOD_CATALOG}
+        porciones={porciones}
+        onElegir={onElegir}
+      />,
+    );
+    return { ...r, onElegir };
+  };
+
+  it('la nueva combinación sigue en pantalla y marcada', () => {
+    /* Lo que queda marcado tras cambiar arándanos por manzana. */
+    const marcadas: PorcionesMarcadas = { d: { 'a-avena-copos': 1, 'a-manzana': 1 } };
+    pintarCon(marcadas);
+
+    expect(screen.getAllByRole('button', { pressed: true }).length).toBe(1);
+    expect(screen.getAllByText(/manzana/i).length).toBeGreaterThan(0);
+  });
+
+  /** Y se le puede volver a cambiar la fruta, que es lo normal. */
+  it('y se le puede cambiar otra vez', () => {
+    const marcadas: PorcionesMarcadas = { d: { 'a-avena-copos': 1, 'a-manzana': 1 } };
+    pintarCon(marcadas);
+    expect(screen.getByText('Cambiar:')).toBeTruthy();
+    expect(screen.getByText('Manzana ⇄')).toBeTruthy();
+  });
+
+  /** La suya sigue ahí: no se pierde por haber cambiado un día. */
+  it('sin perder la combinación que ella guardó', () => {
+    const marcadas: PorcionesMarcadas = { d: { 'a-avena-copos': 1, 'a-manzana': 1 } };
+    pintarCon(marcadas);
+    expect(screen.getAllByText(/arándanos/i).length).toBeGreaterThan(0);
+  });
+
+  /** Sin nada marcado no se inventa ninguna opción de más. */
+  it('y con la comida en blanco no sale ninguna opción de más', () => {
+    pintarCon({});
+    expect(screen.getAllByRole('button', { pressed: false }).length).toBe(1);
+  });
+});
+
+/**
  * La vista previa de la nutricionista no es pulsable, así que ninguna opción
  * llega a estar elegida y el botón de cambiar no aparecía nunca: desde la ficha
  * parecía que la función no existía.

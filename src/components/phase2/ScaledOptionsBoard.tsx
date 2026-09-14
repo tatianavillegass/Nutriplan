@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { DayType, Meal } from '../../types/plan';
+import type { MacroBucket } from '../../data/exchangeGroups';
 import type { PorcionesMarcadas } from '../../types/diary';
 import { MIN_VERDURA_G } from '../../data/exchangeGroups';
 import {
@@ -15,7 +16,11 @@ import { SUBGRUPOS_ABIERTOS } from '../../utils/subgruposAbiertos';
 import { columnasDeComida } from '../../utils/combosGuardados';
 import { libresDeComida, notaAceite, repartoElegible } from '../../utils/pantry';
 import { marcadoDeBucket, opcionElegida } from '../../utils/marcado';
-import { alternativasDe, conAlimentoCambiado } from '../../utils/cambiarAlimento';
+import {
+  alternativasDe,
+  conAlimentoCambiado,
+  opcionDeLoMarcado,
+} from '../../utils/cambiarAlimento';
 import { fmt } from '../common/ui';
 
 interface Props {
@@ -119,6 +124,27 @@ export function ScaledOptionsBoard({
   const { reserva } = useMemo(() => repartoElegible(dayType, meal), [dayType, meal]);
   const aceite = notaAceite(foods, reserva);
 
+  /**
+   * LA QUE ESTÁ MARCADA SIEMPRE SALE, AUNQUE NO ESTÉ EN LA LISTA
+   *
+   * Al cambiar la fruta nace una combinación que no estaba: «avena con
+   * manzana» no es ninguna de las que ella guardó. Sin esto, la clienta la
+   * pulsaba y la comida se quedaba en blanco — parecía que el cambio no había
+   * hecho nada. Se añade al final de su columna y se enseña elegida.
+   *
+   * Se mira si alguna de las que ya están sale marcada, **no si el id coincide**:
+   * una combinación guardada por la nutricionista conserva su propio id
+   * (`materializar`), así que «avena con arándanos» compuesta por ella y la
+   * misma rehecha desde lo marcado no se llaman igual — y comparando ids se
+   * pintaba dos veces.
+   */
+  const conLaElegida = (opciones: OpcionEscalada[], bucket: MacroBucket) => {
+    if (!porciones) return opciones;
+    if (opciones.some((o) => opcionElegida(porciones, meal.id, o))) return opciones;
+    const marcada = opcionDeLoMarcado(porciones, meal.id, bucket, foods);
+    return marcada ? [...opciones, marcada] : opciones;
+  };
+
   /** Si la nutricionista ha guardado combinaciones, mandan las suyas. */
   const columnas = useMemo(
     () =>
@@ -132,7 +158,7 @@ export function ScaledOptionsBoard({
         total: c.objetivo.porciones,
         porSubgrupo: c.objetivo.porSubgrupo,
         kcalMaximas: c.objetivo.kcalMaximas,
-        opciones: c.opciones,
+        opciones: conLaElegida(c.opciones, c.bucket),
         propias: c.propias,
         cubiertoPorOtro: c.cubiertoPorOtro ?? 0,
         cubiertoDelTodo: !!c.cubiertoDelTodo,

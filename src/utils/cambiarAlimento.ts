@@ -1,4 +1,6 @@
 import type { Alimento } from '../types/food';
+import type { PorcionesMarcadas } from '../types/diary';
+import { EXCHANGE_GROUPS, type MacroBucket } from '../data/exchangeGroups';
 import type { DayType, Meal } from '../types/plan';
 import type { ItemOpcion, OpcionEscalada } from './mealOptions';
 import { opcionDeItems } from './combos';
@@ -88,6 +90,46 @@ export function alternativasDe(
         Number(deSuDespensa.has(b.foodId)) - Number(deSuDespensa.has(a.foodId)) ||
         a.nombre.localeCompare(b.nombre),
     );
+}
+
+/**
+ * LA COMBINACIÓN QUE LA CLIENTA TIENE MARCADA AHORA MISMO
+ *
+ * Al cambiar la fruta sale una combinación nueva —avena con manzana— que **no
+ * está en la lista** que se le enseña: esa lista son las que la nutricionista
+ * guardó, o las que propone la app. Así que la clienta cambiaba la fruta y la
+ * comida se le quedaba sin nada marcado: «la pulso y desaparece».
+ *
+ * Esto rehace la opción a partir de lo que hay marcado, para poder añadirla a
+ * su columna y enseñarla elegida. Se arma con `opcionDeItems` —la misma del
+ * generador— así que si resulta ser una de las que ya estaban, tiene su mismo
+ * id y no se duplica.
+ */
+export function opcionDeLoMarcado(
+  porciones: PorcionesMarcadas,
+  mealId: string,
+  bucket: MacroBucket,
+  foods: Alimento[],
+): OpcionEscalada | undefined {
+  const marcado = porciones[mealId] ?? {};
+  const porId = new Map(foods.map((f) => [f.id, f]));
+
+  const items = Object.entries(marcado)
+    .filter(([, n]) => n > 0)
+    .map(([foodId, n]) => {
+      const f = porId.get(foodId);
+      const g = f?.grupo;
+      /* Sólo lo de esta columna, y nada ilimitado: la verdura y los libres no
+         forman parte de ninguna combinación. */
+      if (!f || !g || EXCHANGE_GROUPS[g]?.ilimitado || EXCHANGE_GROUPS[g]?.bucket !== bucket) {
+        return undefined;
+      }
+      return escalarA(f, n);
+    })
+    .filter((x): x is ItemOpcion => !!x)
+    .sort((a, b) => a.foodId.localeCompare(b.foodId));
+
+  return items.length ? opcionDeItems(items, bucket) : undefined;
 }
 
 /** El alimento con los gramos de esas porciones. */
