@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { edadDe } from "../types/client";
+import { edadDe, type Client } from "../types/client";
+import type { Plan } from "../types/plan";
+import { BasarEnOtroPlan } from "../components/planning/BasarEnOtroPlan";
+import { loQueNoCuadra } from "../utils/basarEnOtroPlan";
+import { matchRecipes } from "../utils/recipeMatcher";
+import { EXCHANGE_GROUPS } from "../data/exchangeGroups";
 import { Link, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { useEnergy } from "../hooks/useEnergy";
@@ -68,7 +73,8 @@ type Tab =
 
 export function ClientDetail() {
   const { id = "" } = useParams();
-  const client = useAppStore((s) => s.clients.find((c) => c.id === id));
+  const clients = useAppStore((s) => s.clients);
+  const client = clients.find((c) => c.id === id);
   const updateClient = useAppStore((s) => s.updateClient);
   const plans = useAppStore((s) => s.plans);
   const ensurePlan = useAppStore((s) => s.ensurePlan);
@@ -105,6 +111,8 @@ export function ClientDetail() {
    * en el desayuno.
    */
   const [comidaAbierta, setComidaAbierta] = useState<string | null>(null);
+  /** De quién se acaba de traer el plan, para decírselo una vez y no más. */
+  const [copiadoDe, setCopiadoDe] = useState<string | null>(null);
   const calc = useEnergy(client);
 
   if (!client) return <EmptyState title="Cliente no encontrado" />;
@@ -130,6 +138,42 @@ export function ClientDetail() {
    * vale tanto para pintar como para escribir encima.
    */
   const recetasEnUso = recetasDelPlan(plan);
+
+  /**
+   * Las demás clientas con un plan del que copiar: el que tienen en uso y con
+   * comidas montadas. Las participantes de un reto entran igual —una pareja
+   * puede haber llegado por ahí— pero los planes archivados no: copiar de uno
+   * viejo sería traerse lo que ya se cambió.
+   */
+  const otrosPlanes = clients
+    .filter((c) => c.id !== client.id)
+    .map((c) => ({
+      client: c,
+      plan: plans.find((p) => p.clientId === c.id && !p.archivado),
+    }))
+    .filter((x): x is { client: Client; plan: Plan } => !!x.plan?.dayTypes?.length);
+
+  /**
+   * QUÉ RECETAS NO CUBREN LO QUE SE LE HA PAUTADO A ELLA
+   *
+   * Sale sobre todo al traerse el plan de la pareja: él lleva carbohidrato en
+   * la cena y ella no. Lo calcula el recomendador, que ya sabe qué cubre cada
+   * receta de un reparto — así el aviso dice exactamente lo mismo que las
+   * tarjetas de abajo y no hay dos cuentas que puedan discrepar.
+   */
+  const sinCuadrar = loQueNoCuadra(plan, dayType, recipes, (recetaId, mealId) => {
+    const receta = recipes.find((r) => r.id === recetaId);
+    const reparto = dayType.grid[mealId];
+    if (!receta || !reparto) return [];
+    const [resultado] = matchRecipes([receta], reparto, {
+      slot: 'todas',
+      limite: 1,
+      incluirBloqueadas: true,
+    });
+    return (resultado?.faltantes ?? []).map((g) =>
+      EXCHANGE_GROUPS[g].nombre.toLowerCase(),
+    );
+  });
 
   const foodsPermitidos = catalogoPermitido(foods, client);
   /**
@@ -463,6 +507,39 @@ export function ClientDetail() {
             onGrid={(grid) => updateDayType(plan.id, dayType.id, { grid })}
           />
 
+          {/*
+            PAREJAS: LOS MISMOS PLATOS CON DISTINTAS CANTIDADES
+            Comen lo mismo, compran lo mismo y tienen la misma nevera, pero no
+            comen lo mismo de cada cosa. Ver `utils/basarEnOtroPlan.ts`.
+          */}
+          <BasarEnOtroPlan
+            client={client}
+            plan={plan}
+            dayType={dayType}
+            otros={otrosPlanes}
+            onCopiar={(copiado, de) => {
+              if (Object.keys(copiado.plan).length)
+                updatePlan(plan.id, copiado.plan);
+              if (Object.keys(copiado.dayType).length)
+                updateDayType(plan.id, dayType.id, copiado.dayType);
+              setCopiadoDe(de.nombre);
+            }}
+          />
+
+          {copiadoDe && (
+            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs leading-snug text-emerald-900">
+              Traído del plan de <strong className="font-medium">{copiadoDe}</strong>. Baja a las
+              recetas para revisar lo que no cuadre con lo que le has pautado a{' '}
+              {client.nombre.split(" ")[0]}.{' '}
+              <button
+                onClick={() => setCopiadoDe(null)}
+                className="underline hover:text-emerald-700"
+              >
+                Vale
+              </button>
+            </p>
+          )}
+
           <SuggestedDistribution
             planeado={planeado}
             meals={dayType.meals}
@@ -737,6 +814,36 @@ export function ClientDetail() {
                   : 'Las que le salen en la hoja de la nevera y al pedir ideas. Si no eliges ninguna, la app propone las que encajan con lo pautado'
               }
             >
+              {/*
+                LO QUE NO CUADRA, ANTES DE LA LISTA
+                Al traerse el plan de la pareja, él lleva carbohidrato en la
+                cena y ella no: sus recetas de cena siguen ahí pero traen un
+                arroz que a ella no se le ha pautado. Se dice con nombres y por
+                comida, que «la cena no cuadra» a secas obliga a abrirlas todas
+                para ver cuál. No bloquea: es lo que ella iba a revisar igual.
+              */}
+              {sinCuadrar.length > 0 && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-xs font-medium text-amber-900">
+                    {sinCuadrar.length === 1
+                      ? 'Una comida tiene recetas que no cubren lo que le has pautado'
+                      : `${sinCuadrar.length} comidas tienen recetas que no cubren lo que le has pautado`}
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {sinCuadrar.map((c) => (
+                      <li key={c.mealId} className="text-[11px] leading-snug text-amber-900">
+                        <strong className="font-medium">{c.comida}:</strong>{' '}
+                        {c.recetas.join(', ')} — falta {c.faltan.join(', ')}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1.5 text-[11px] leading-snug text-amber-800">
+                    Se quedan puestas: cámbialas por otras o ajústale el reparto. Suele pasar al
+                    traerse el plan de otra persona.
+                  </p>
+                </div>
+              )}
+
               {/*
                 LOS PLATOS SON DE TODO EL PLAN
                 Quien entrena los lunes no come otra cosa: come lo mismo con
