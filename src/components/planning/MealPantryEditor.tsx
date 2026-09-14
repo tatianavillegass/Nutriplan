@@ -102,6 +102,9 @@ export function MealPantryEditor({
   const porBucket = (bucket: MacroBucket) =>
     disponibles.filter((f) => !!f.grupo && EXCHANGE_GROUPS[f.grupo]?.bucket === bucket);
 
+  /** Los que no gastan nada: van en su propia fila, sin porciones. */
+  const libres = disponibles.filter((f) => !f.grupo);
+
   const setDespensa = (siguiente: DespensaComida) =>
     onDespensa({ ...(dayType.despensa ?? {}), [meal.id]: siguiente });
 
@@ -415,6 +418,53 @@ export function MealPantryEditor({
               );
             })}
           </div>
+          )}
+
+          {/*
+            LOS LIBRES VAN APARTE, Y NO EN UNA COLUMNA
+            La bebida de almendras, el café, el zumo de limón o una infusión no
+            caben en proteína, carbohidrato ni grasa: no aportan nada que
+            pautar. Meterlos en una columna sería mentir sobre lo que cubren, y
+            dejarlos fuera obligaba a inventarles un subgrupo con el que no
+            cuadran. Entran aquí, sin porciones y sin gastar nada.
+          */}
+          {!avit && (
+            <div className="border-t border-slate-100 pt-3">
+              <p className="mb-1 text-[11px] font-medium text-slate-700">
+                Libres, al gusto
+                <span className="tnum ml-1 font-normal text-slate-400">{libres.length}</span>
+              </p>
+              <div className="max-w-sm">
+                <FoodPicker
+                  foods={foods.filter((f) => !f.grupo)}
+                  placeholder="Bebida de almendras, café, zumo de limón…"
+                  limpiarTrasElegir
+                  motivoBloqueo={motivoBloqueo}
+                  onSelect={(f) => anadir(f.id)}
+                />
+              </div>
+
+              {libres.length > 0 ? (
+                <ul className="mt-1.5 flex flex-wrap gap-1">
+                  {libres.map((f) => (
+                    <li key={f.id}>
+                      <button
+                        onClick={() => quitar(f.id)}
+                        title="Quitar de esta comida"
+                        className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600 transition hover:border-rose-300 hover:text-rose-700"
+                      >
+                        {f.nombre} <span className="text-slate-300">−</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-[10px] leading-snug text-slate-400">
+                  No gastan intercambios: el cliente los tiene «al gusto» y sus calorías cuentan
+                  igual. La verdura no hace falta ponerla, que ya es libre para todos.
+                </p>
+              )}
+            </div>
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2">

@@ -13,7 +13,7 @@ import {
 import { coincide } from '../../utils/similitud';
 import { SUBGRUPOS_ABIERTOS } from '../../utils/subgruposAbiertos';
 import { columnasDeComida } from '../../utils/combosGuardados';
-import { notaAceite, repartoElegible } from '../../utils/pantry';
+import { libresDeComida, notaAceite, repartoElegible } from '../../utils/pantry';
 import { marcadoDeBucket, opcionElegida } from '../../utils/marcado';
 import { alternativasDe, conAlimentoCambiado } from '../../utils/cambiarAlimento';
 import { fmt } from '../common/ui';
@@ -141,6 +141,9 @@ export function ScaledOptionsBoard({
   );
 
   const esPrincipal = meal.slot === 'comida' || meal.slot === 'cena';
+
+  /** Los que ella le puso y no gastan intercambios: van en el pie. */
+  const libres = useMemo(() => libresDeComida(dayType, meal, foods), [dayType, meal, foods]);
 
   if (!columnas.length) return null;
 
@@ -395,6 +398,14 @@ export function ScaledOptionsBoard({
         {aceite && (
           <p className="text-amber-800">
             <strong className="font-medium">{aceite}</strong> — ya reservado, no hace falta elegirlo.
+          </p>
+        )}
+
+        {/* Lo que no gasta nada: si no se dice, no se sabe que se puede. */}
+        {libres.length > 0 && (
+          <p>
+            <strong className="font-medium">Libres, al gusto:</strong>{' '}
+            {libres.map((f) => f.nombre.toLowerCase()).join(', ')}
           </p>
         )}
 

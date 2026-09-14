@@ -21,6 +21,31 @@ export function esAvituallamiento(dayType: DayType, mealId: string): boolean {
   return !!dayType.avituallamientos?.[mealId];
 }
 
+/**
+ * QUÉ PUEDE APARECER EN UNA DESPENSA
+ *
+ * Hasta ahora era «lo que tiene porción de intercambio», y eso dejaba fuera a
+ * los alimentos **libres**: la bebida de almendras, el zumo de limón, el café,
+ * una infusión. No caben en ningún grupo —no aportan nada que pautar— pero se
+ * toman todos los días, y no poder ofrecérselos obligaba a inventarles un
+ * subgrupo con el que no cuadran o a dejarlos fuera del plan.
+ *
+ * Así que entran, **sin gastar nada**: cero porciones, «al gusto». Sus
+ * calorías cuentan donde se cuentan calorías, que es lo honesto.
+ *
+ * La verdura sigue aparte: es libre igual, pero tiene su propia regla de medio
+ * plato y ya se dice en el esquema, así que repetirla en cada despensa sería
+ * ruido.
+ */
+export function ofrecible(food: Alimento): boolean {
+  return !food.grupo || !!gramosPorIntercambio(food);
+}
+
+/** Los que no gastan intercambios y por eso van «al gusto». */
+export function esLibreEnLaDespensa(food: Alimento): boolean {
+  return !food.grupo;
+}
+
 /** Alimentos que ve el cliente en una comida, ya resueltos. */
 export function alimentosDeComida(
   dayType: DayType,
@@ -36,7 +61,7 @@ export function alimentosDeComida(
   if (d.seleccion) {
     return d.seleccion
       .map((id) => porId.get(id))
-      .filter((f): f is Alimento => !!f && !!gramosPorIntercambio(f));
+      .filter((f): f is Alimento => !!f && ofrecible(f));
   }
 
   // 2 · Catálogo por tipo de comida, ajustado.
@@ -50,18 +75,26 @@ export function alimentosDeComida(
     (f) =>
       (avit ? f.avituallamiento : f.comidas_sugeridas.includes(meal.slot)) &&
       !excluidos.has(f.id) &&
-      !!f.grupo &&
-      !EXCHANGE_GROUPS[f.grupo]?.ilimitado &&
-      !!gramosPorIntercambio(f),
+      /* La verdura no: tiene su regla de medio plato en el esquema. */
+      !(f.grupo && EXCHANGE_GROUPS[f.grupo]?.ilimitado) &&
+      ofrecible(f),
   );
 
   // 3 · Añadidos: alimentos que no estaban sugeridos para esa comida.
   const anadidos = (d.anadidos ?? [])
     .filter((id) => !excluidos.has(id) && !base.some((f) => f.id === id))
     .map((id) => porId.get(id))
-    .filter((f): f is Alimento => !!f && !!gramosPorIntercambio(f));
+    .filter((f): f is Alimento => !!f && ofrecible(f));
 
   return [...base, ...anadidos];
+}
+
+/**
+ * Los que no gastan nada: van aparte de las columnas de macro porque no hay
+ * porción que marcar. Se enseñan como una línea de «al gusto».
+ */
+export function libresDeComida(dayType: DayType, meal: Meal, foods: Alimento[]): Alimento[] {
+  return alimentosDeComida(dayType, meal, foods).filter(esLibreEnLaDespensa);
 }
 
 /** Los de un macro concreto. */

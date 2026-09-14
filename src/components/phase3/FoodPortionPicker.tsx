@@ -4,7 +4,12 @@ import type { Alimento } from '../../types/food';
 import type { DayType, Meal } from '../../types/plan';
 import type { PorcionesMarcadas } from '../../types/diary';
 import { EXCHANGE_GROUPS, type MacroBucket, type ExchangeGroupId } from '../../data/exchangeGroups';
-import { alimentosDeBucket, notaAceite, repartoElegible } from '../../utils/pantry';
+import {
+  alimentosDeBucket,
+  libresDeComida,
+  notaAceite,
+  repartoElegible,
+} from '../../utils/pantry';
 import { balanceComida, balanceGrasa, balanceSubgruposDeBucket } from '../../utils/dailyBudget';
 import { seleccionPorBucket, seleccionPorGrupo } from '../../utils/marcado';
 import { BUCKET_LABEL } from '../../utils/mealOptions';
@@ -279,6 +284,9 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, a
 
   const opcionesDe = (bucket: MacroBucket) => alimentosDeBucket(dayType, meal, bucket, foods);
 
+  /** Los que ella le puso y no gastan intercambios. */
+  const libres = libresDeComida(dayType, meal, foods);
+
   /** Subgrupos que el día pauta para ese macro en esta comida. */
   const subgruposDe = (bucket: MacroBucket): ExchangeGroupId[] =>
     (Object.entries(diaElegible.grid[meal.id] ?? {}) as [ExchangeGroupId, number][])
@@ -470,6 +478,22 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, a
           );
         })}
       </div>
+
+      {/*
+        LO QUE NO GASTA NADA, EN UNA LÍNEA
+        La bebida de almendras, el café o una infusión no tienen porción que
+        marcar, así que no caben en ninguna de las tres columnas. Pero si no se
+        dicen, la clienta no sabe que puede tomárselos — que es justo por lo
+        que se ponen en su despensa.
+      */}
+      {libres.length > 0 && (
+        <div className="border-t border-slate-100 px-5 py-2">
+          <p className="text-[11px] leading-snug text-slate-600">
+            <strong className="font-medium">Libres, al gusto:</strong>{' '}
+            {libres.map((f) => f.nombre.toLowerCase()).join(', ')}
+          </p>
+        </div>
+      )}
 
       {(aceite || dayType.notas?.[meal.id]) && (
         <div className="space-y-1 border-t border-slate-100 px-5 py-2 text-[11px]">

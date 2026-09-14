@@ -28,6 +28,42 @@ describe('Un alimento libre', () => {
     expect(onGuardar.mock.calls[0][0].grupo).toBeFalsy();
   });
 
+  /**
+   * EL CASO QUE LA BLOQUEABA
+   *
+   * «Tengo problemas agregando algunos alimentos porque realmente son libres y
+   * no caben dentro de ningún grupo.» Una bebida de almendras tiene hidrato y
+   * proteína suficientes para que la sugerencia por nutrientes la dé por
+   * lácteo, y dejar el desplegable en blanco no servía: la sugerencia volvía a
+   * ponerlo. Hacía falta poder decir «libre» y que eso mandara.
+   */
+  it('se puede marcar libre aunque los nutrientes sugieran un subgrupo', () => {
+    const onGuardar = vi.fn();
+    render(<FoodForm onGuardar={onGuardar} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Avena en copos'), {
+      target: { value: 'Bebida de almendras' },
+    });
+    /* Unos nutrientes que la app leería como lácteo. */
+    for (const [etiqueta, valor] of [
+      ['Hidratos', '5'],
+      ['Proteína', '4'],
+      ['Grasa', '1'],
+    ] as const) {
+      const campo = screen.queryByLabelText(new RegExp(etiqueta, 'i'));
+      if (campo) fireEvent.change(campo, { target: { value: valor } });
+    }
+
+    /* El desplegable de subgrupo es el que ofrece «Libre». */
+    const select = [...document.querySelectorAll('select')].find((s) =>
+      [...s.options].some((o) => o.value === 'libre'),
+    )!;
+    fireEvent.change(select, { target: { value: 'libre' } });
+
+    fireEvent.click(screen.getByText(/Añadir a la base de datos/i));
+    expect(onGuardar.mock.calls[0][0].grupo).toBeFalsy();
+  });
+
   it('y se dice qué significa guardarlo así', () => {
     render(<FoodForm onGuardar={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText('Avena en copos'), {

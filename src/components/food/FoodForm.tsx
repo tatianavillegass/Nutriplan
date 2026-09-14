@@ -14,6 +14,13 @@ import { Button, Field, Input, Select, fmt } from '../common/ui';
 import { NumeroConComa } from '../common/NumeroConComa';
 import { seCocinaEnTanda } from '../../utils/batchCooking';
 
+/**
+ * Valor del desplegable para «no lleva subgrupo». No es un grupo: es la marca
+ * de que la decisión está tomada, para poder distinguirla de «aún no lo he
+ * mirado» —que es cuando manda la sugerencia por nutrientes—.
+ */
+const LIBRE = 'libre' as const;
+
 const BUCKETS: [MacroBucket, string][] = [
   ['carbohidrato', 'Carbohidrato'],
   ['proteina', 'Proteína'],
@@ -73,7 +80,19 @@ interface Props {
 export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const [nombre, setNombre] = useState(inicial?.nombre ?? '');
   const [n, setN] = useState<Nutrientes100>(inicial?.nutrientes ?? NUTRIENTES_VACIOS);
-  const [grupoManual, setGrupoManual] = useState<ExchangeGroupId | ''>(inicial?.grupo ?? '');
+  /**
+   * `''` = todavía no se ha decidido, así que manda la sugerencia por
+   * nutrientes. `LIBRE` = lo ha decidido ella y es que **no lleva ninguno**.
+   *
+   * Hacían falta los dos estados. Antes sólo había uno, así que dejar el
+   * desplegable en blanco no servía de nada: la sugerencia volvía a poner el
+   * subgrupo y no había forma de guardar una bebida de almendras o un zumo de
+   * limón como lo que son. Al editar uno ya guardado sin grupo se abre en
+   * `LIBRE`, que es lo que se decidió en su día.
+   */
+  const [grupoManual, setGrupoManual] = useState<ExchangeGroupId | '' | typeof LIBRE>(
+    inicial ? (inicial.grupo ?? LIBRE) : '',
+  );
   const [medida, setMedida] = useState(inicial?.medida_casera ?? '');
   /** Gramos de la porción. Se rellena solo con el cálculo, pero se puede ajustar. */
   const [gramosManual, setGramosManual] = useState<number | undefined>(inicial?.gramos);
@@ -99,7 +118,9 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   const compuesto = Object.values(equivale).some((v) => (v ?? 0) > 0);
 
   const sugerido = useMemo(() => sugerirSubgrupo(n), [n]);
-  const grupo = (grupoManual || sugerido) as ExchangeGroupId | undefined;
+  /** Si ella ha dicho «libre», la sugerencia no manda: manda ella. */
+  const grupo =
+    grupoManual === LIBRE ? undefined : ((grupoManual || sugerido) as ExchangeGroupId | undefined);
   const bucket = grupo ? EXCHANGE_GROUPS[grupo].bucket : undefined;
 
   /** El cálculo puro, para poder ofrecer «volver a los X g calculados». */
@@ -275,7 +296,9 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
         <Field
           label="Subgrupo de intercambio"
           hint={
-            sugerido && grupoManual !== sugerido
+            grupoManual === LIBRE
+              ? 'No gasta intercambios: entra al gusto y suma sus calorías'
+              : sugerido && grupoManual !== sugerido
               ? `Por los nutrientes parece ${EXCHANGE_GROUPS[sugerido].nombre.toLowerCase()}`
               : sugerido
                 ? 'Sugerido a partir de los nutrientes'
@@ -283,11 +306,19 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
           }
         >
           <Select
-            value={grupo ?? ''}
-            onChange={(e) => setGrupoManual(e.target.value as ExchangeGroupId)}
+            value={grupoManual === LIBRE ? LIBRE : (grupo ?? '')}
+            onChange={(e) => setGrupoManual(e.target.value as ExchangeGroupId | '' | typeof LIBRE)}
             className="w-full"
           >
             <option value="">Elegir…</option>
+            {/*
+              LIBRE ES UNA RESPUESTA, NO UN HUECO
+              Hay alimentos que no caben en ningún grupo: la bebida de
+              almendras, el zumo de limón, el café, una infusión. Dejar el
+              desplegable en blanco no valía —la sugerencia por nutrientes
+              volvía a rellenarlo— así que había que poder decirlo.
+            */}
+            <option value={LIBRE}>Libre · sin subgrupo</option>
             {(bucket ? subgruposDeBucket(bucket) : EXCHANGE_GROUP_LIST.map((g) => g.id)).map((g) => (
               <option key={g} value={g}>
                 {EXCHANGE_GROUPS[g].nombre}
@@ -665,8 +696,9 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
       ) : (
         esLibre && (
           <p className="text-right text-[11px] text-slate-500">
-            Sin subgrupo se guarda como alimento libre: no gasta intercambios y en las recetas
-            saldrá «al gusto». Es lo que son la canela, el vinagre o el café.
+            Libre: no gasta intercambios y sale «al gusto». Se puede meter en su despensa, en
+            una receta o apuntarlo como extra — y sus calorías cuentan donde se cuentan
+            calorías. Es lo que son la bebida de almendras, el zumo de limón o el café.
           </p>
         )
       )}
