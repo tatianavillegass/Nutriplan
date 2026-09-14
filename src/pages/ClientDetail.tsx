@@ -848,10 +848,22 @@ export function ClientDetail() {
             />
           )}
 
-          {plan.fase === 3 && (
+          {/*
+            LA DESPENSA TAMBIÉN SE EDITA EN FASE 2
+            Sólo salía en fase 3, y en fase 2 hace *más* falta: de ella salen
+            las combinaciones que la app propone y, sobre todo, las
+            alternativas que le aparecen a la clienta al pulsar un alimento
+            para cambiarlo. Sin esto, qué frutas le sale poder elegir lo
+            decidía el catálogo y no ella.
+          */}
+          {(plan.fase === 2 || plan.fase === 3) && (
             <Card
               title="Qué puede elegir el cliente"
-              subtitle="Comida a comida: escribe los alimentos que quieras incluir y se colocan solos en su grupo. Lo que quede aquí es exactamente lo que verá."
+              subtitle={
+                plan.fase === 2
+                  ? "Comida a comida: los alimentos que quieras incluir. De aquí salen las combinaciones que se le proponen y las alternativas que ve al pulsar un alimento para cambiarlo."
+                  : "Comida a comida: escribe los alimentos que quieras incluir y se colocan solos en su grupo. Lo que quede aquí es exactamente lo que verá."
+              }
               actions={
                 <Input
                   value={dayType.postre ?? ""}

@@ -395,6 +395,18 @@ function combosDeFamilia(
   return salida;
 }
 
+/**
+ * Una opción a partir de sus alimentos. Se exporta porque al cambiar uno dentro
+ * de la opción (`utils/cambiarAlimento.ts`) hay que rehacerla **igual**: con el
+ * mismo id ordenado y el mismo texto, o la misma combinación escrita de dos
+ * maneras dejaría de reconocerse como la que la clienta tiene marcada.
+ */
+export const opcionDeItems = (
+  items: ItemOpcion[],
+  bucket: MacroBucket,
+  unificada = false,
+): OpcionEscalada => aOpcion(items, bucket, unificada);
+
 const aOpcion = (items: ItemOpcion[], bucket: MacroBucket, unificada: boolean): OpcionEscalada => {
   const cubre: ExchangeCounts = {};
   for (const it of items) cubre[it.grupo] = snapHalf((cubre[it.grupo] ?? 0) + it.intercambios);

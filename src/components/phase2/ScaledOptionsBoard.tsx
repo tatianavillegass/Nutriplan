@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { DayType, Meal } from '../../types/plan';
 import type { PorcionesMarcadas } from '../../types/diary';
@@ -7,6 +7,7 @@ import { BUCKET_LABEL, describirReparto, textoItem, type OpcionEscalada } from '
 import { columnasDeComida } from '../../utils/combosGuardados';
 import { notaAceite, repartoElegible } from '../../utils/pantry';
 import { marcadoDeBucket, opcionElegida } from '../../utils/marcado';
+import { alternativasDe, conAlimentoCambiado } from '../../utils/cambiarAlimento';
 import { fmt } from '../common/ui';
 
 interface Props {
@@ -41,6 +42,11 @@ export function ScaledOptionsBoard({
   acciones,
 }: Props) {
   const interactivo = !!porciones && !!onElegir;
+  /**
+   * El alimento cuya lista de alternativas está abierta. Sólo uno a la vez: son
+   * listas cortas, pero abrir dos a la vez convierte la comida en un formulario.
+   */
+  const [cambiando, setCambiando] = useState<string | null>(null);
 
   /** El aceite de cocción sale del reparto antes de generar opciones. */
   const { reserva } = useMemo(() => repartoElegible(dayType, meal), [dayType, meal]);
@@ -208,6 +214,75 @@ export function ScaledOptionsBoard({
                           </span>
                           <span>{contenido}</span>
                         </button>
+
+                        {/*
+                          CAMBIAR UN ALIMENTO SIN CAMBIAR DE OPCIÓN
+                          Si ella compuso «avena con arándanos», ésa es la única
+                          que sale: el día que no le apetezcan arándanos no hay
+                          nada que hacer. Aquí se pulsa el alimento y salen sus
+                          alternativas con los gramos ya hechos; la avena se
+                          queda. Ver `utils/cambiarAlimento.ts`.
+
+                          Sólo bajo la opción elegida: con cinco opciones de dos
+                          alimentos cada una, diez botones de cambiar convierten
+                          la comida en un formulario.
+                        */}
+                        {elegida && (
+                          <div className="mt-1 ml-5 space-y-1">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] text-slate-400">Cambiar:</span>
+                              {o.items.map((it) => {
+                                const otras = alternativasDe(it, dayType, meal, foods);
+                                if (!otras.length) return null;
+                                const abierto = cambiando === `${o.id}:${it.foodId}`;
+                                return (
+                                  <button
+                                    key={it.foodId}
+                                    onClick={() =>
+                                      setCambiando(abierto ? null : `${o.id}:${it.foodId}`)
+                                    }
+                                    aria-expanded={abierto}
+                                    className={`rounded-full border px-2 py-0.5 text-[10px] transition ${
+                                      abierto
+                                        ? 'border-brand-500 bg-brand-600 text-white'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
+                                    }`}
+                                  >
+                                    {it.nombre} ⇄
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {o.items.map((it) => {
+                              if (cambiando !== `${o.id}:${it.foodId}`) return null;
+                              const otras = alternativasDe(it, dayType, meal, foods);
+                              return (
+                                <ul
+                                  key={it.foodId}
+                                  className="space-y-0.5 rounded-lg border border-brand-200 bg-brand-50/40 p-1.5"
+                                >
+                                  {otras.map((alt) => (
+                                    <li key={alt.foodId}>
+                                      <button
+                                        onClick={() => {
+                                          /* Elegir la nueva sustituye a la de
+                                             este macro: no hay que quitar la
+                                             vieja a mano. */
+                                          onElegir?.(conAlimentoCambiado(o, it.foodId, alt));
+                                          setCambiando(null);
+                                        }}
+                                        className="w-full rounded px-1.5 py-1 text-left text-[12px] text-slate-700 transition hover:bg-white"
+                                      >
+                                        {textoItem(alt)}
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              );
+                            })}
+                          </div>
+                        )}
                       </li>
                     );
                   })}
