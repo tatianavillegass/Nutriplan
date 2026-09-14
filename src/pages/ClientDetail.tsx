@@ -50,7 +50,7 @@ import { RepartosGuardados } from "../components/planning/RepartosGuardados";
 import { RecetasDeLaParticipante } from "../components/retos/RecetasDeLaParticipante";
 import { MealPantryEditor } from "../components/planning/MealPantryEditor";
 import { DayTemplateBar } from "../components/planning/DayTemplateBar";
-import { ComidaDeFase2 } from "../components/phase2/ComidaDeFase2";
+import { ComboEditor } from "../components/phase2/ComboEditor";
 import { catalogoPermitido, evaluarAlimento } from "../utils/restrictions";
 import {
   RECETAS_POR_COMIDA,
@@ -1009,28 +1009,61 @@ export function ClientDetail() {
           )}
 
           {/*
-            UNA SOLA TARJETA, DOS PASOS POR COMIDA
-            Eran dos —la despensa y las combinaciones—, o sea dos listas de las
-            mismas comidas en las que había que abrir el desayuno dos veces en
-            dos sitios distintos, y sin que nada dijera que la primera alimenta
-            a la segunda. Son dos pasos de lo mismo. Ver `ComidaDeFase2`.
+            EN FASE 2 NO SE MONTA DESPENSA
+            Se abrió aquí cuando las alternativas del cambio salían de ella:
+            para que la clienta pudiera cambiar la fruta había que cargarle
+            antes cuatro frutas en cada comida de cada tipo de día. Eso es
+            media tarde de trabajo por plan, y es trabajo que no se ve.
+            Ahora la fruta y la verdura se cambian por cualquiera del catálogo
+            (`utils/subgruposAbiertos.ts`), así que no hace falta: la fase 2
+            vuelve a ser una sola tarjeta con las combinaciones, que es lo
+            único que ella pauta ahí. La despensa sigue viva en fase 3, donde
+            es la clienta quien compone la comida y hay que acotarle de qué.
           */}
           {plan.fase === 2 && (
             <Card
-              title="Qué come en cada comida"
-              subtitle="Primero los alimentos que tiene, y con ellos las combinaciones que le propones"
+              title="Combinaciones que verá el cliente"
+              subtitle="La app las propone; tú te quedas con ellas o compones las tuyas"
             >
+              {/*
+                LA LISTA QUE SE QUEDÓ DE ANTES
+                Quitar el editor no borra lo que ya estaba guardado, y una
+                lista de alimentos sigue mandando sobre lo que se propone:
+                sin decirlo, el desayuno saldría con dos opciones y no habría
+                dónde mirar por qué. Sólo sale si de verdad hay alguna.
+              */}
+              {dayType.meals.some((m) => dayType.despensa?.[m.id]?.seleccion) && (
+                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-900">
+                  <span className="flex-1">
+                    Este día tiene guardada una lista de alimentos por comida, de cuando la
+                    despensa se editaba aquí. Mientras esté, sólo se proponen combinaciones con
+                    esos alimentos.
+                  </span>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const despensa = { ...(dayType.despensa ?? {}) };
+                      for (const m of dayType.meals) {
+                        if (!despensa[m.id]?.seleccion) continue;
+                        const { seleccion: _fuera, ...resto } = despensa[m.id]!;
+                        despensa[m.id] = resto;
+                      }
+                      updateDayType(plan.id, dayType.id, { despensa });
+                    }}
+                  >
+                    Quitarla
+                  </Button>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {dayType.meals.map((m) => (
-                  <ComidaDeFase2
+                  <ComboEditor
                     key={m.id}
                     dayType={dayType}
                     meal={m}
                     foods={foods}
                     motivoBloqueo={motivoBloqueo}
-                    onDespensa={(despensa) =>
-                      updateDayType(plan.id, dayType.id, { despensa })
-                    }
                     onCombinaciones={(combinaciones) =>
                       updateDayType(plan.id, dayType.id, { combinaciones })
                     }
