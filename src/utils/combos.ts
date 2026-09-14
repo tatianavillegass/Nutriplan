@@ -373,10 +373,23 @@ function combosDeFamilia(
 
   buscar(0, pasos, [], 0);
 
+  /**
+   * PRIMERO LO SENCILLO, Y DENTRO DE ESO LO QUE MÁS LLENA
+   *
+   * Se ordenaba por calorías, y eso ponía delante lo raro: con dos porciones de
+   * fruta la primera opción salía «370 g de melón» y la segunda «melón más
+   * membrillo», porque son las que más calorías acumulan dentro del techo. Un
+   * plátano no aparecía.
+   *
+   * Lo que se elige a las ocho de la mañana es **un** alimento, no una mezcla,
+   * así que las de uno van delante de las de dos. Las calorías siguen mandando
+   * dentro de cada grupo —aprovechar lo pautado sigue siendo mejor que quedarse
+   * corta— pero dejan de decidir qué se ve.
+   */
   salida.sort(
     (a, b) =>
-      b.kcal - a.kcal ||
       a.variedad - b.variedad ||
+      b.kcal - a.kcal ||
       a.items[0].nombre.localeCompare(b.items[0].nombre),
   );
   return salida;
@@ -438,36 +451,62 @@ export function generarCombinaciones(
    * Si el macro tiene más de una familia se guardan un par de huecos para las
    * combinaciones que las mezclan —dos almidones donde había almidón y fruta—.
    * Sin reservarlos, las que respetan las familias llenan la lista y las otras
-   * no llegan a verse nunca.
+   * no llegan a verse nunca. **Sólo si de verdad va a haberlas**: con una sola
+   * familia cubierta no se genera ninguna mezclada, así que reservar huecos era
+   * dejar dos líneas en blanco y acortar la lista sin motivo.
+   *
+   * **Un hueco, no dos**: de cinco opciones, dos para lo pautado y dos para la
+   * alternativa dejaba a la clienta con dos frutas de las cuatro que hay en su
+   * despensa. Lo que se pautó es lo que se come casi siempre; la alternativa
+   * tiene que estar, pero con una basta para enseñar que se puede.
    */
   const variasFamilias = objetivo.familias.length > 1;
-  const reserva = variasFamilias ? 2 : 0;
+  const habraMezcladas = variasFamilias || !todasCubiertas;
+  const reserva = habraMezcladas ? 1 : 0;
 
   if (todasCubiertas) {
     /** Empareja el i-ésimo combo de cada familia, rotando para dar variedad. */
     const maximo = Math.max(...porFamilia.map((f) => f.combos.length));
 
-    const anadir = (indices: number[]) => {
-      const items = porFamilia.flatMap((f, k) => f.combos[indices[k] % f.combos.length].items);
+    /** El alimento que más peso lleva de la opción: el que se ve en la lista. */
+    const protagonista = (items: ItemOpcion[]) =>
+      [...items].sort((a, b) => b.intercambios - a.intercambios)[0].foodId;
+
+    const candidatas: OpcionEscalada[] = [];
+    for (let i = 0; i < maximo; i++) {
+      const items = porFamilia.flatMap((f) => f.combos[i % f.combos.length].items);
       const unificada =
-        porFamilia.length === 1 &&
-        items.length === 1 &&
-        objetivo.porSubgrupo.length > 1;
-
+        porFamilia.length === 1 && items.length === 1 && objetivo.porSubgrupo.length > 1;
       const opcion = aOpcion(items, objetivo.bucket, unificada);
-      if (vistos.has(opcion.id)) return;
-
-      const principal = [...items].sort((a, b) => b.intercambios - a.intercambios)[0];
-      const usos = protagonistas.get(principal.foodId) ?? 0;
-      if (usos >= 2) return;
-
+      if (vistos.has(opcion.id)) continue;
       vistos.add(opcion.id);
-      protagonistas.set(principal.foodId, usos + 1);
-      salida.push(opcion);
-    };
+      candidatas.push(opcion);
+    }
 
-    for (let i = 0; i < maximo && salida.length < limite - 1 - reserva; i++) {
-      anadir(porFamilia.map(() => i));
+    /**
+     * CADA ALIMENTO TIENE SU TURNO
+     *
+     * Antes se recorrían las candidatas en orden y se **descartaba en silencio**
+     * la que repitiera protagonista por tercera vez. Con dos porciones de fruta,
+     * las treinta primeras candidatas eran todas de melón —melón solo, melón con
+     * cada una de las demás— así que se aceptaban dos, se rechazaban las otras
+     * veintiocho y la lista se quedaba en dos opciones de las cinco que cabían.
+     * La clienta veía melón, melón, y nada más.
+     *
+     * Ahora se va eligiendo la primera candidata del alimento que menos veces
+     * haya salido. Nadie repite hasta que todos los demás han tenido su turno, y
+     * si sólo hay un alimento en la despensa se lleva la lista entera — que es
+     * lo correcto: no hay nada más que ofrecer.
+     */
+    const turnos = (o: OpcionEscalada) => protagonistas.get(protagonista(o.items)) ?? 0;
+    const hueco = limite - 1 - reserva;
+    while (salida.length < hueco && candidatas.length) {
+      const menos = Math.min(...candidatas.map(turnos));
+      const i = candidatas.findIndex((o) => turnos(o) === menos);
+      const [elegida] = candidatas.splice(i, 1);
+      const id = protagonista(elegida.items);
+      protagonistas.set(id, (protagonistas.get(id) ?? 0) + 1);
+      salida.push(elegida);
     }
 
     /**
@@ -495,7 +534,7 @@ export function generarCombinaciones(
    * alternativa. Es el mismo criterio del recomendador, donde una receta con
    * el subgrupo exacto puntúa por encima de la que lo cubre con otro.
    */
-  if (variasFamilias || !todasCubiertas) {
+  if (habraMezcladas) {
     const todas = new Set(objetivo.familias.map((f) => f.familia));
     const mezcladas = combosDeFamilia(
       objetivoUnificado(objetivo),
