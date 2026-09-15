@@ -126,6 +126,7 @@ export function FoodCatalogPage() {
           <FoodForm
             key={editando?.id ?? 'nuevo'}
             inicial={editando ?? undefined}
+            existentes={foods}
             onGuardar={guardar}
             onCancelar={() => {
               setEditando(null);

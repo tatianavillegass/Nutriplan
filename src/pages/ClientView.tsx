@@ -454,6 +454,13 @@ export function ClientView() {
   const foods = useMemo(() => {
     const propios = new Map<string, Alimento>();
     for (const r of mios) for (const a of r.alimentosPropios ?? []) propios.set(a.id, a);
+    /*
+     * El catálogo va DELANTE de lo suyo a propósito: es el orden que después
+     * mira el buscador para decidir cuál de dos con el mismo nombre enseña.
+     * Ver `utils/sinRepetidos.ts`. Aquí no se quita ninguno: esta lista es
+     * también con la que se leen los días viejos, y un alimento que
+     * desaparece se lleva por delante lo que ella marcó con él.
+     */
     const base = [...catalogo, ...propios.values()];
     /**
      * Y sus recetas, convertidas en alimentos con sus macros por 100 g: así se
@@ -1811,6 +1818,7 @@ export function ClientView() {
                       id: m.id,
                       nombre: m.nombre,
                     }))}
+                    foods={foods}
                     onAnadir={(alimento, mealId) =>
                       guardar({
                         alimentosPropios: [

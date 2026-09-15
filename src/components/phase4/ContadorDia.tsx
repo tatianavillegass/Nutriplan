@@ -15,6 +15,7 @@ import { kcalFromMacros } from '../../utils/macros';
 import { hcNeto } from '../../utils/portions';
 import { uid } from '../../utils/storage';
 import { FoodPicker } from '../food/FoodPicker';
+import { suyoConEseNombre } from '../../utils/sinRepetidos';
 import { Button, Input, fmt } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
@@ -430,10 +431,19 @@ function AnadirBocado({
     if (!listo) return;
     const etiqueta = (food?.nombre ?? nombre).trim();
 
+    /*
+     * SI YA SE CALCULÓ ESTE MISMO, SE REESCRIBE EL SUYO
+     *
+     * Cada vez que se usaba la etiqueta nacía un alimento con id nuevo, así que
+     * calcular «yogur griego de mi marca» el lunes y el jueves le dejaba dos
+     * iguales en el buscador para siempre. Se reutiliza el **suyo** —nunca uno
+     * del catálogo, que ése lleva los macros que puso la nutricionista— y se
+     * conserva su id, para que lo que marcó con él hace un mes siga en pie.
+     */
     /** El alimento nuevo se guarda para poder volver a usarlo hoy mismo. */
     const nuevo: Alimento | undefined = porEtiqueta
       ? ({
-          id: uid('mio_'),
+          id: suyoConEseNombre(foods, etiqueta)?.id ?? uid('mio_'),
           nombre: etiqueta,
           medida_casera: '100 g',
           gramos: 100,

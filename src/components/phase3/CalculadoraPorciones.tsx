@@ -5,12 +5,18 @@ import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { hcNeto } from '../../utils/portions';
 import { snapHalf } from '../../utils/macros';
 import { uid } from '../../utils/storage';
+import { suyoConEseNombre } from '../../utils/sinRepetidos';
 import { Button, Input, fmt } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
 interface Props {
   /** Comidas del día, para poder decir en cuál se lo comió. */
   comidas: { id: string; nombre: string }[];
+  /**
+   * Lo que ya tiene, para no crearle otro igual si vuelve a calcular la misma
+   * etiqueta otro día. Ver `suyoConEseNombre`.
+   */
+  foods?: Alimento[];
   onAnadir: (alimento: Alimento, mealId: string) => void;
 }
 
@@ -42,7 +48,7 @@ const porciones = (n: number): string => {
  * inventado— sino para lo envasado, donde el dato es real. De paso enseña el
  * sistema: «tus 40 g de granola son 1½ almidón y 1 grasa».
  */
-export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
+export function CalculadoraPorciones({ comidas, foods = [], onAnadir }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [nombre, setNombre] = useState('');
   const [n, setN] = useState<Nutrientes100>({ hc: 0, proteina: 0, grasa: 0 });
@@ -80,9 +86,19 @@ export function CalculadoraPorciones({ comidas, onAnadir }: Props) {
     setN((p) => ({ ...p, [k]: aNumero(v) }) as Nutrientes100);
 
   const anadir = () => {
+    /*
+     * SI YA SE CALCULÓ ESTE MISMO, SE REESCRIBE EL SUYO
+     *
+     * Cada vez que se usaba la etiqueta nacía un alimento con id nuevo, así que
+     * calcular «yogur griego de mi marca» el lunes y el jueves le dejaba dos
+     * iguales en el buscador para siempre. Se reutiliza el **suyo** —nunca uno
+     * del catálogo, que ése lleva los macros que puso la nutricionista— y se
+     * conserva su id, para que lo que marcó con él hace un mes siga en pie.
+     */
+    const comoSeLlama = nombre.trim() || 'Alimento calculado';
     const alimento: Alimento = {
-      id: uid('mio_'),
-      nombre: nombre.trim() || 'Alimento calculado',
+      id: suyoConEseNombre(foods, comoSeLlama)?.id ?? uid('mio_'),
+      nombre: comoSeLlama,
       grupo: (Object.keys(enPorciones)[0] as ExchangeGroupId) ?? 'almidones',
       bucket: 'carbohidrato',
       medida_casera: `${cuanto} g`,

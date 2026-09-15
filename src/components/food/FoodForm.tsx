@@ -13,6 +13,7 @@ import { kcalFromMacros } from '../../utils/macros';
 import { Button, Field, Input, Select, fmt } from '../common/ui';
 import { NumeroConComa } from '../common/NumeroConComa';
 import { seCocinaEnTanda } from '../../utils/batchCooking';
+import { mismoNombre } from '../../utils/sinRepetidos';
 
 /**
  * Valor del desplegable para «no lleva subgrupo». No es un grupo: es la marca
@@ -69,6 +70,12 @@ export interface FoodFormValue {
 
 interface Props {
   inicial?: Alimento;
+  /**
+   * El catálogo, sólo para avisar si ya hay uno con ese nombre. Duplicar un
+   * alimento no rompe nada, pero después salen los dos en cada buscador y no
+   * se sabe cuál de los dos lleva los gramos buenos.
+   */
+  existentes?: Alimento[];
   onGuardar: (v: FoodFormValue) => void;
   onCancelar?: () => void;
 }
@@ -77,7 +84,7 @@ interface Props {
  * Alta de alimentos. Se introducen los datos por 100 g y la app deduce
  * cuántos gramos son una porción del subgrupo elegido.
  */
-export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
+export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Props) {
   const [nombre, setNombre] = useState(inicial?.nombre ?? '');
   const [n, setN] = useState<Nutrientes100>(inicial?.nutrientes ?? NUTRIENTES_VACIOS);
   /**
@@ -175,6 +182,12 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
    * era pedirles algo que no existe, y por eso no se podían guardar. Sin
    * subgrupo, el alimento es libre — que es justo lo que son.
    */
+  /** ¿Ya hay uno que se llama así? Al editar, él mismo no cuenta. */
+  const repetido = useMemo(() => {
+    const otro = mismoNombre(existentes, nombre);
+    return otro && otro.id !== inicial?.id ? otro : undefined;
+  }, [existentes, nombre, inicial?.id]);
+
   const esLibre = !grupo;
   const puedeGuardar = nombre.trim().length > 1 && (esLibre || !!porcion);
 
@@ -220,7 +233,10 @@ export function FoodForm({ inicial, onGuardar, onCancelar }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Field label="Nombre del alimento">
+        <Field
+          label="Nombre del alimento"
+          hint={repetido ? 'Ya tienes uno que se llama así' : undefined}
+        >
           <Input
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}

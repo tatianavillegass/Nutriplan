@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Alimento } from '../../types/food';
+import { sinRepetidos } from '../../utils/sinRepetidos';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 
@@ -82,10 +83,32 @@ export function FoodPicker({
       })
       .filter(Boolean) as { f: Alimento; p: number }[];
 
-    return conPuntos
-      .sort((a, b) => a.p - b.p || a.f.nombre.localeCompare(b.f.nombre))
-      .slice(0, 10)
-      .map((x) => x.f);
+    /*
+     * EL MISMO ALIMENTO, UNA SOLA VEZ
+     *
+     * A la clienta se le juntan el catálogo, lo que se calculó con la etiqueta
+     * y lo que cocina, y cada origen pone su propio id. Cuando la nutricionista
+     * acepta un alimento de una clienta nace una copia en su catálogo y la de
+     * la clienta **sigue viva** —no se puede borrar: el registro del día es
+     * suyo y sólo lo escribe ella—, así que el mismo yogur salía dos veces en
+     * el buscador. Y calcular la misma etiqueta dos días distintos hacía lo
+     * mismo sin que nadie tocara nada.
+     *
+     * Se quitan **aquí y no en la lista de alimentos**: esa lista es también
+     * con la que se leen los días viejos, y un alimento que desaparece de ella
+     * se lleva por delante lo que la clienta marcó con él hace un mes. Aquí
+     * sólo se elige lo que se va a comer hoy, así que esconder el repetido no
+     * puede romper nada.
+     *
+     * Manda el que llega antes en la lista, que es el del catálogo: el suyo
+     * está revisado —alérgenos, medida casera, equivalencia de cocido— y el de
+     * la clienta se escribió deprisa con una etiqueta delante.
+     */
+    return sinRepetidos(
+      conPuntos
+        .sort((a, b) => a.p - b.p || a.f.nombre.localeCompare(b.f.nombre))
+        .map((x) => x.f),
+    ).slice(0, 10);
   }, [q, foods]);
 
   useEffect(() => setActivo(0), [q]);
