@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
+import { evaluarAlimento } from "../utils/restrictions";
 import {
   esperaSuPlan,
   observarFallo,
@@ -469,6 +470,23 @@ export function ClientView() {
      */
     return [...base, ...alimentosDeSusRecetas(mios, base)];
   }, [catalogo, mios]);
+
+  /**
+   * QUÉ SE LE PUEDE OFRECER A ESTA PERSONA
+   *
+   * Al cambiar un alimento de una combinación se abre el catálogo de su
+   * subgrupo, y en la proteína están el marisco, el huevo y el pescado. Este
+   * catálogo **no viene filtrado** —es el de la nutricionista tal cual—, así
+   * que sin esto se le ofrecerían gambas a una alérgica al crustáceo.
+   *
+   * Se filtra aquí y no en `foods`: esa lista es con la que se leen sus días
+   * viejos, y si un alimento desapareciera de ella se perdería lo que marcó
+   * con él antes de que se le apuntara la alergia.
+   */
+  const sePuedeOfrecer = useCallback(
+    (f: Alimento) => (client ? !evaluarAlimento(f, client).bloqueado : true),
+    [client],
+  );
 
   /** Las que ha escrito ella, juntando todos sus días. */
   const misRecetas = useMemo(() => recetasPropiasDe(mios), [mios]);
@@ -1755,6 +1773,7 @@ export function ClientView() {
                       porciones={porciones}
                       onElegir={(o) => elegirOpcionComida(m.id, o)}
                       acciones={accionesDe(m.id, m.nombre)}
+                      permitido={sePuedeOfrecer}
                     />
                     <RecipeShortcuts
                       plan={plan}

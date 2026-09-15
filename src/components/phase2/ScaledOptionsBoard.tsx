@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { DayType, Meal } from '../../types/plan';
 import type { MacroBucket } from '../../data/exchangeGroups';
+import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import type { PorcionesMarcadas } from '../../types/diary';
 import { MIN_VERDURA_G } from '../../data/exchangeGroups';
 import {
@@ -36,6 +37,14 @@ interface Props {
   onPostre?: (texto: string) => void;
   /** Marcar como hecha y comida libre, junto al nombre de la comida. */
   acciones?: React.ReactNode;
+  /**
+   * Si un alimento del catálogo se le puede ofrecer a esta persona. Al cambiar
+   * un alimento se abre el catálogo de su subgrupo, y en la proteína están el
+   * marisco, el huevo y el pescado: sin esto se le ofrecerían gambas a una
+   * alérgica al crustáceo. Sin pasarlo no se filtra nada, que es lo que quiere
+   * la vista previa de la nutricionista y el PDF.
+   */
+  permitido?: (f: Alimento) => boolean;
 }
 
 /**
@@ -63,7 +72,11 @@ function ListaDeCambio({
   const [q, setQ] = useState('');
   const buscar = alternativas.length > CON_BUSCADOR;
   const visibles = q.trim() ? alternativas.filter((a) => coincide(a.nombre, q)) : alternativas;
-  const comoSeLlama = SUBGRUPOS_ABIERTOS[item.grupo]?.toLowerCase() ?? 'alimento';
+  /* «Buscar fruta…», «Buscar proteicos magros…»: el nombre de su subgrupo. */
+  const comoSeLlama =
+    SUBGRUPOS_ABIERTOS[item.grupo]?.toLowerCase() ??
+    EXCHANGE_GROUPS[item.grupo]?.nombre.toLowerCase() ??
+    'alimento';
 
   return (
     <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-1.5">
@@ -112,6 +125,7 @@ export function ScaledOptionsBoard({
   onNota,
   onPostre,
   acciones,
+  permitido,
 }: Props) {
   const interactivo = !!porciones && !!onElegir;
   /**
@@ -281,7 +295,7 @@ export function ScaledOptionsBoard({
                           ? o.items
                               .map((it) => ({
                                 it,
-                                otras: alternativasDe(it, dayType, meal, foods),
+                                otras: alternativasDe(it, dayType, meal, foods, permitido),
                               }))
                               .filter((x) => x.otras.length > 0)
                           : [];
@@ -292,27 +306,24 @@ export function ScaledOptionsBoard({
                             <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
                             <span className="text-slate-700">{contenido}</span>
                           </span>
-                          {cambiables.map(({ it, otras }) => (
+                          {cambiables.map(({ it }) => (
                             <span
                               key={it.foodId}
                               className="mt-0.5 ml-3.5 block text-[10px] leading-snug text-slate-400 no-print"
                             >
                               {/*
-                                En la fruta y la verdura la lista es el
-                                catálogo entero: enumerar cuatro y «y 36 más»
-                                haría pensar que hay una lista corta que
-                                revisar, cuando lo que hay que saber es que
-                                puede elegir la que quiera.
+                                La lista es el catálogo entero de su subgrupo,
+                                así que enumerar cuatro y «y 36 más» haría
+                                pensar que hay una lista corta que revisar. Lo
+                                que hay que saber es que puede elegir el que
+                                quiera, y de qué.
                               */}
-                              puede cambiar {it.nombre.toLowerCase()} por{' '}
-                              {SUBGRUPOS_ABIERTOS[it.grupo]
-                                ? `cualquier ${SUBGRUPOS_ABIERTOS[it.grupo]!.toLowerCase()}`
-                                : `${otras
-                                    .slice(0, 4)
-                                    .map((a) => a.nombre.toLowerCase())
-                                    .join(', ')}${
-                                    otras.length > 4 ? ` y ${otras.length - 4} más` : ''
-                                  }`}
+                              puede cambiar {it.nombre.toLowerCase()} por cualquier{' '}
+                              {(
+                                SUBGRUPOS_ABIERTOS[it.grupo] ??
+                                EXCHANGE_GROUPS[it.grupo]?.nombre ??
+                                'alimento'
+                              ).toLowerCase()}
                             </span>
                           ))}
                         </li>
@@ -369,7 +380,7 @@ export function ScaledOptionsBoard({
                             <div className="flex flex-wrap items-center gap-1">
                               <span className="text-[10px] text-slate-400">Cambiar:</span>
                               {o.items.map((it) => {
-                                const otras = alternativasDe(it, dayType, meal, foods);
+                                const otras = alternativasDe(it, dayType, meal, foods, permitido);
                                 if (!otras.length) return null;
                                 const abierto = cambiando === `${o.id}:${it.foodId}`;
                                 return (
@@ -397,7 +408,7 @@ export function ScaledOptionsBoard({
                                 <ListaDeCambio
                                   key={it.foodId}
                                   item={it}
-                                  alternativas={alternativasDe(it, dayType, meal, foods)}
+                                  alternativas={alternativasDe(it, dayType, meal, foods, permitido)}
                                   onElegir={(alt) => {
                                     /* Elegir la nueva sustituye a la de este
                                        macro: no hay que quitar la vieja a

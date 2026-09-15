@@ -5,7 +5,6 @@ import type { DayType, Meal } from '../types/plan';
 import type { ItemOpcion, OpcionEscalada } from './mealOptions';
 import { opcionDeItems } from './combos';
 import { alimentosDeComida, tachadoAMano } from './pantry';
-import { esAbierto } from './subgruposAbiertos';
 import { gramosPorIntercambio } from './recipeComposition';
 import { escalarMedida } from './measures';
 import { roundPortion } from './macros';
@@ -37,21 +36,29 @@ import { roundPortion } from './macros';
  * gramos se queda. Meterlo aquí mezclaría una sustitución exacta con una que
  * cambia lo que se pautó, y en el mismo gesto.
  *
- * LA DESPENSA MANDA, SALVO EN LA FRUTA Y LA VERDURA
- * =================================================
- * Lo que puede elegir lo decide la nutricionista comida a comida: ahí es donde
- * ya están filtrados sus alérgenos, sus patologías y lo que no le gusta. Con
- * una excepción, que es la misma que ya tenía la fase 3: **una porción de
- * fruta es cualquier fruta**. Si en la despensa del desayuno sólo le cupieron
- * arándanos, esta pantalla decía «no hay nada que cambiar» — y la clienta se
- * quedaba comiendo arándanos todos los días porque la app no le dejaba otra
- * cosa. En esos subgrupos (`SUBGRUPOS_ABIERTOS`) se ofrece el catálogo entero,
- * con las de su despensa primero, que son las que ella le sugirió.
+ * SE ABRE EL CATÁLOGO, EN TODOS LOS SUBGRUPOS
+ * ===========================================
+ * Al principio sólo se abría en la fruta y la verdura, y en los demás se
+ * ofrecía únicamente lo de su despensa. Parecía prudente y no lo era: **la
+ * proteína son tres subgrupos** —magros, semigrasos y grasos— así que una cena
+ * con pollo, salmón y tofu parece variada y en realidad es **uno de cada**.
+ * Ninguno tenía con quién cambiarse y el botón no salía. A unas clientas les
+ * funcionaba y a otras no, según lo que tuvieran guardado.
  *
- * Lo que ella haya **quitado a mano** sigue fuera, también del catálogo: una
- * exclusión es una decisión, no un hueco por rellenar. Y en los demás
- * subgrupos no cambia nada: pollo y gambas no son la misma cena, así que ahí
- * la lista corta de la despensa es justo lo que ella decide.
+ * Y el argumento que lo sostenía era flojo: «pollo y gambas no se comen igual»
+ * es verdad de la receta, no del intercambio. Dentro de un subgrupo la porción
+ * es idéntica, así que pollo por merluza es **tan exacto** como manzana por
+ * pera. Lo que la nutricionista pone en la despensa son sugerencias, no una
+ * jaula — que es lo que ya decía la fase 3.
+ *
+ * Dos cosas siguen fuera, y son las importantes:
+ *
+ * - **Lo que ella tachó a mano** (`tachadoAMano`): una exclusión es una
+ *   decisión, no un hueco por rellenar.
+ * - **Lo que tiene vetado**, si se pasa `permitido`. Esto antes no se
+ *   comprobaba porque con la fruta casi nunca importaba; con la proteína sí,
+ *   que ahí están el marisco, el huevo y el pescado. La lista del cliente no
+ *   viene filtrada por alérgenos, así que el filtro se pasa desde fuera.
  */
 
 /** Las otras opciones para ese alimento, ya escaladas a sus mismas porciones. */
@@ -60,21 +67,33 @@ export function alternativasDe(
   dayType: DayType,
   meal: Meal,
   foods: Alimento[],
+  /**
+   * Si un alimento del catálogo se le puede ofrecer a esta persona. Sin esto se
+   * le ofrecerían gambas a una alérgica al crustáceo: el catálogo que lee su
+   * app no viene filtrado.
+   */
+  permitido?: (f: Alimento) => boolean,
 ): ItemOpcion[] {
-  const suyos = alimentosDeComida(dayType, meal, foods).filter((f) => f.grupo === item.grupo);
+  /*
+   * También lo suyo pasa por el filtro: un alérgeno es sí o no, y da igual
+   * quién lo pusiera. Si le apuntó la celiaquía después de montarle la
+   * despensa, el pan que dejó ahí no se le puede seguir ofreciendo.
+   */
+  const suyos = alimentosDeComida(dayType, meal, foods).filter(
+    (f) => f.grupo === item.grupo && (!permitido || permitido(f)),
+  );
 
   /*
-   * El resto del subgrupo, detrás de las suyas y sin lo que ella haya tachado.
-   * Sólo en fruta y verdura: ver la cabecera.
+   * El resto del subgrupo, detrás de las suyas: sin lo que ella haya tachado y
+   * sin lo que la clienta tenga vetado. Ver la cabecera.
    */
-  const resto = esAbierto(item.grupo)
-    ? foods.filter(
-        (f) =>
-          f.grupo === item.grupo &&
-          !suyos.some((s) => s.id === f.id) &&
-          !tachadoAMano(dayType, meal.id, f.id),
-      )
-    : [];
+  const resto = foods.filter(
+    (f) =>
+      f.grupo === item.grupo &&
+      !suyos.some((s) => s.id === f.id) &&
+      !tachadoAMano(dayType, meal.id, f.id) &&
+      (!permitido || permitido(f)),
+  );
 
   const deSuDespensa = new Set(suyos.map((f) => f.id));
 

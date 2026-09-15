@@ -14,9 +14,13 @@ import type { ExchangeGroupId } from '../data/exchangeGroups';
  * coma arándanos porque es la única fruta que le cabía en la despensa es la
  * app mandando donde no le toca.
  *
- * Los demás subgrupos NO entran: un proteico magro no es intercambiable así
- * —pollo y gambas no se comen igual— y ahí la lista corta de la despensa es
- * justo lo que ella decide.
+ * OJO: esta lista es sólo **cómo se pinta la fase 3**, no quién se puede
+ * cambiar por quién. Al cambiar un alimento dentro de una combinación de fase
+ * 2 se abre el catálogo de **cualquier** subgrupo (ver `cambiarAlimento`):
+ * dentro de un subgrupo la porción es la misma, así que pollo por merluza es
+ * tan exacto como manzana por pera. Lo que no se hace en fase 3 es enseñar
+ * «Proteico magro» plegado: ahí la clienta compone la comida entera y la lista
+ * de ella es la sugerencia que se lee.
  */
 export const SUBGRUPOS_ABIERTOS: Partial<Record<ExchangeGroupId, string>> = {
   fruta: 'Fruta',
