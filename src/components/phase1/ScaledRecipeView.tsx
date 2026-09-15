@@ -259,8 +259,29 @@ export function ScaledRecipeView({
               const equivalente = equivalenteId
                 ? foods.find((f) => f.id === equivalenteId)
                 : undefined;
-              const intercambios =
+              /**
+               * CUÁNTAS PORCIONES ES ESTE INGREDIENTE
+               *
+               * Salía del reparto pautado (`requeridos[su subgrupo]`), y eso
+               * deja sin botón de cambiar a **todo lo que cubre un macro con
+               * otro subgrupo** — que es la regla de siempre: pautas proteicos
+               * magros y la receta lo trae con salmón, que es graso. Ahí
+               * `requeridos['proteicos_grasos']` no existe, salía 0 y no había
+               * nada que cambiar. Por eso a unas recetas les salía el botón en
+               * la proteína y a otras no.
+               *
+               * Cuando el subgrupo **sí** está pautado se sigue leyendo de ahí,
+               * que es lo que ya funcionaba. Si no, se cuenta **lo que hay en
+               * el plato**: sus gramos entre los que hacen una porción de su
+               * alimento. Es la misma cuenta, hecha por el otro lado.
+               */
+              const pautadas =
                 (requeridos[ing.grupo as keyof typeof requeridos] as number | undefined) ?? 0;
+              const original = ing.foodId ? foods.find((f) => f.id === ing.foodId) : undefined;
+              const gpiOriginal = original ? gramosPorIntercambio(original) : undefined;
+              const enElPlato =
+                gpiOriginal && ing.cantidad_final ? ing.cantidad_final / gpiOriginal : 0;
+              const intercambios = pautadas > 0 ? pautadas : enElPlato;
               const gpi = equivalente ? gramosPorIntercambio(equivalente) : undefined;
 
               const nombreFinal = equivalente?.nombre ?? ing.nombre;

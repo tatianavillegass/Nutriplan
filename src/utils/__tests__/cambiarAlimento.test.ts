@@ -66,55 +66,36 @@ describe('Las alternativas de un alimento', () => {
   });
 
   /**
-   * EL CASO DE LA PROTEÍNA
+   * EN LOS DEMÁS SUBGRUPOS NO SE ABRE, A PROPÓSITO
    *
-   * «A algunas personas no les deja cambiar la proteína.» La proteína son tres
-   * subgrupos, así que una cena con pollo, salmón y tofu parece variada y es
-   * **uno de cada**: ninguno tenía con quién cambiarse. Dentro de un subgrupo
-   * la porción es idéntica, así que pollo por merluza es tan exacto como
-   * manzana por pera — se abre el catálogo en todos.
+   * Se probó a abrirlo en todos y se retiró: en fase 2 lo que la nutricionista
+   * compone es la comida entera, y ofrecerle los veintiséis proteicos magros
+   * del catálogo es quitarle a ella la decisión de qué cena. La proteína se
+   * cambia en las recetas de fase 1, donde el plato ya está escrito.
    */
-  it('en los demás subgrupos también se abre el catálogo', () => {
+  it('en los demás subgrupos se queda en su despensa', () => {
     const dayType = dia();
     const almidon = primeraOpcion(dayType).items.find((i) => i.grupo === 'almidones')!;
     const otras = alternativasDe(almidon, dayType, DESAYUNO, FOOD_CATALOG);
-
-    expect(otras.length).toBeGreaterThan(5);
-    expect(otras.every((a) => a.grupo === 'almidones')).toBe(true);
-    /* Y las suyas siguen saliendo primero. */
-    expect(DESPENSA.includes(otras[0].foodId)).toBe(true);
+    expect(otras.every((a) => DESPENSA.includes(a.foodId))).toBe(true);
   });
 
   /**
    * LO QUE NO SE LE PUEDE OFRECER SIGUE FUERA
    *
-   * En la proteína están el marisco, el huevo y el pescado, y el catálogo que
-   * lee su app no viene filtrado por alérgenos. Sin este filtro se le
-   * ofrecerían gambas a una alérgica al crustáceo.
+   * El catálogo que lee su app no viene filtrado por alérgenos, así que al
+   * abrir la fruta se le podían ofrecer frutas vetadas.
    */
   it('y lo que tiene vetado no se le ofrece', () => {
-    const dayType = dia();
-    const almidon = primeraOpcion(dayType).items.find((i) => i.grupo === 'almidones')!;
-    const sinGluten = (f: { alergenos?: string[] }) => !(f.alergenos ?? []).includes('gluten');
-
-    const todas = alternativasDe(almidon, dayType, DESAYUNO, FOOD_CATALOG);
-    const filtradas = alternativasDe(almidon, dayType, DESAYUNO, FOOD_CATALOG, sinGluten);
-
-    expect(filtradas.length).toBeLessThan(todas.length);
-    /* Ni uno con gluten, tampoco el pan que ella le había dejado en la
-       despensa: un alérgeno es sí o no, y da igual quién lo pusiera. */
-    const conGluten = new Set(
-      FOOD_CATALOG.filter((f) => (f.alergenos ?? []).includes('gluten')).map((f) => f.id),
-    );
-    expect(filtradas.some((a) => conGluten.has(a.foodId))).toBe(false);
-    expect(todas.some((a) => conGluten.has(a.foodId))).toBe(true);
-  });
-
-  /** Pero lo suyo no se filtra: si ella se lo puso, es que se lo puede comer. */
-  it('sin filtro no se quita nada', () => {
-    const dayType = dia();
+    const dayType = dia(['a-arandanos', 'a-avena-copos']);
     const fruta = laFruta(primeraOpcion(dayType).items);
-    expect(alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG).length).toBeGreaterThan(5);
+    const sinPlatano = (f: { id: string }) => f.id !== 'a-platano';
+
+    const todas = alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG);
+    const filtradas = alternativasDe(fruta, dayType, DESAYUNO, FOOD_CATALOG, sinPlatano);
+
+    expect(todas.some((a) => a.foodId === 'a-platano')).toBe(true);
+    expect(filtradas.some((a) => a.foodId === 'a-platano')).toBe(false);
   });
 
   /** 125 g de arándanos y 65 g de plátano son la misma porción. */
