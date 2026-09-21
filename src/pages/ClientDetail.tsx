@@ -2,6 +2,8 @@ import { useState } from "react";
 import { edadDe, type Client } from "../types/client";
 import type { Plan } from "../types/plan";
 import { BasarEnOtroPlan } from "../components/planning/BasarEnOtroPlan";
+import { CambiosDesdeLaAnterior } from "../components/planning/CambiosDesdeLaAnterior";
+import { anteriorA, recetasPorSlot } from "../utils/compararPlanes";
 import { loQueNoCuadra } from "../utils/basarEnOtroPlan";
 import { matchRecipes } from "../utils/recipeMatcher";
 import { EXCHANGE_GROUPS } from "../data/exchangeGroups";
@@ -221,6 +223,11 @@ export function ClientDetail() {
         [mealId]: { ...(dayType.ingredientesAnadidos?.[mealId] ?? {}), [recetaId]: anadidos },
       },
     });
+
+  /** La planificación de la revisión pasada, para poder decir qué cambia. */
+  const laAnterior = anteriorA(plan, plans);
+  /** Qué recetas llevaba cada comida antes de esta revisión. */
+  const recetasDeAntes = laAnterior ? recetasPorSlot(laAnterior) : {};
 
   const registrosCliente = registros.filter((r) => r.clientId === client.id);
   /** Si está en un reto, aquí sólo se calcula y se reparte: lo demás es del reto. */
@@ -521,6 +528,19 @@ export function ClientDetail() {
 
       {tab === "plan" && (
         <div className="space-y-4">
+          {/*
+            DE DÓNDE VIENE ESTA PLANIFICACIÓN
+            En una revisión mensual la nueva nace clonada de la anterior, así
+            que en pantalla son idénticas: lo que hace falta ver no es el plan
+            —ése ya se está mirando— sino la diferencia. Va fija arriba porque
+            se mira mientras se retoca el reparto, que es cuando se decide.
+          */}
+          <CambiosDesdeLaAnterior
+            plan={plan}
+            anterior={laAnterior}
+            recetas={recipes}
+          />
+
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)]">
             <MacroTargets
               dayType={dayType}
@@ -899,6 +919,7 @@ export function ClientDetail() {
                     recetas={recipes}
                     client={client}
                     foods={foodsPermitidos}
+                    deLaAnterior={recetasDeAntes[m.slot]}
                     abierto={comidaAbierta === m.id}
                     onAlternar={() =>
                       setComidaAbierta((v) => (v === m.id ? null : m.id))

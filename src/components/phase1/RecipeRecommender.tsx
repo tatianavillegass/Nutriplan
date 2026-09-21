@@ -46,6 +46,15 @@ interface Props {
   /** Cerrar ésta y abrir la siguiente, que es lo que se hace de verdad. */
   onSiguiente?: () => void;
   foods?: Alimento[];
+  /**
+   * LO QUE YA COMÍA ANTES DE ESTA REVISIÓN
+   *
+   * Las recetas que esta misma comida tenía en la planificación anterior. En
+   * una revisión mensual la pregunta no es «qué le pongo» sino «cuáles le
+   * dejo, cuáles le cambio y cuántas le sumo», y sin esto hay que abrir la
+   * archivada en otra pestaña e ir comparando nombre a nombre.
+   */
+  deLaAnterior?: string[];
   /** Guardar cambios en la receta del banco. */
   onEditarReceta?: (recetaId: string, patch: Partial<Receta>) => void;
   /** Guardar los gramos ajustados a mano, sólo para esta clienta. */
@@ -106,6 +115,7 @@ export function RecipeRecommender({
   onAlternar,
   onSiguiente,
   foods = [],
+  deLaAnterior,
   onEditarReceta,
   onAjustarCantidades,
 }: Props) {
@@ -262,6 +272,22 @@ export function RecipeRecommender({
    */
   const minimoPuesto = elegidas.length >= RECETAS_POR_COMIDA;
 
+  /**
+   * QUÉ LE DEJAS, QUÉ LE QUITAS Y QUÉ LE SUMAS
+   *
+   * Las tres cuentas de una revisión. `fuera` son las que tenía y ya no están
+   * elegidas: se dicen **por su nombre**, porque una receta que desaparece de
+   * la lista no se echa de menos — se olvida, y la clienta se queda sin el
+   * desayuno que ya se sabía sin que nadie lo haya decidido.
+   */
+  const antes = deLaAnterior ?? [];
+  const eraSuya = (id: string) => antes.includes(id);
+  const siguen = seleccionadas.filter(eraSuya);
+  const nuevas = seleccionadas.filter((id) => !eraSuya(id));
+  const fuera = antes
+    .filter((id) => !seleccionadas.includes(id))
+    .map((id) => recetas.find((r) => r.id === id)?.nombre ?? id);
+
   const cabecera = (
     <div className="flex flex-wrap items-baseline justify-between gap-2">
       <div className="flex items-baseline gap-2">
@@ -285,6 +311,13 @@ export function RecipeRecommender({
           {elegidas.length} {elegidas.length === 1 ? 'opción' : 'opciones'}
           {!minimoPuesto && ` · mínimo ${RECETAS_POR_COMIDA}`}
         </span>
+        {antes.length > 0 && (
+          <span className="text-[10px] text-slate-400">
+            {siguen.length} de antes
+            {nuevas.length > 0 && ` · ${nuevas.length} nueva${nuevas.length === 1 ? '' : 's'}`}
+            {fuera.length > 0 && ` · ${fuera.length} fuera`}
+          </span>
+        )}
       </div>
       <p className="tnum text-[11px] text-slate-400">{loPautado}</p>
     </div>
@@ -477,6 +510,16 @@ export function RecipeRecommender({
                       )}
                     </span>
                   )}
+                  {/*
+                    «YA LA TENÍA» VA EN EL PIE, NO EN LA ESQUINA
+                    La esquina se esconde en cuanto la tarjeta está elegida, y
+                    las que ya tenía son justo las que están elegidas: ahí no
+                    se vería nunca. En el pie se lee siempre, que es lo que
+                    hace falta al revisar —esto se queda o se cambia—.
+                  */}
+                  {eraSuya(s.receta.id) && (
+                    <span className="block text-[10px] text-slate-500">ya la tenía</span>
+                  )}
                   {porQue && (
                     <span className="block text-[10px] text-slate-400">{porQue}</span>
                   )}
@@ -520,6 +563,13 @@ export function RecipeRecommender({
             ({visibles.length} de {todas.length})
           </span>
         </button>
+      )}
+
+      {fuera.length > 0 && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          Le quitas de la planificación anterior: {fuera.join(', ')}. Si era de las que ya se
+          sabía, vuelve a marcarla.
+        </p>
       )}
 
       {minimoPuesto && (

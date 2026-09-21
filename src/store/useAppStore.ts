@@ -467,6 +467,20 @@ export const useAppStore = create<AppState>((set, get) => {
         fecha: hoy,
         kcalObjetivo,
         notas: undefined,
+        /**
+         * UNA PLANIFICACIÓN NUEVA NACE SIN ENVIAR
+         *
+         * Al clonar la anterior se copiaba también su marca de envío, así que
+         * la nueva nacía creyéndose mandada: el aviso ámbar de «sin enviar» no
+         * salía y se podía dar por enviada una revisión que la clienta no
+         * tenía. `envio` se borra.
+         *
+         * **La foto (`publicado`) se queda a propósito**: es lo que la clienta
+         * está comiendo. Borrarla la dejaría sin plan desde la revisión hasta
+         * el envío — que es justo el rato en que se le está montando el nuevo.
+         * Sigue comiendo el de antes, que es lo último que se le mandó.
+         */
+        envio: undefined,
         createdAt: hoy,
         updatedAt: hoy,
       };

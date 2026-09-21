@@ -643,6 +643,13 @@ export function fotoDelPlan(plan: Plan): PlanPublicado {
  * come el plan de antes. Por eso esto existe y se enseña bien visible.
  */
 export function hayCambiosSinEnviar(plan: Plan): boolean {
+  /*
+   * Sin envío, nada de esto se ha mandado — y da igual lo que diga la foto.
+   * Una planificación nueva hereda la foto de la anterior a propósito, para
+   * que la clienta siga comiendo mientras se le monta; sin esta línea salía
+   * como enviada porque la foto heredada coincidía con el clon.
+   */
+  if (!plan.envio) return true;
   if (!plan.publicado) return true;
   const ahora = JSON.stringify({
     fase: plan.fase,
