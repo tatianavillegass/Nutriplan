@@ -8,6 +8,7 @@ import { ClientView } from "./pages/ClientView";
 import { TemplatesPage } from "./pages/TemplatesPage";
 import { RecursosPage } from "./pages/RecursosPage";
 import { RetosPage } from "./pages/RetosPage";
+import { AgendaPage } from "./pages/AgendaPage";
 import { PerfilPage } from "./pages/PerfilPage";
 import { ApuntarsePage } from "./pages/ApuntarsePage";
 import { AuthPage } from "./pages/AuthPage";
@@ -23,6 +24,7 @@ import {
 
 const nav = [
   { to: "/clientes", label: "Clientes" },
+  { to: "/agenda", label: "Agenda" },
   { to: "/recetas", label: "Banco de recetas" },
   { to: "/alimentos", label: "Alimentos" },
   { to: "/plantillas", label: "Mis plantillas" },
@@ -211,7 +213,8 @@ export default function App() {
               <Route path="/alimentos" element={<FoodCatalogPage />} />
               <Route path="/plantillas" element={<TemplatesPage />} />
               <Route path="/recursos" element={<RecursosPage />} />
-              <Route path="/retos" element={<RetosPage />} />
+              <Route path="/agenda" element={<AgendaPage />} />
+            <Route path="/retos" element={<RetosPage />} />
               <Route path="/perfil" element={<PerfilPage />} />
             </>
           )}

@@ -20,6 +20,7 @@ import {
   icsComoEnlace,
   resumenDePagos,
 } from "../../utils/agenda";
+import { conLaCita, proximaCita, sinLaCita } from "../../utils/citas";
 import { Button, Card, Field, Input, Select, fmt } from "../common/ui";
 import { uid } from "../../utils/storage";
 
@@ -42,7 +43,15 @@ const hoyIso = () => new Date().toISOString().slice(0, 10);
  * para ahorrar dos clics: no compensa con cuatro citas al mes.
  */
 export function CitaPanel({ client, onChange }: Props) {
-  const cita = client.cita;
+  /*
+   * LA CITA DE LA FICHA ES UNA DE LA AGENDA
+   *
+   * Lo que se escribe aquí tiene que salir en la semana, y al revés. Por eso
+   * se guarda con `conLaCita` en vez de escribir `cita` a pelo: si no, poner
+   * la cita desde la ficha la dejaría fuera del calendario y el bono no se
+   * enteraría nunca de esa consulta.
+   */
+  const cita = proximaCita(client) ?? client.cita;
   const [editando, setEditando] = useState(!cita);
   const [borrador, setBorrador] = useState<Cita>(
     cita ?? {
@@ -57,9 +66,13 @@ export function CitaPanel({ client, onChange }: Props) {
     setBorrador((b) => ({ ...b, ...patch }));
 
   const guardar = () => {
-    onChange({
-      cita: { ...borrador, donde: borrador.donde?.trim() || undefined },
-    });
+    onChange(
+      conLaCita(client, {
+        ...borrador,
+        id: borrador.id ?? cita?.id,
+        donde: borrador.donde?.trim() || undefined,
+      }),
+    );
     setEditando(false);
   };
 
@@ -106,7 +119,7 @@ export function CitaPanel({ client, onChange }: Props) {
           </Button>
           <Button
             variant="outline"
-            onClick={() => onChange({ cita: undefined })}
+            onClick={() => onChange(cita?.id ? sinLaCita(client, cita.id) : { cita: undefined })}
           >
             Quitar
           </Button>

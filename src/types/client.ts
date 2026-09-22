@@ -138,8 +138,20 @@ export interface Client {
    * contador por meses en su app y los hitos. Ver `utils/programa.ts`.
    */
   programa?: Programa;
-  /** La siguiente cita, para que las dos la tengan delante. */
+  /**
+   * La siguiente cita, para que las dos la tengan delante. **Es un espejo de
+   * la próxima de `citas`**, no un sitio aparte donde escribir: la app de la
+   * clienta lee este campo desde siempre y cambiarlo la dejaría sin cita.
+   */
   cita?: Cita;
+  /**
+   * TODAS SUS CITAS, LAS PASADAS TAMBIÉN
+   *
+   * Antes había una sola —la siguiente— y al poner la de octubre se perdía la
+   * de septiembre, así que no había de dónde sacar una semana ni forma de
+   * saber qué consultas se dieron. Las anuladas se quedan aquí.
+   */
+  citas?: Cita[];
   /** Lo que tiene contratado. Sólo lo ve la nutricionista. */
   tarifa?: Tarifa;
   /** Lo que ha ido pagando. Sólo lo ve la nutricionista. */
@@ -186,7 +198,23 @@ export const LABEL_MODO_CITA: Record<ModoCita, string> = {
   llamada: 'Llamada',
 };
 
+/**
+ * EN QUÉ ESTADO ESTÁ UNA CITA
+ *
+ * `prevista` es lo normal: está puesta y no ha pasado nada. `realizada` es la
+ * que se dio, y es **la que consume una sesión del bono**. `anulada` es la que
+ * no se dio — se guarda en vez de borrarse, porque un hueco vacío en la semana
+ * no cuenta que alguien no vino.
+ */
+export const ESTADOS_CITA = ['prevista', 'realizada', 'anulada'] as const;
+export type EstadoCita = (typeof ESTADOS_CITA)[number];
+
 export interface Cita {
+  /**
+   * Las citas viejas no lo llevan: había una sola por clienta y no hacía
+   * falta distinguirlas. `citasDe` le pone uno al leerlas.
+   */
+  id?: string;
   /** YYYY-MM-DD */
   fecha: string;
   /** HH:MM en 24 h. */
@@ -197,6 +225,24 @@ export interface Cita {
   /** Dirección si es en consulta, o el enlace si es videollamada. */
   donde?: string;
   nota?: string;
+  /** Sin escribir, es `prevista`: es lo que era todo antes de la agenda. */
+  estado?: EstadoCita;
+  /**
+   * DE QUÉ BONO SE DESCUENTA
+   *
+   * Se decide al marcarla como realizada, no al ponerla: entre que se agenda
+   * y se da la consulta el bono puede haberse terminado o renovado.
+   */
+  bonoId?: string;
+  /** Cuál de las líneas del bono consume: una consulta o una llamada. */
+  lineaId?: string;
+  /**
+   * LA SESIÓN QUE ESTA CITA CREÓ
+   *
+   * Es lo que permite deshacerlo: desmarcar la cita quita **esa** sesión y no
+   * la última que haya, que podría ser de otro día apuntado a mano.
+   */
+  sesionId?: string;
 }
 
 export const PERIODICIDADES = ['mensual', 'trimestral', 'sesion', 'paquete'] as const;
