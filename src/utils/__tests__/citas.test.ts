@@ -17,6 +17,9 @@ import {
   citasSinMarcar,
   sinProximaCita,
   comoVaLaSemana,
+  franjasDeLaSemana,
+  duracionPorDefecto,
+  huecoOcupado,
 } from '../citas';
 import type { Bono, Cita, Client } from '../../types/client';
 
@@ -297,5 +300,49 @@ describe('Lo que hay que recordarle', () => {
       realizadas: 1,
       sinMarcar: 1,
     });
+  });
+});
+
+describe('Las horas de la semana', () => {
+  it('van de media hora en media hora, de ocho a nueve', () => {
+    const franjas = franjasDeLaSemana([clienta()], diasDeLaSemana('2026-09-21'));
+    expect(franjas[0]).toBe('08:00');
+    expect(franjas[1]).toBe('08:30');
+    expect(franjas[franjas.length - 1]).toBe('20:30');
+  });
+
+  it('se estiran para que quepa una cita fuera de horario', () => {
+    /* Una llamada a las siete de la mañana no puede quedarse fuera de la
+       rejilla, que es donde se mira la semana. */
+    const c = clienta({
+      citas: [{ ...cita({ fecha: '2026-09-23', hora: '07:00' }), id: 'pronto' }],
+    });
+    expect(franjasDeLaSemana([c], diasDeLaSemana('2026-09-21'))[0]).toBe('07:00');
+  });
+
+  it('una llamada dura 15 minutos y una consulta 30, sin escribirlo', () => {
+    expect(duracionPorDefecto('llamada')).toBe(15);
+    expect(duracionPorDefecto('consulta')).toBe(30);
+    expect(duracionPorDefecto('videollamada')).toBe(30);
+  });
+
+  it('un hueco con una cita encima está ocupado, y el de después no', () => {
+    const c = clienta({
+      citas: [
+        { ...cita({ fecha: '2026-09-25', hora: '11:00', duracionMin: 60 }), id: 'ci_1' },
+      ],
+    });
+    expect(huecoOcupado([c], '2026-09-25', '11:00')).toBe(true);
+    expect(huecoOcupado([c], '2026-09-25', '11:30')).toBe(true);
+    expect(huecoOcupado([c], '2026-09-25', '12:00')).toBe(false);
+  });
+
+  it('una anulada libera su hueco: ese rato vuelve a estar libre', () => {
+    const c = clienta({
+      citas: [
+        { ...cita({ fecha: '2026-09-25', hora: '11:00' }), id: 'ci_1', estado: 'anulada' },
+      ],
+    });
+    expect(huecoOcupado([c], '2026-09-25', '11:00')).toBe(false);
   });
 });

@@ -111,6 +111,77 @@ export function cuantasEseDia(clients: Client[], fecha: string): number {
   return citasDelDia(clients, fecha).filter((c) => c.cita.estado !== 'anulada').length;
 }
 
+// ── Las horas del día ───────────────────────────────────────────────
+
+/**
+ * DE MEDIA HORA EN MEDIA HORA
+ *
+ * Es el paso con el que ella agenda: las consultas duran 30, 45 o 60 minutos y
+ * las llamadas 15, pero **ninguna empieza a y cuarto**. Con franjas de cuarto
+ * de hora la semana se va a cincuenta filas y hay que buscar el hueco con la
+ * lupa; una llamada de 15 minutos se pinta igual, ocupando media franja.
+ */
+export const PASO_MIN = 30;
+
+/** Por defecto se enseña de ocho a nueve, que es la jornada de la consulta. */
+const DESDE = 8 * 60;
+const HASTA = 21 * 60;
+
+export const enMinutos = (hora: string): number => {
+  const [h, m] = hora.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+export const comoHora = (min: number): string =>
+  `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+
+/**
+ * Las franjas que se pintan esa semana. **Se estira para que quepa todo lo que
+ * hay**: una cita a las siete de la mañana o una a las diez de la noche no
+ * pueden quedarse fuera de la rejilla, que es donde se miran.
+ */
+export function franjasDeLaSemana(clients: Client[], dias: string[]): string[] {
+  let desde = DESDE;
+  let hasta = HASTA;
+  for (const dia of dias) {
+    for (const { cita } of citasDelDia(clients, dia)) {
+      if (!cita.hora) continue;
+      const empieza = enMinutos(cita.hora);
+      const acaba = empieza + (cita.duracionMin ?? 60);
+      desde = Math.min(desde, Math.floor(empieza / PASO_MIN) * PASO_MIN);
+      hasta = Math.max(hasta, Math.ceil(acaba / PASO_MIN) * PASO_MIN);
+    }
+  }
+  const out: string[] = [];
+  for (let m = desde; m < hasta; m += PASO_MIN) out.push(comoHora(m));
+  return out;
+}
+
+/**
+ * CUÁNTO DURA CADA COSA, SIN TENER QUE PENSARLO
+ *
+ * Una llamada de seguimiento son quince minutos y una consulta media hora: son
+ * los dos números que ella pone siempre, así que escribirlos en cada cita es
+ * trabajo inventado. Se puede cambiar — hay primeras visitas de una hora.
+ */
+export function duracionPorDefecto(modo: Cita['modo']): number {
+  return modo === 'llamada' ? 15 : 30;
+}
+
+/** Lo que cabe elegir sin escribir a mano. */
+export const DURACIONES = [15, 30, 45, 60];
+
+/** Si ese hueco está pillado: sirve para no ofrecerlo como libre. */
+export function huecoOcupado(clients: Client[], fecha: string, hora: string): boolean {
+  const desde = enMinutos(hora);
+  const hasta = desde + PASO_MIN;
+  return citasDelDia(clients, fecha).some(({ cita }) => {
+    if (cita.estado === 'anulada' || !cita.hora) return false;
+    const empieza = enMinutos(cita.hora);
+    return empieza < hasta && empieza + (cita.duracionMin ?? 60) > desde;
+  });
+}
+
 // ── Escribir ────────────────────────────────────────────────────────
 
 /**

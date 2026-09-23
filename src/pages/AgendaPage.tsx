@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import type { Cita, Client } from '../types/client';
-import { LABEL_MODO_CITA, MODOS_CITA } from '../types/client';
+import type { Client } from '../types/client';
 import {
   anular,
   citasDelDia,
@@ -22,7 +21,9 @@ import {
 import { mesDeConsulta } from '../utils/consulta';
 import { mesDe, monedaDeLaConsulta, nombreDelMes } from '../utils/finanzas';
 import { DetalleDeCita } from '../components/agenda/DetalleDeCita';
-import { Button, Card, Field, Input, Select, Stat } from '../components/common/ui';
+import { SemanaDeCitas } from '../components/agenda/SemanaDeCitas';
+import { AgendarCita } from '../components/agenda/AgendarCita';
+import { Button, Card, Stat } from '../components/common/ui';
 
 /**
  * LA AGENDA
@@ -38,8 +39,6 @@ import { Button, Card, Field, Input, Select, Stat } from '../components/common/u
  * hechas y lo que entró en caja—, que es el resumen que ella hace a mano.
  */
 
-const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
 const dinero = (n: number, moneda: string) =>
   `${n.toLocaleString('es-ES', { maximumFractionDigits: 0 })} ${moneda}`;
 
@@ -52,7 +51,8 @@ export function AgendaPage() {
   const [lunes, setLunes] = useState(() => lunesDe(hoy));
   /** Qué cita está abierta: `clientId` + id de la cita. */
   const [abierta, setAbierta] = useState<{ clientId: string; citaId: string } | null>(null);
-  const [poniendo, setPoniendo] = useState(false);
+  /** El hueco que se acaba de pulsar: día y hora de la cita nueva. */
+  const [hueco, setHueco] = useState<{ fecha: string; hora: string } | null>(null);
 
   const dias = diasDeLaSemana(lunes);
   const semana = comoVaLaSemana(clients, lunes, hoy);
@@ -102,7 +102,9 @@ export function AgendaPage() {
           <Button variant="ghost" onClick={() => setLunes((l) => otraSemana(l, 1))}>
             Siguiente →
           </Button>
-          <Button onClick={() => setPoniendo(true)}>Nueva cita</Button>
+          <Button onClick={() => setHueco({ fecha: iso(hoy), hora: '10:00' })}>
+            Nueva cita
+          </Button>
         </div>
       </div>
 
@@ -159,61 +161,19 @@ export function AgendaPage() {
       )}
 
       {/* ── La semana ───────────────────────────────────── */}
-      <div className="grid gap-2 md:grid-cols-7">
-        {dias.map((dia, i) => {
-          const delDia = citasDelDia(clients, dia);
-          const cuentan = delDia.filter((x) => x.cita.estado !== 'anulada');
-          const esHoy = dia === iso(hoy);
-          return (
-            <div
-              key={dia}
-              className={`rounded-xl border p-2 ${
-                esHoy ? 'border-brand-400 bg-brand-50/40' : 'border-slate-200 bg-white'
-              }`}
-            >
-              <div className="mb-1.5 flex items-baseline justify-between">
-                <span className="text-[11px] font-medium tracking-wide text-slate-500 uppercase">
-                  {DIAS[i]} {Number(dia.slice(-2))}
-                </span>
-                <span
-                  className={`rounded px-1.5 text-[10px] ${
-                    cuentan.length
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-slate-100 text-slate-400'
-                  }`}
-                >
-                  {cuentan.length}
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                {delDia.map((x) => {
-                  const hecha = x.cita.estado === 'realizada';
-                  const anulada = x.cita.estado === 'anulada';
-                  return (
-                    <button
-                      key={`${x.client.id}-${x.id}`}
-                      onClick={() => setAbierta({ clientId: x.client.id, citaId: x.id })}
-                      className={`block w-full rounded-lg border-l-4 px-2 py-1 text-left text-[11px] transition ${
-                        anulada
-                          ? 'border-l-slate-200 bg-slate-50 text-slate-400 line-through'
-                          : hecha
-                            ? 'border-l-emerald-500 bg-emerald-50/60 text-slate-700'
-                            : 'border-l-brand-500 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span className="tnum text-slate-500">{x.cita.hora ?? '—'}</span>{' '}
-                      <span className="font-medium">{x.client.nombre}</span>
-                      {hecha && <span className="ml-1 text-emerald-600">✓</span>}
-                    </button>
-                  );
-                })}
-                {!delDia.length && <p className="py-2 text-center text-[10px] text-slate-300">—</p>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <SemanaDeCitas
+        clients={clients}
+        dias={dias}
+        hoy={hoy}
+        onAbrir={(clientId, citaId) => {
+          setHueco(null);
+          setAbierta({ clientId, citaId });
+        }}
+        onHueco={(fecha, hora) => {
+          setAbierta(null);
+          setHueco({ fecha, hora });
+        }}
+      />
 
       {/* ── La cita abierta ─────────────────────────────── */}
       {elegida && (
@@ -243,15 +203,17 @@ export function AgendaPage() {
         />
       )}
 
-      {poniendo && (
-        <NuevaCita
+      {hueco && (
+        <AgendarCita
           clients={clients}
-          dia={iso(hoy)}
-          onCerrar={() => setPoniendo(false)}
+          fecha={hueco.fecha}
+          hora={hueco.hora}
+          hoy={hoy}
+          onCerrar={() => setHueco(null)}
           onPoner={(client, cita) => {
             escribir(client, conLaCita(client, cita, hoy));
             setLunes(lunesDe(cita.fecha));
-            setPoniendo(false);
+            setHueco(null);
           }}
         />
       )}
@@ -279,83 +241,5 @@ export function AgendaPage() {
         )}
       </Card>
     </div>
-  );
-}
-
-// ── Poner una cita ───────────────────────────────────────────────────
-
-function NuevaCita({
-  clients,
-  dia,
-  onPoner,
-  onCerrar,
-}: {
-  clients: Client[];
-  dia: string;
-  onPoner: (client: Client, cita: Cita) => void;
-  onCerrar: () => void;
-}) {
-  const conFicha = clients.filter((c) => !c.soloReto);
-  const [clientId, setClientId] = useState(conFicha[0]?.id ?? '');
-  const [cita, setCita] = useState<Cita>({ fecha: dia, hora: '10:00', duracionMin: 60, modo: 'consulta' });
-
-  const client = clients.find((c) => c.id === clientId);
-
-  return (
-    <Card title="Nueva cita">
-      <div className="grid gap-2 sm:grid-cols-5">
-        <Field label="Quién" className="sm:col-span-2">
-          <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
-            {conFicha.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Día">
-          <Input
-            type="date"
-            value={cita.fecha}
-            onChange={(e) => setCita((c) => ({ ...c, fecha: e.target.value }))}
-          />
-        </Field>
-        <Field label="Hora">
-          <Input
-            type="time"
-            value={cita.hora ?? ''}
-            onChange={(e) => setCita((c) => ({ ...c, hora: e.target.value }))}
-          />
-        </Field>
-        <Field label="Cómo">
-          <Select
-            value={cita.modo}
-            onChange={(e) => setCita((c) => ({ ...c, modo: e.target.value as Cita['modo'] }))}
-          >
-            {MODOS_CITA.map((m) => (
-              <option key={m} value={m}>
-                {LABEL_MODO_CITA[m]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      <div className="mt-2 flex gap-2">
-        <Button
-          onClick={() => client && cita.fecha && onPoner(client, cita)}
-          disabled={!client || !cita.fecha}
-        >
-          Ponerla
-        </Button>
-        <Button variant="ghost" onClick={onCerrar}>
-          Cancelar
-        </Button>
-      </div>
-      {!conFicha.length && (
-        <p className="mt-2 text-[11px] text-slate-500">
-          Todavía no hay clientas de consulta a las que citar.
-        </p>
-      )}
-    </Card>
   );
 }

@@ -60,16 +60,66 @@ beforeEach(() => useAppStore.setState({ clients: [], gastos: [] }));
 describe('La semana', () => {
   it('enseña los siete días y la cita de hoy con su hora', () => {
     pintar([clienta({ citas: [cita({ fecha: HOY, id: 'ci_1' })] })]);
-    expect(screen.getByText('Ana García')).toBeTruthy();
-    expect(screen.getByText('10:00')).toBeTruthy();
+    expect(screen.getByText('Ana')).toBeTruthy();
+    expect(screen.getAllByText('10:00').length).toBeGreaterThan(0);
     expect(screen.getByText(/1 cita esta semana/)).toBeTruthy();
   });
 
   it('una clienta sin citas no ocupa ningún hueco de la semana', () => {
     /* Sale en el aviso de «sin la siguiente puesta», pero en la rejilla no. */
     pintar([clienta()]);
-    expect(screen.queryByText('10:00')).toBeNull();
+    expect(screen.queryByText('Ana')).toBeNull();
     expect(screen.getByText(/0 citas esta semana/)).toBeTruthy();
+  });
+
+  it('cada media hora libre es un botón para agendar ahí', () => {
+    pintar([clienta()]);
+    /* De ocho a nueve de la noche, de media en media: 26 huecos por día. */
+    expect(screen.getAllByLabelText(/Agendar el .* a las 11:00/)).toHaveLength(7);
+  });
+});
+
+describe('Agendar desde el hueco', () => {
+  const abrirElHueco = () => {
+    pintar([clienta()]);
+    fireEvent.click(screen.getByLabelText(`Agendar el ${HOY} a las 11:00`));
+  };
+
+  it('abre la ficha con ese día y esa hora ya puestos', () => {
+    abrirElHueco();
+    expect(screen.getByText(new RegExp(`Agendar · ${HOY} a las 11:00`))).toBeTruthy();
+  });
+
+  it('se busca a la clienta por su nombre y al elegirla dice cómo va su bono', () => {
+    abrirElHueco();
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
+      target: { value: 'ana' },
+    });
+    fireEvent.click(screen.getAllByText('Ana García').pop()!);
+    expect(screen.getByText(/0 de 3 consultas/)).toBeTruthy();
+    expect(screen.getByText(/faltan 420/)).toBeTruthy();
+    /* Y se puede ir a su ficha sin perder lo que llevas escrito. */
+    expect(screen.getByText('Abrir su ficha')).toBeTruthy();
+  });
+
+  it('al agendarla queda puesta con su hora y su duración', () => {
+    abrirElHueco();
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
+      target: { value: 'ana' },
+    });
+    fireEvent.click(screen.getAllByText('Ana García').pop()!);
+    fireEvent.click(screen.getByText('Agendar'));
+
+    const puesta = useAppStore.getState().clients[0].citas![0];
+    expect(puesta.fecha).toBe(HOY);
+    expect(puesta.hora).toBe('11:00');
+    /* Una consulta son 30 minutos sin tener que escribirlo. */
+    expect(puesta.duracionMin).toBe(30);
+  });
+
+  it('sin elegir a nadie no se puede agendar', () => {
+    abrirElHueco();
+    expect((screen.getByText('Agendar') as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
@@ -77,7 +127,7 @@ describe('Marcarla realizada descuenta su bono', () => {
   it('al pulsarla se abre, y marcarla crea la sesión del bono', () => {
     pintar([clienta({ citas: [cita({ fecha: HOY, id: 'ci_1' })] })]);
 
-    fireEvent.click(screen.getByText('Ana García'));
+    fireEvent.click(screen.getByText('Ana'));
     /* La tarjeta abierta trae lo que lleva de su bono. */
     expect(screen.getByText(/0 de 3 consultas/)).toBeTruthy();
 
@@ -91,7 +141,7 @@ describe('Marcarla realizada descuenta su bono', () => {
 
   it('y se puede deshacer, que quita esa misma sesión', () => {
     pintar([clienta({ citas: [cita({ fecha: HOY, id: 'ci_1' })] })]);
-    fireEvent.click(screen.getByText('Ana García'));
+    fireEvent.click(screen.getByText('Ana'));
     fireEvent.click(screen.getByText('Marcar realizada'));
     fireEvent.click(screen.getByText('Deshacer'));
     expect(useAppStore.getState().clients[0].sesiones).toHaveLength(0);
@@ -101,7 +151,7 @@ describe('Marcarla realizada descuenta su bono', () => {
 describe('Cobrar desde la cita', () => {
   it('propone lo que falta del bono y apunta el pago colgado de él', () => {
     pintar([clienta({ citas: [cita({ fecha: HOY, id: 'ci_1' })] })]);
-    fireEvent.click(screen.getByText('Ana García'));
+    fireEvent.click(screen.getByText('Ana'));
 
     fireEvent.click(screen.getByText(/Cobrar · faltan 420/));
     fireEvent.click(screen.getByText('Apuntar el pago'));
