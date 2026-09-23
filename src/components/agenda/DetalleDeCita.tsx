@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Cita, Client } from '../../types/client';
 import { LABEL_MODO_CITA, MODOS_CITA } from '../../types/client';
-import { bonoVigente, resumenDeSesiones } from '../../utils/bonos';
-import { loQueTocaCobrar } from '../../utils/citas';
+import { bonoVigente, pagosDelBono } from '../../utils/bonos';
+import { loQueTocaCobrar, seSolapanCon } from '../../utils/citas';
 import { Button, Field, Input, Select } from '../common/ui';
 
 interface Props {
   client: Client;
   cita: Cita;
+  /** Para avisar si esa hora choca con otra consulta. */
+  clients?: Client[];
   onGuardar: (cita: Cita) => void;
   onRealizada: () => void;
   onDesmarcar: () => void;
@@ -36,6 +38,7 @@ const dinero = (n: number, moneda = '€') =>
 export function DetalleDeCita({
   client,
   cita,
+  clients = [],
   onGuardar,
   onRealizada,
   onDesmarcar,
@@ -74,15 +77,66 @@ export function DetalleDeCita({
         </button>
       </div>
 
-      {/* ── Cómo va su bono ─────────────────────────────── */}
+      {/*
+        SU BONO Y SUS PAGOS, AQUÍ MISMO
+        Al terminar la consulta las preguntas son dos —¿por cuántas va? y ¿me
+        debe algo?— y las dos se contestaban abriendo su ficha. Es lo mismo que
+        ya está en «Citas y pagos»: se lee de ahí (`comoVaElBono`), no se
+        calcula otra vez, para que no haya dos cuentas que puedan discrepar.
+      */}
       {bono ? (
-        <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
-          <p className="font-medium text-slate-700">{bono.bono.nombre}</p>
-          <p>{resumenDeSesiones(bono)}</p>
-          <p className={bono.pendiente > 0 ? 'text-amber-700' : 'text-emerald-700'}>
-            {dinero(bono.pagado, moneda)} de {dinero(bono.importe, moneda)}
-            {bono.pendiente > 0 ? ` · faltan ${dinero(bono.pendiente, moneda)}` : ' · pagado'}
-          </p>
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+          <p className="mb-1 text-[11px] font-semibold text-slate-700">{bono.bono.nombre}</p>
+
+          {/* Qué incluye y por cuántas va. */}
+          <ul className="mb-1.5 space-y-0.5">
+            {bono.lineas.map((l) => (
+              <li
+                key={l.linea.id}
+                className="flex items-baseline justify-between gap-3 text-[11px]"
+              >
+                <span className="text-slate-600">{l.linea.concepto}</span>
+                <span className={`tnum ${l.quedan > 0 ? 'text-slate-700' : 'text-amber-700'}`}>
+                  {l.hechas} de {l.linea.cuantas}
+                  {l.quedan > 0 ? ` · quedan ${l.quedan}` : ' · agotadas'}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {/* Lo que ha ido pagando, con su fecha. */}
+          {pagosDelBono(client.pagos, bono.bono.id).length > 0 && (
+            <ul className="mb-1.5 space-y-0.5 border-t border-slate-200 pt-1.5">
+              {pagosDelBono(client.pagos, bono.bono.id)
+                .slice()
+                .sort((a, b) => a.fecha.localeCompare(b.fecha))
+                .map((p) => (
+                  <li key={p.id} className="flex justify-between gap-3 text-[11px] text-slate-500">
+                    <span>{p.fecha}{p.metodo ? ` · ${p.metodo}` : ''}</span>
+                    <span className="tnum">{dinero(p.importe, moneda)}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+
+          {/* Y la línea de siempre: total, pagado y lo que debe. */}
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 border-t border-slate-200 pt-1.5 text-[11px]">
+            <span className="text-slate-500">
+              Total <span className="tnum text-slate-700">{dinero(bono.importe, moneda)}</span>
+            </span>
+            <span className="text-slate-500">
+              Pagado <span className="tnum text-slate-700">{dinero(bono.pagado, moneda)}</span>
+            </span>
+            <span className={bono.pendiente > 0 ? 'text-amber-700' : 'text-emerald-700'}>
+              {bono.pendiente > 0 ? (
+                <>
+                  Debe <span className="tnum font-semibold">{dinero(bono.pendiente, moneda)}</span>
+                </>
+              ) : (
+                'Pagado del todo'
+              )}
+            </span>
+          </div>
         </div>
       ) : (
         <p className="mb-3 text-[11px] text-slate-500">
@@ -162,7 +216,7 @@ export function DetalleDeCita({
             onChange={(e) => onGuardar({ ...cita, hora: e.target.value || undefined })}
           />
         </Field>
-        <Field label="Minutos">
+        <Field label="Dura (min)">
           <Input
             type="number"
             value={cita.duracionMin ?? 60}
@@ -182,6 +236,23 @@ export function DetalleDeCita({
           </Select>
         </Field>
       </div>
+
+      {(() => {
+        const chocan = seSolapanCon(
+          clients,
+          cita.fecha,
+          cita.hora ?? '',
+          cita.duracionMin ?? 60,
+          cita.id,
+        );
+        if (!chocan.length) return null;
+        return (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+            ⚠️ A esa hora también tienes a{' '}
+            {chocan.map((x) => `${x.client.nombre} (${x.cita.hora})`).join(', ')}.
+          </p>
+        );
+      })()}
 
       <Field label="Nota" className="mt-2">
         <Input

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Cita, Client } from '../../types/client';
 import { LABEL_MODO_CITA, MODOS_CITA } from '../../types/client';
 import { bonoVigente, resumenDeSesiones } from '../../utils/bonos';
-import { DURACIONES, duracionPorDefecto } from '../../utils/citas';
+import { DURACIONES, duracionPorDefecto, seSolapanCon } from '../../utils/citas';
 import { Button, Card, Field, Input, Select } from '../common/ui';
 
 interface Props {
@@ -41,11 +41,22 @@ export function AgendarCita({ clients, fecha, hora, onPoner, onCerrar, hoy = new
   const [busca, setBusca] = useState('');
   const [clientId, setClientId] = useState('');
   const [modo, setModo] = useState<Cita['modo']>('consulta');
+  /**
+   * LA HORA SE AFINA
+   *
+   * El hueco la propone —es el de las once— pero después de Nicolás la
+   * siguiente entra a y tres cuartos. La rejilla va de media en media para que
+   * la semana se lea; la cita, al minuto que sea.
+   */
+  const [aLaHora, setALaHora] = useState(hora);
   /** Los minutos, que se pueden tocar pero ya vienen puestos por el servicio. */
   const [duracion, setDuracion] = useState(duracionPorDefecto('consulta'));
   const [nota, setNota] = useState('');
 
   const elegida = clients.find((c) => c.id === clientId);
+
+  /* Dos a la vez se puede; lo que no puede es pasar desapercibido. */
+  const chocan = seSolapanCon(clients, fecha, aLaHora, duracion);
 
   const encontradas = useMemo(() => {
     const q = sinTildes(busca.trim());
@@ -67,8 +78,8 @@ export function AgendarCita({ clients, fecha, hora, onPoner, onCerrar, hoy = new
 
   return (
     <Card
-      title={`Agendar · ${fecha} a las ${hora}`}
-      subtitle="El día y la hora salen del hueco que has pulsado."
+      title={`Agendar · ${fecha} a las ${aLaHora}`}
+      subtitle="El día y la hora salen del hueco que has pulsado; la hora se puede afinar."
       actions={
         <button onClick={onCerrar} className="text-xs text-slate-400 hover:text-slate-600">
           Cerrar
@@ -146,8 +157,17 @@ export function AgendarCita({ clients, fecha, hora, onPoner, onCerrar, hoy = new
           </p>
         ))}
 
-      {/* ── Qué y cuánto dura ───────────────────────────── */}
-      <div className="grid gap-2 sm:grid-cols-3">
+      {/* ── A qué hora, qué y cuánto dura ───────────────── */}
+      <div className="grid gap-2 sm:grid-cols-4">
+        <Field label="A las">
+          <Input
+            type="time"
+            value={aLaHora}
+            /* Al minuto: después de Nicolás, Norma entra a las 15:45. */
+            step={300}
+            onChange={(e) => setALaHora(e.target.value)}
+          />
+        </Field>
         <Field label="Servicio">
           <Select value={modo} onChange={(e) => cambiarModo(e.target.value as Cita['modo'])}>
             {MODOS_CITA.map((m) => (
@@ -157,23 +177,33 @@ export function AgendarCita({ clients, fecha, hora, onPoner, onCerrar, hoy = new
             ))}
           </Select>
         </Field>
-        <Field label="Dura" hint="Las llamadas, 15 minutos; las consultas, 30.">
+        <Field label="Cuánto dura" hint="En minutos: las llamadas 15 y las consultas 30.">
           <Select value={duracion} onChange={(e) => setDuracion(Number(e.target.value))}>
             {DURACIONES.map((d) => (
               <option key={d} value={d}>
-                {d} min
+                {d} minutos
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Nota">
-          <Input
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder="Traer la analítica"
-          />
-        </Field>
       </div>
+
+      <Field label="Nota" className="mt-2">
+        <Input
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          placeholder="Traer la analítica"
+        />
+      </Field>
+
+      {/* ── Ojo, que ya tienes a alguien ahí ────────────── */}
+      {chocan.length > 0 && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+          ⚠️ A esa hora ya tienes a{' '}
+          {chocan.map((x) => `${x.client.nombre} (${x.cita.hora})`).join(', ')}. Se puede
+          agendar igual — a veces se dobla — pero que no sea sin querer.
+        </p>
+      )}
 
       <div className="mt-3 flex gap-2">
         <Button
@@ -182,7 +212,7 @@ export function AgendarCita({ clients, fecha, hora, onPoner, onCerrar, hoy = new
             elegida &&
             onPoner(elegida, {
               fecha,
-              hora,
+              hora: aLaHora,
               duracionMin: duracion,
               modo,
               nota: nota.trim() || undefined,

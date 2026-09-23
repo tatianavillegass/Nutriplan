@@ -179,6 +179,7 @@ export function AgendaPage() {
       {elegida && (
         <DetalleDeCita
           client={elegida.client}
+          clients={clients}
           cita={elegida.cita}
           hoy={hoy}
           onGuardar={(c) => escribir(elegida.client, conLaCita(elegida.client, c, hoy))}

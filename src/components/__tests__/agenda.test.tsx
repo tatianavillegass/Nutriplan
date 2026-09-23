@@ -129,7 +129,7 @@ describe('Marcarla realizada descuenta su bono', () => {
 
     fireEvent.click(screen.getByText('Ana'));
     /* La tarjeta abierta trae lo que lleva de su bono. */
-    expect(screen.getByText(/0 de 3 consultas/)).toBeTruthy();
+    expect(screen.getByText(/0 de 3 · quedan 3/)).toBeTruthy();
 
     fireEvent.click(screen.getByText('Marcar realizada'));
 
@@ -191,5 +191,59 @@ describe('El mes', () => {
     ]);
     expect(screen.getByText('Consultas hechas')).toBeTruthy();
     expect(screen.getByText('210 €')).toBeTruthy();
+  });
+});
+
+describe('Agendar a la hora que sea, y avisar si se dobla', () => {
+  const otra = (p: Partial<Client>): Client =>
+    ({ id: 'c2', nombre: 'Nicolás Pérez', bonos: [], sesiones: [], pagos: [], ...p }) as unknown as Client;
+
+  it('la hora del hueco se puede afinar a y tres cuartos', () => {
+    pintar([clienta()]);
+    fireEvent.click(screen.getByLabelText(`Agendar el ${HOY} a las 15:30`));
+    fireEvent.change(screen.getByLabelText('A las'), { target: { value: '15:45' } });
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
+      target: { value: 'ana' },
+    });
+    fireEvent.click(screen.getAllByText('Ana García').pop()!);
+    fireEvent.click(screen.getByText('Agendar'));
+
+    expect(useAppStore.getState().clients[0].citas![0].hora).toBe('15:45');
+  });
+
+  it('avisa con nombre si a esa hora ya hay alguien, pero deja agendar', () => {
+    pintar([
+      clienta(),
+      otra({ citas: [cita({ fecha: HOY, hora: '15:00', duracionMin: 60, id: 'ci_n' })] }),
+    ]);
+    fireEvent.click(screen.getByLabelText(`Agendar el ${HOY} a las 15:30`));
+    expect(screen.getByText(/ya tienes a Nicolás Pérez/)).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
+      target: { value: 'ana' },
+    });
+    fireEvent.click(screen.getAllByText('Ana García').pop()!);
+    /* No bloquea: a veces se dobla. */
+    expect((screen.getByText('Agendar') as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+describe('El bono y los pagos, al desplegar la cita', () => {
+  it('enseña por cuántas va, lo que ha pagado y lo que debe', () => {
+    pintar([
+      clienta({
+        citas: [cita({ fecha: HOY, id: 'ci_1' })],
+        sesiones: [{ id: 's1', fecha: '2026-01-10', bonoId: 'bn_1', lineaId: 'ln_c' }],
+        pagos: [{ id: 'p1', fecha: '2026-01-05', importe: 210, bonoId: 'bn_1' }],
+      }),
+    ]);
+    fireEvent.click(screen.getByText('Ana'));
+
+    expect(screen.getByText('Consultas')).toBeTruthy();
+    expect(screen.getByText(/1 de 3 · quedan 2/)).toBeTruthy();
+    expect(screen.getByText('2026-01-05')).toBeTruthy();
+    expect(screen.getByText('Total')).toBeTruthy();
+    /* El pago y el «pagado» de abajo dicen lo mismo: los dos son 210. */
+    expect(screen.getAllByText(/210 €/).length).toBeGreaterThan(1);
   });
 });

@@ -140,9 +140,14 @@ export const comoHora = (min: number): string =>
  * hay**: una cita a las siete de la mañana o una a las diez de la noche no
  * pueden quedarse fuera de la rejilla, que es donde se miran.
  */
-export function franjasDeLaSemana(clients: Client[], dias: string[]): string[] {
-  let desde = DESDE;
-  let hasta = HASTA;
+export function franjasDeLaSemana(
+  clients: Client[],
+  dias: string[],
+  /** Las 24 horas, para quien madruga o cierra tarde. */
+  todoElDia = false,
+): string[] {
+  let desde = todoElDia ? 0 : DESDE;
+  let hasta = todoElDia ? 24 * 60 : HASTA;
   for (const dia of dias) {
     for (const { cita } of citasDelDia(clients, dia)) {
       if (!cita.hora) continue;
@@ -173,13 +178,86 @@ export const DURACIONES = [15, 30, 45, 60];
 
 /** Si ese hueco está pillado: sirve para no ofrecerlo como libre. */
 export function huecoOcupado(clients: Client[], fecha: string, hora: string): boolean {
+  return seSolapanCon(clients, fecha, hora, PASO_MIN).length > 0;
+}
+
+/**
+ * QUIÉN PISA ESE RATO
+ *
+ * Dos a la misma hora **se puede**: hay días de doblar y hay llamadas que se
+ * meten encima de una consulta. Lo que no puede pasar es hacerlo sin enterarse,
+ * así que se avisa con nombres y no se bloquea — quien agenda sabe lo que hace.
+ */
+export function seSolapanCon(
+  clients: Client[],
+  fecha: string,
+  hora: string,
+  duracion: number,
+  /** La cita que se está moviendo: no se solapa consigo misma. */
+  exceptoId?: string,
+): CitaEnAgenda[] {
+  if (!hora) return [];
   const desde = enMinutos(hora);
-  const hasta = desde + PASO_MIN;
-  return citasDelDia(clients, fecha).some(({ cita }) => {
-    if (cita.estado === 'anulada' || !cita.hora) return false;
+  const hasta = desde + (duracion || PASO_MIN);
+  return citasDelDia(clients, fecha).filter(({ cita, id }) => {
+    if (cita.estado === 'anulada' || !cita.hora || id === exceptoId) return false;
     const empieza = enMinutos(cita.hora);
     return empieza < hasta && empieza + (cita.duracionMin ?? 60) > desde;
   });
+}
+
+/**
+ * CÓMO SE REPARTEN LAS QUE CAEN A LA VEZ
+ *
+ * Pintadas una encima de otra, la de abajo desaparece y parece que la agenda
+ * se ha comido una cita. Se parten en columnas: las que se pisan entre sí se
+ * reparten el ancho del día, y las que no vuelven a ocuparlo entero.
+ */
+export interface Carril {
+  /** Qué columna ocupa, empezando en cero. */
+  carril: number;
+  /** Cuántas columnas hay en su grupo. */
+  de: number;
+}
+
+export function carrilesDelDia(citas: CitaEnAgenda[]): Map<string, Carril> {
+  const out = new Map<string, Carril>();
+  const conHora = citas.filter((x) => x.cita.hora);
+  const fin = (x: CitaEnAgenda) => enMinutos(x.cita.hora!) + (x.cita.duracionMin ?? 60);
+
+  let grupo: CitaEnAgenda[] = [];
+  let hastaDondeLlega = -1;
+
+  const cerrarGrupo = () => {
+    /* Dentro de un grupo, cada una entra en el primer carril que tenga libre. */
+    const carriles: number[] = [];
+    const puestas: { x: CitaEnAgenda; carril: number }[] = [];
+    for (const x of grupo) {
+      const empieza = enMinutos(x.cita.hora!);
+      let i = carriles.findIndex((libreDesde) => libreDesde <= empieza);
+      if (i === -1) i = carriles.length;
+      carriles[i] = fin(x);
+      puestas.push({ x, carril: i });
+    }
+    for (const { x, carril } of puestas) {
+      out.set(x.id, { carril, de: carriles.length });
+    }
+  };
+
+  for (const x of conHora) {
+    const empieza = enMinutos(x.cita.hora!);
+    if (grupo.length && empieza >= hastaDondeLlega) {
+      cerrarGrupo();
+      grupo = [];
+    }
+    grupo.push(x);
+    hastaDondeLlega = Math.max(hastaDondeLlega, fin(x));
+  }
+  if (grupo.length) cerrarGrupo();
+
+  /* Las que no llevan hora no compiten por sitio: van a lo ancho. */
+  for (const x of citas) if (!out.has(x.id)) out.set(x.id, { carril: 0, de: 1 });
+  return out;
 }
 
 // ── Escribir ────────────────────────────────────────────────────────

@@ -20,6 +20,8 @@ import {
   franjasDeLaSemana,
   duracionPorDefecto,
   huecoOcupado,
+  seSolapanCon,
+  carrilesDelDia,
 } from '../citas';
 import type { Bono, Cita, Client } from '../../types/client';
 
@@ -344,5 +346,59 @@ describe('Las horas de la semana', () => {
       ],
     });
     expect(huecoOcupado([c], '2026-09-25', '11:00')).toBe(false);
+  });
+});
+
+describe('Dos a la vez se puede, pero se avisa', () => {
+  const nicolas = clienta({
+    id: 'c1',
+    nombre: 'Nicolás',
+    citas: [{ ...cita({ fecha: '2026-09-25', hora: '15:00', duracionMin: 45 }), id: 'ci_n' }],
+  });
+
+  it('dice con quién choca una cita a esa hora', () => {
+    const chocan = seSolapanCon([nicolas], '2026-09-25', '15:30', 30);
+    expect(chocan.map((x) => x.client.nombre)).toEqual(['Nicolás']);
+  });
+
+  it('y no dice nada cuando entra justo después', () => {
+    /* Nicolás acaba a y tres cuartos: Norma entra ahí sin pisarle. */
+    expect(seSolapanCon([nicolas], '2026-09-25', '15:45', 30)).toHaveLength(0);
+  });
+
+  it('una cita no choca consigo misma al moverla', () => {
+    expect(seSolapanCon([nicolas], '2026-09-25', '15:00', 45, 'ci_n')).toHaveLength(0);
+  });
+
+  it('las 24 horas se piden aparte, que la jornada normal es de ocho a nueve', () => {
+    const franjas = franjasDeLaSemana([clienta()], diasDeLaSemana('2026-09-21'), true);
+    expect(franjas[0]).toBe('00:00');
+    expect(franjas[franjas.length - 1]).toBe('23:30');
+  });
+});
+
+describe('Las que caen a la vez se reparten el ancho', () => {
+  it('dos que se pisan van en dos carriles', () => {
+    const c = clienta({
+      citas: [
+        { ...cita({ fecha: '2026-09-25', hora: '15:00', duracionMin: 60 }), id: 'a' },
+        { ...cita({ fecha: '2026-09-25', hora: '15:30', duracionMin: 30 }), id: 'b' },
+      ],
+    });
+    const carriles = carrilesDelDia(citasDelDia([c], '2026-09-25'));
+    expect(carriles.get('a')).toEqual({ carril: 0, de: 2 });
+    expect(carriles.get('b')).toEqual({ carril: 1, de: 2 });
+  });
+
+  it('y las que no se pisan ocupan el día entero cada una', () => {
+    const c = clienta({
+      citas: [
+        { ...cita({ fecha: '2026-09-25', hora: '15:00', duracionMin: 30 }), id: 'a' },
+        { ...cita({ fecha: '2026-09-25', hora: '16:00', duracionMin: 30 }), id: 'b' },
+      ],
+    });
+    const carriles = carrilesDelDia(citasDelDia([c], '2026-09-25'));
+    expect(carriles.get('a')).toEqual({ carril: 0, de: 1 });
+    expect(carriles.get('b')).toEqual({ carril: 0, de: 1 });
   });
 });

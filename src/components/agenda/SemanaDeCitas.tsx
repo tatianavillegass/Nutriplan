@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import type { Client } from '../../types/client';
 import {
   PASO_MIN,
+  carrilesDelDia,
   citasDelDia,
   comoHora,
   enMinutos,
@@ -41,7 +43,13 @@ const ALTO = 30;
  * pide hora por teléfono.
  */
 export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
-  const franjas = franjasDeLaSemana(clients, dias);
+  /**
+   * De ocho a nueve es la jornada, pero hay quien empieza a las siete y quien
+   * cierra a las diez. Se abre a las 24 horas con un botón en vez de decidir
+   * por ella cuál es su horario.
+   */
+  const [todoElDia, setTodoElDia] = useState(false);
+  const franjas = franjasDeLaSemana(clients, dias, todoElDia);
   const arranca = enMinutos(franjas[0] ?? '08:00');
   const alto = franjas.length * ALTO;
 
@@ -97,6 +105,9 @@ export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
 
           {dias.map((dia) => {
             const delDia = citasDelDia(clients, dia);
+            /* Las que caen a la vez se reparten el ancho, o la de abajo
+               desaparece y parece que la agenda se ha comido una cita. */
+            const carriles = carrilesDelDia(delDia);
             const esHoy = dia === iso(hoy);
             return (
               <div
@@ -126,6 +137,7 @@ export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
                   const anulada = x.cita.estado === 'anulada';
                   const empieza = x.cita.hora ? enMinutos(x.cita.hora) : arranca;
                   const dura = x.cita.duracionMin ?? 60;
+                  const { carril, de } = carriles.get(x.id) ?? { carril: 0, de: 1 };
                   return (
                     <button
                       key={`${x.client.id}-${x.id}`}
@@ -133,8 +145,10 @@ export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
                       style={{
                         top: ((empieza - arranca) / PASO_MIN) * ALTO,
                         height: Math.max(18, (dura / PASO_MIN) * ALTO - 2),
+                        left: `calc(${(carril / de) * 100}% + 2px)`,
+                        width: `calc(${100 / de}% - 4px)`,
                       }}
-                      className={`absolute inset-x-0.5 overflow-hidden rounded border-l-4 px-1.5 text-left text-[11px] leading-tight transition ${
+                      className={`absolute overflow-hidden rounded border-l-4 px-1.5 text-left text-[11px] leading-tight transition ${
                         anulada
                           ? 'border-l-slate-200 bg-slate-50 text-slate-400 line-through'
                           : hecha
@@ -169,10 +183,18 @@ export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
         </div>
       </div>
 
-      <p className="border-t border-slate-100 px-3 py-1.5 text-[10px] text-slate-400">
-        Pulsa un hueco para agendar ahí. Franjas de media hora, de{' '}
-        {franjas[0]} a {comoHora(arranca + franjas.length * PASO_MIN)}.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-1.5">
+        <p className="text-[10px] text-slate-400">
+          Pulsa un hueco para agendar ahí; la hora se puede afinar después (15:45). De{' '}
+          {franjas[0]} a {comoHora(arranca + franjas.length * PASO_MIN)}.
+        </p>
+        <button
+          onClick={() => setTodoElDia((v) => !v)}
+          className="text-[10px] text-brand-700 underline"
+        >
+          {todoElDia ? 'Ver sólo el horario de consulta' : 'Ver las 24 horas'}
+        </button>
+      </div>
     </div>
   );
 }
