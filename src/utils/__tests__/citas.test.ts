@@ -22,6 +22,7 @@ import {
   huecoOcupado,
   seSolapanCon,
   carrilesDelDia,
+  duracionDe,
 } from '../citas';
 import type { Bono, Cita, Client } from '../../types/client';
 
@@ -306,20 +307,39 @@ describe('Lo que hay que recordarle', () => {
 });
 
 describe('Las horas de la semana', () => {
-  it('van de media hora en media hora, de ocho a nueve', () => {
+  it('van de media hora en media hora, de seis de la mañana a diez de la noche', () => {
     const franjas = franjasDeLaSemana([clienta()], diasDeLaSemana('2026-09-21'));
-    expect(franjas[0]).toBe('08:00');
-    expect(franjas[1]).toBe('08:30');
-    expect(franjas[franjas.length - 1]).toBe('20:30');
+    expect(franjas[0]).toBe('06:00');
+    expect(franjas[1]).toBe('06:30');
+    expect(franjas[franjas.length - 1]).toBe('21:30');
+  });
+
+  it('una duración disparatada NO estira la agenda hasta las 78:00', () => {
+    /* Un 600 donde iba un 60: la semana crecía para que cupiera esa cita y
+       la columna de horas seguía bajando sin fin. */
+    const c = clienta({
+      citas: [{ ...cita({ fecha: '2026-09-23', hora: '18:00', duracionMin: 3600 }), id: 'x' }],
+    });
+    const franjas = franjasDeLaSemana([c], diasDeLaSemana('2026-09-21'));
+    expect(franjas[franjas.length - 1]).toBe('21:30');
+    expect(duracionDe({ duracionMin: 3600 })).toBe(240);
+  });
+
+  it('y ni con las 24 horas se pasa de medianoche', () => {
+    const c = clienta({
+      citas: [{ ...cita({ fecha: '2026-09-23', hora: '23:30', duracionMin: 240 }), id: 'x' }],
+    });
+    const franjas = franjasDeLaSemana([c], diasDeLaSemana('2026-09-21'), true);
+    expect(franjas[franjas.length - 1]).toBe('23:30');
   });
 
   it('se estiran para que quepa una cita fuera de horario', () => {
     /* Una llamada a las siete de la mañana no puede quedarse fuera de la
        rejilla, que es donde se mira la semana. */
     const c = clienta({
-      citas: [{ ...cita({ fecha: '2026-09-23', hora: '07:00' }), id: 'pronto' }],
+      citas: [{ ...cita({ fecha: '2026-09-23', hora: '05:00' }), id: 'pronto' }],
     });
-    expect(franjasDeLaSemana([c], diasDeLaSemana('2026-09-21'))[0]).toBe('07:00');
+    expect(franjasDeLaSemana([c], diasDeLaSemana('2026-09-21'))[0]).toBe('05:00');
   });
 
   it('una llamada dura 15 minutos y una consulta 30, sin escribirlo', () => {
@@ -374,6 +394,7 @@ describe('Dos a la vez se puede, pero se avisa', () => {
     const franjas = franjasDeLaSemana([clienta()], diasDeLaSemana('2026-09-21'), true);
     expect(franjas[0]).toBe('00:00');
     expect(franjas[franjas.length - 1]).toBe('23:30');
+    expect(franjas).toHaveLength(48);
   });
 });
 

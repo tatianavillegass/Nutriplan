@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Cita, Client } from '../../types/client';
 import { LABEL_MODO_CITA, MODOS_CITA } from '../../types/client';
 import { bonoVigente, pagosDelBono } from '../../utils/bonos';
-import { loQueTocaCobrar, seSolapanCon } from '../../utils/citas';
+import { DURACION_MAX, duracionDe, loQueTocaCobrar, seSolapanCon } from '../../utils/citas';
 import { Button, Field, Input, Select } from '../common/ui';
 
 interface Props {
@@ -219,8 +219,16 @@ export function DetalleDeCita({
         <Field label="Dura (min)">
           <Input
             type="number"
+            min={5}
+            max={DURACION_MAX}
             value={cita.duracionMin ?? 60}
-            onChange={(e) => onGuardar({ ...cita, duracionMin: Number(e.target.value) || undefined })}
+            onChange={(e) =>
+              onGuardar({
+                ...cita,
+                /* Con tope: un 600 donde iba un 60 deformaba la semana entera. */
+                duracionMin: Math.min(DURACION_MAX, Number(e.target.value)) || undefined,
+              })
+            }
           />
         </Field>
         <Field label="Cómo">
@@ -242,7 +250,7 @@ export function DetalleDeCita({
           clients,
           cita.fecha,
           cita.hora ?? '',
-          cita.duracionMin ?? 60,
+          duracionDe(cita),
           cita.id,
         );
         if (!chocan.length) return null;

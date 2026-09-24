@@ -123,9 +123,28 @@ export function cuantasEseDia(clients: Client[], fecha: string): number {
  */
 export const PASO_MIN = 30;
 
-/** Por defecto se enseña de ocho a nueve, que es la jornada de la consulta. */
-const DESDE = 8 * 60;
-const HASTA = 21 * 60;
+/** La jornada de la consulta: de seis de la mañana a diez de la noche. */
+const DESDE = 6 * 60;
+const HASTA = 22 * 60;
+
+/** El día tiene 24 horas y la rejilla no puede salirse de ahí. */
+const DIA = 24 * 60;
+
+/**
+ * LO QUE DURA UNA CITA, CON LOS PIES EN EL SUELO
+ *
+ * Un dedazo en los minutos —un 600 donde iba un 60— estiraba la rejilla hasta
+ * «las 78:00», porque la semana crecía para que cupiera esa cita. Una consulta
+ * no dura más de cuatro horas ni menos de cinco minutos: fuera de ahí es un
+ * error de tecleo y se trata como tal, en vez de deformar la pantalla.
+ */
+export const DURACION_MAX = 4 * 60;
+
+export function duracionDe(cita: Pick<Cita, 'duracionMin'>): number {
+  const n = cita.duracionMin;
+  if (!Number.isFinite(n) || !n) return 60;
+  return Math.min(DURACION_MAX, Math.max(5, n as number));
+}
 
 export const enMinutos = (hora: string): number => {
   const [h, m] = hora.split(':').map(Number);
@@ -147,16 +166,21 @@ export function franjasDeLaSemana(
   todoElDia = false,
 ): string[] {
   let desde = todoElDia ? 0 : DESDE;
-  let hasta = todoElDia ? 24 * 60 : HASTA;
+  let hasta = todoElDia ? DIA : HASTA;
   for (const dia of dias) {
     for (const { cita } of citasDelDia(clients, dia)) {
       if (!cita.hora) continue;
       const empieza = enMinutos(cita.hora);
-      const acaba = empieza + (cita.duracionMin ?? 60);
+      /* Una hora que no se entiende no estira nada: se ignora. */
+      if (!Number.isFinite(empieza) || empieza < 0 || empieza >= DIA) continue;
+      const acaba = empieza + duracionDe(cita);
       desde = Math.min(desde, Math.floor(empieza / PASO_MIN) * PASO_MIN);
       hasta = Math.max(hasta, Math.ceil(acaba / PASO_MIN) * PASO_MIN);
     }
   }
+  /* Y pase lo que pase, la rejilla se queda dentro del día. */
+  desde = Math.max(0, desde);
+  hasta = Math.min(DIA, Math.max(hasta, desde + PASO_MIN));
   const out: string[] = [];
   for (let m = desde; m < hasta; m += PASO_MIN) out.push(comoHora(m));
   return out;
@@ -202,7 +226,7 @@ export function seSolapanCon(
   return citasDelDia(clients, fecha).filter(({ cita, id }) => {
     if (cita.estado === 'anulada' || !cita.hora || id === exceptoId) return false;
     const empieza = enMinutos(cita.hora);
-    return empieza < hasta && empieza + (cita.duracionMin ?? 60) > desde;
+    return empieza < hasta && empieza + duracionDe(cita) > desde;
   });
 }
 
@@ -223,7 +247,7 @@ export interface Carril {
 export function carrilesDelDia(citas: CitaEnAgenda[]): Map<string, Carril> {
   const out = new Map<string, Carril>();
   const conHora = citas.filter((x) => x.cita.hora);
-  const fin = (x: CitaEnAgenda) => enMinutos(x.cita.hora!) + (x.cita.duracionMin ?? 60);
+  const fin = (x: CitaEnAgenda) => enMinutos(x.cita.hora!) + duracionDe(x.cita);
 
   let grupo: CitaEnAgenda[] = [];
   let hastaDondeLlega = -1;

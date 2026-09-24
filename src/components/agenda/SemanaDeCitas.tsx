@@ -5,6 +5,7 @@ import {
   carrilesDelDia,
   citasDelDia,
   comoHora,
+  duracionDe,
   enMinutos,
   franjasDeLaSemana,
   iso,
@@ -44,9 +45,10 @@ const ALTO = 30;
  */
 export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
   /**
-   * De ocho a nueve es la jornada, pero hay quien empieza a las siete y quien
-   * cierra a las diez. Se abre a las 24 horas con un botón en vez de decidir
-   * por ella cuál es su horario.
+   * De seis de la mañana a diez de la noche, que es la jornada. Las 24 horas
+   * están a un botón para el caso raro, pero **la rejilla nunca se sale del
+   * día**: estirándose sin tope, un dedazo en los minutos de una cita la
+   * mandaba a «las 78:00».
    */
   const [todoElDia, setTodoElDia] = useState(false);
   const franjas = franjasDeLaSemana(clients, dias, todoElDia);
@@ -136,7 +138,7 @@ export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
                   const hecha = x.cita.estado === 'realizada';
                   const anulada = x.cita.estado === 'anulada';
                   const empieza = x.cita.hora ? enMinutos(x.cita.hora) : arranca;
-                  const dura = x.cita.duracionMin ?? 60;
+                  const dura = duracionDe(x.cita);
                   const { carril, de } = carriles.get(x.id) ?? { carril: 0, de: 1 };
                   return (
                     <button
