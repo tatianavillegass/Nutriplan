@@ -5,6 +5,7 @@ import {
   type PasoId,
   type Preparacion as Datos,
 } from '../../utils/preparacion';
+import { ErrorImagen, prepararFoto } from '../../utils/imagen';
 import { Button } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
@@ -198,13 +199,26 @@ function MedidasDelPrimerDia({
 function FotoDelPrimerDia({ onListo }: { onListo: (f: { foto?: string }) => void }) {
   const archivo = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
+  /**
+   * QUE SE VEA POR QUÉ NO HA SUBIDO
+   *
+   * Esto no existía: si la foto fallaba —un HEIC de iPhone, un archivo enorme—
+   * el botón volvía de «Subiendo…» a «Subir la foto» y no pasaba nada más. Lo
+   * que llega es «no me deja subir la foto», sin más pista.
+   */
+  const [error, setError] = useState<string | null>(null);
 
   const elegir = async (file: File) => {
+    setError(null);
     setSubiendo(true);
     try {
-      onListo({ foto: await encogerFoto(file) });
+      onListo({ foto: await prepararFoto(file) });
+    } catch (e) {
+      setError(e instanceof ErrorImagen ? e.message : 'No se pudo subir la foto. Prueba con otra.');
     } finally {
       setSubiendo(false);
+      /* Sin esto, volver a elegir la MISMA foto no dispara nada. */
+      if (archivo.current) archivo.current.value = '';
     }
   };
 
@@ -224,6 +238,12 @@ function FotoDelPrimerDia({ onListo }: { onListo: (f: { foto?: string }) => void
           if (f) void elegir(f);
         }}
       />
+      {error && (
+        <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-900">
+          {error}
+        </p>
+      )}
+
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={() => onListo({})}>
           Ya me la he hecho
@@ -234,20 +254,4 @@ function FotoDelPrimerDia({ onListo }: { onListo: (f: { foto?: string }) => void
       </div>
     </>
   );
-}
-
-/**
- * Las fotos se guardan dentro de los datos, así que una foto de móvil entera
- * —cuatro megas— haría lenta la app para siempre. Se reduce a 900 px de lado y
- * se guarda en JPEG: sigue sirviendo para comparar y pesa lo que una foto de
- * WhatsApp.
- */
-async function encogerFoto(file: File, lado = 900): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const escala = Math.min(1, lado / Math.max(bitmap.width, bitmap.height));
-  const lienzo = document.createElement('canvas');
-  lienzo.width = Math.round(bitmap.width * escala);
-  lienzo.height = Math.round(bitmap.height * escala);
-  lienzo.getContext('2d')?.drawImage(bitmap, 0, 0, lienzo.width, lienzo.height);
-  return lienzo.toDataURL('image/jpeg', 0.7);
 }

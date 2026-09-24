@@ -15,7 +15,7 @@ import {
 } from '../../utils/misMedidas';
 import { EvolucionDeMedidas } from './EvolucionDeMedidas';
 import { ComparaFotos } from './ComparaFotos';
-import { prepararFoto } from '../../utils/imagen';
+import { ErrorImagen, prepararFoto } from '../../utils/imagen';
 import { Button, fmt } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
@@ -98,6 +98,8 @@ export function MisMedidas({
   const tendencia = tendenciaDePeso(medidas);
   const estaSemana = semanas[semanas.length - 1];
   const conFoto = tomasConFoto(medidas);
+  /** Por qué no ha entrado la foto, en su idioma y no en el del navegador. */
+  const [error, setError] = useState<string | null>(null);
 
   /**
    * El punto de partida de antes de la app: lo que se midió en la cuenta atrás
@@ -109,10 +111,18 @@ export function MisMedidas({
 
   const ponerFoto = async (id: string, file: File | undefined) => {
     if (!file) return;
+    setError(null);
     setSubiendo(id);
     try {
       const lista = await prepararFoto(file);
       setFotos((f) => ({ ...f, [id]: lista }));
+    } catch (e) {
+      /*
+        Sin este `catch` la foto que fallaba —un HEIC de iPhone, un archivo de
+        veinte megas— no decía nada: el «Subiendo…» se apagaba y ahí acababa
+        todo. Lo que llega después es «no me deja subir las fotos».
+      */
+      setError(e instanceof ErrorImagen ? e.message : 'No se pudo subir la foto. Prueba con otra.');
     } finally {
       setSubiendo(undefined);
     }
@@ -233,6 +243,11 @@ export function MisMedidas({
                 </label>
               ))}
             </div>
+            {error && (
+              <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-900">
+                {error}
+              </p>
+            )}
             <p className="mt-2 text-[10px] leading-snug text-slate-500">
               Con la misma luz, la misma ropa y el mismo sitio, que si no la comparación no vale.
               Sólo las ve tu nutricionista.

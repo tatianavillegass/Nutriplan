@@ -10,8 +10,16 @@
 export const LADO_MAX = 900;
 /** Calidad JPEG. 0.82 es el punto donde deja de notarse la pérdida. */
 export const CALIDAD = 0.82;
-/** Tamaño máximo del archivo original que aceptamos leer. */
-export const PESO_MAX_MB = 12;
+/**
+ * Tamaño máximo del archivo original que aceptamos leer.
+ *
+ * Estaba en 12 MB y **una foto de móvil de hoy se pasa**: un iPhone en máxima
+ * calidad o un Android de 50 megapíxeles sacan archivos de 15 o 20 MB. Como el
+ * corte saltaba en silencio, la clienta pulsaba «subir la foto» y no pasaba
+ * nada. Lo que de verdad importa es lo que se guarda —que se reduce a 900 px—
+ * no lo que pesa el archivo del que se parte.
+ */
+export const PESO_MAX_MB = 30;
 
 export const TIPOS_ACEPTADOS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 
@@ -73,8 +81,16 @@ function cargarImagen(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Archivo → data URL ya reducida y comprimida, lista para guardar en la receta.
- * Si el navegador no puede dibujar en canvas, devuelve la original tal cual.
+ * LO QUE NO SE PUEDE ABRIR NO SE GUARDA
+ *
+ * Antes, si el navegador no sabía dibujar la imagen, se guardaba **el archivo
+ * original**. Con un HEIC de iPhone eso son dos cosas malas a la vez: cuatro
+ * megas metidos en los datos —que viajan en cada guardado— y una foto que
+ * luego **no se ve**, porque Chrome no pinta HEIC. Mejor decirlo: la foto no
+ * se ha subido y se sabe por qué.
+ *
+ * Se sigue devolviendo el original cuando el navegador **sí** ha podido
+ * abrirlo y sólo falla el recomprimido: ahí la foto es buena.
  */
 export async function prepararFoto(
   file: File,
@@ -85,8 +101,19 @@ export async function prepararFoto(
   if (error) throw new ErrorImagen(error);
 
   const original = await leerComoDataUrl(file);
+
+  /*
+    Si esto falla es que el navegador no entiende el archivo — casi siempre un
+    HEIC de iPhone abierto desde Chrome o Android. No se guarda: se dice.
+  */
+  const img = await cargarImagen(original).catch(() => {
+    throw new ErrorImagen(
+      'Tu móvil ha guardado la foto en un formato que este navegador no abre (HEIC). ' +
+        'Hazle una captura de pantalla y sube la captura, o cambia la cámara a «Más compatible».',
+    );
+  });
+
   try {
-    const img = await cargarImagen(original);
     const { ancho, alto } = dimensionesDestino(img.naturalWidth, img.naturalHeight, ladoMax);
     const canvas = document.createElement('canvas');
     canvas.width = ancho;
@@ -98,6 +125,7 @@ export async function prepararFoto(
     // Si el recomprimido saliera peor (PNG pequeño, por ejemplo), nos quedamos con el original.
     return pesoDataUrl(reducida) < pesoDataUrl(original) ? reducida : original;
   } catch {
+    /* La imagen se abrió bien: lo que falló es el recomprimido. */
     return original;
   }
 }

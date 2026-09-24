@@ -67,3 +67,21 @@ describe('Validación del archivo antes de subirlo', () => {
     expect(validarArchivo(archivo('notas.txt', '', 1))).toMatch(/no es una imagen/i);
   });
 });
+
+describe('Una foto que no se puede abrir no se guarda a medias', () => {
+  /**
+   * «No me deja subir las fotos». Eran tres cosas, y ninguna decía nada:
+   * el tope de peso se quedó corto para las fotos de móvil de hoy, el HEIC
+   * del iPhone no lo abre Chrome, y lo que no se podía abrir se guardaba
+   * igual — cuatro megas en los datos y una foto que luego no se ve.
+   */
+  it('acepta una foto de móvil de hoy: el tope de 12 MB se quedaba corto', () => {
+    const grande = { type: 'image/jpeg', name: 'foto.jpg', size: 18 * 1024 * 1024 } as File;
+    expect(validarArchivo(grande)).toBeUndefined();
+  });
+
+  it('y sigue parando lo que es disparatado, con el peso escrito', () => {
+    const enorme = { type: 'image/jpeg', name: 'foto.jpg', size: 40 * 1024 * 1024 } as File;
+    expect(validarArchivo(enorme)).toMatch(/40\.0 MB/);
+  });
+});

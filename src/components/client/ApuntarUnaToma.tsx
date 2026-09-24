@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Bioimpedancia, Medicion, Perimetros } from '../../types/anthropometry';
 import { medicionVacia } from '../../types/anthropometry';
 import { A_PERIMETRO, CAMPOS, CAMPOS_BIO } from '../../utils/misMedidas';
-import { prepararFoto } from '../../utils/imagen';
+import { ErrorImagen, prepararFoto } from '../../utils/imagen';
 import { Button, Input } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
@@ -55,6 +55,8 @@ export function ApuntarUnaToma({
   const [fotos, setFotos] = useState<Record<string, string | undefined>>({});
   const [nota, setNota] = useState('');
   const [subiendo, setSubiendo] = useState<string | undefined>();
+  /** Aquí sube ella las fotos que le mandan por correo: si fallan, que lo diga. */
+  const [error, setError] = useState<string | null>(null);
 
   const limpiar = () => {
     setValores({});
@@ -66,10 +68,13 @@ export function ApuntarUnaToma({
 
   const ponerFoto = async (id: string, file: File | undefined) => {
     if (!file) return;
+    setError(null);
     setSubiendo(id);
     try {
       const lista = await prepararFoto(file);
       setFotos((f) => ({ ...f, [id]: lista }));
+    } catch (e) {
+      setError(e instanceof ErrorImagen ? e.message : 'No se pudo subir la foto. Prueba con otra.');
     } finally {
       setSubiendo(undefined);
     }
@@ -204,6 +209,11 @@ export function ApuntarUnaToma({
             </label>
           ))}
         </div>
+        {error && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-900">
+            {error}
+          </p>
+        )}
       </details>
 
       <label className="block">
