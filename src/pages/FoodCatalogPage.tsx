@@ -63,6 +63,12 @@ export function FoodCatalogPage() {
       bucket: v.grupo ? EXCHANGE_GROUPS[v.grupo].bucket : undefined,
       medida_casera: v.medida_casera,
       gramos: v.gramos ?? 0,
+      /*
+        Se recogía en el formulario y se perdía aquí, así que un alimento que
+        venía del Excel marcado en ml —el chocolate— se quedaba en ml para
+        siempre por mucho que ella lo cambiara.
+      */
+      unidad: v.unidad ?? 'g',
       // En un compuesto la medida es la unidad: gasta lo que diga `equivale`.
       intercambios: 1,
       equivale: v.equivale,

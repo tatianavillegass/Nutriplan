@@ -53,6 +53,15 @@ export interface FoodFormValue {
   nutrientes: Nutrientes100;
   medida_casera: string;
   gramos?: number;
+  /**
+   * EN QUÉ SE MIDE LA PORCIÓN
+   *
+   * Casi todo se pesa, y por eso `g` es lo normal. `ml` es para lo que se
+   * sirve en un vaso —la leche, el zumo, el aceite— y **no se podía cambiar**:
+   * el chocolate venía del Excel marcado en ml y no había casilla para
+   * arreglarlo, así que en el plan de la clienta ponía «11 ml de chocolate».
+   */
+  unidad?: 'g' | 'ml';
   equivalencia_cocido?: number;
   /** Si sale en la guía de cocinar de una vez. */
   batch?: boolean;
@@ -103,6 +112,7 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
   const [medida, setMedida] = useState(inicial?.medida_casera ?? '');
   /** Gramos de la porción. Se rellena solo con el cálculo, pero se puede ajustar. */
   const [gramosManual, setGramosManual] = useState<number | undefined>(inicial?.gramos);
+  const [unidad, setUnidad] = useState<'g' | 'ml'>(inicial?.unidad ?? 'g');
   const [cocido, setCocido] = useState<number | undefined>(inicial?.equivalencia_cocido);
   /** Si sale en la guía de cocinar de una vez. Sin tocar, lo decide la app. */
   const [conFructosa, setConFructosa] = useState<boolean>(!!inicial?.conFructosa);
@@ -356,7 +366,7 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
                 </span>
                 <span className="text-xs text-slate-600">equivale a</span>
                 <span className="tnum text-2xl leading-none font-medium text-brand-900">
-                  {porcion.gramos} g
+                  {porcion.gramos} {unidad}
                 </span>
                 {medida && <span className="text-xs text-slate-500">· {medida}</span>}
               </div>
@@ -375,6 +385,22 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
                     }
                     className="w-28 text-sm"
                   />
+                </label>
+                <label className="block">
+                  <span className="mb-0.5 block text-[10px] text-slate-500">Se mide en</span>
+                  {/*
+                    Casi todo se pesa. El `ml` es de lo que se sirve en un vaso,
+                    y sin esta casilla no había forma de quitárselo a lo que
+                    viene mal del Excel — el chocolate salía en «11 ml».
+                  */}
+                  <Select
+                    value={unidad}
+                    onChange={(e) => setUnidad(e.target.value as 'g' | 'ml')}
+                    className="w-28 text-sm"
+                  >
+                    <option value="g">gramos (g)</option>
+                    <option value="ml">mililitros (ml)</option>
+                  </Select>
                 </label>
                 {ajustado && (
                   <button
@@ -684,8 +710,9 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
               nombre: nombre.trim(),
               grupo: grupo as ExchangeGroupId | undefined,
               nutrientes: n,
-              medida_casera: medida.trim() || `${gramosFinales} g`,
+              medida_casera: medida.trim() || `${gramosFinales} ${unidad}`,
               gramos: gramosFinales,
+              unidad,
               equivalencia_cocido: cocido,
               batch,
               conFructosa: conFructosa || undefined,
