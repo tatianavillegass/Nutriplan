@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import type { Client } from '../types/client';
@@ -53,6 +53,21 @@ export function AgendaPage() {
   const [abierta, setAbierta] = useState<{ clientId: string; citaId: string } | null>(null);
   /** El hueco que se acaba de pulsar: día y hora de la cita nueva. */
   const [hueco, setHueco] = useState<{ fecha: string; hora: string } | null>(null);
+  /**
+   * LO QUE SE ABRE, SE VE
+   *
+   * La cita y la ficha de agendar se pintan **debajo** de la rejilla, y la
+   * rejilla ocupa toda la pantalla: al pulsar una consulta no pasaba nada a la
+   * vista y había que bajar a mano a buscarla. Se lleva la vista ahí, igual que
+   * al cerrar una comida en el selector de recetas.
+   */
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!abierta && !hueco) return;
+    /* El `typeof` es por los tests: jsdom no implementa scrollIntoView. */
+    if (typeof panel.current?.scrollIntoView === 'function')
+      panel.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [abierta, hueco]);
 
   const dias = diasDeLaSemana(lunes);
   const semana = comoVaLaSemana(clients, lunes, hoy);
@@ -176,6 +191,7 @@ export function AgendaPage() {
       />
 
       {/* ── La cita abierta ─────────────────────────────── */}
+      <div ref={panel} className="scroll-mt-4">
       {elegida && (
         <DetalleDeCita
           client={elegida.client}
@@ -218,6 +234,8 @@ export function AgendaPage() {
           }}
         />
       )}
+
+      </div>
 
       {/* ── El mes ──────────────────────────────────────── */}
       <Card

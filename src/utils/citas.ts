@@ -114,14 +114,14 @@ export function cuantasEseDia(clients: Client[], fecha: string): number {
 // ── Las horas del día ───────────────────────────────────────────────
 
 /**
- * DE MEDIA HORA EN MEDIA HORA
+ * DE CUARTO EN CUARTO DE HORA
  *
- * Es el paso con el que ella agenda: las consultas duran 30, 45 o 60 minutos y
- * las llamadas 15, pero **ninguna empieza a y cuarto**. Con franjas de cuarto
- * de hora la semana se va a cincuenta filas y hay que buscar el hueco con la
- * lupa; una llamada de 15 minutos se pinta igual, ocupando media franja.
+ * Empezó en media hora pensando que ninguna consulta empieza a y cuarto, y no
+ * es verdad: **una llamada dura quince minutos**, así que después de la de las
+ * cinco y media entra otra a menos cuarto y ese hueco tiene que poder
+ * pulsarse. La semana sale a más filas, y por eso cada una es más baja.
  */
-export const PASO_MIN = 30;
+export const PASO_MIN = 15;
 
 /** La jornada de la consulta: de seis de la mañana a diez de la noche. */
 const DESDE = 6 * 60;

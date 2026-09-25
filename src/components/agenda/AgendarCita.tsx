@@ -59,11 +59,21 @@ export function AgendarCita({ clients, fecha, hora, onPoner, onCerrar, hoy = new
   const chocan = seSolapanCon(clients, fecha, aLaHora, duracion);
 
   const encontradas = useMemo(() => {
-    const q = sinTildes(busca.trim());
+    /*
+      PALABRA A PALABRA, NO LA FRASE ENTERA
+      Buscando la frase completa, escribir el nombre y los dos apellidos no
+      encontraba a nadie si uno estaba escrito de otra manera —o si en su ficha
+      el orden es otro—. Se parte en palabras y se piden todas: «maria
+      fernanda» la encuentra, y «fernanda aristi» también.
+    */
+    const palabras = sinTildes(busca.trim()).split(/\s+/).filter(Boolean);
     const suyas = clients.filter((c) => !c.soloReto);
-    if (!q) return suyas.slice(0, 8);
+    if (!palabras.length) return suyas.slice(0, 8);
     return suyas
-      .filter((c) => sinTildes(c.nombre).includes(q) || sinTildes(c.email ?? '').includes(q))
+      .filter((c) => {
+        const donde = `${sinTildes(c.nombre)} ${sinTildes(c.email ?? '')}`;
+        return palabras.every((p) => donde.includes(p));
+      })
       .slice(0, 8);
   }, [clients, busca]);
 

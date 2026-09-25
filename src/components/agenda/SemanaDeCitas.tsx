@@ -23,8 +23,12 @@ interface Props {
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-/** Alto de media hora, en píxeles. Una llamada de 15 min ocupa la mitad. */
-const ALTO = 30;
+/**
+ * Alto de un cuarto de hora, en píxeles. Al pasar de media hora a cuarto se
+ * duplicaron las filas, así que cada una baja a la mitad: la jornada entera
+ * sigue entrando en una pantalla.
+ */
+const ALTO = 16;
 
 /**
  * LA SEMANA CON SUS HORAS
@@ -125,8 +129,12 @@ export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
                     title={`Agendar el ${dia} a las ${h}`}
                     aria-label={`Agendar el ${dia} a las ${h}`}
                     style={{ top: i * ALTO, height: ALTO }}
-                    className={`absolute inset-x-0 border-b text-[10px] text-transparent transition hover:bg-brand-100/70 hover:text-brand-700 ${
-                      h.endsWith(':00') ? 'border-slate-100' : 'border-slate-50'
+                    className={`absolute inset-x-0 text-[10px] text-transparent transition hover:bg-brand-100/70 hover:text-brand-700 ${
+                      h.endsWith(':00')
+                        ? 'border-b border-slate-200'
+                        : h.endsWith(':30')
+                          ? 'border-b border-slate-100'
+                          : ''
                     }`}
                   >
                     +
@@ -187,7 +195,7 @@ export function SemanaDeCitas({ clients, dias, hoy, onAbrir, onHueco }: Props) {
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-1.5">
         <p className="text-[10px] text-slate-400">
-          Pulsa un hueco para agendar ahí; la hora se puede afinar después (15:45). De{' '}
+          Pulsa un hueco para agendar ahí — van de cuarto en cuarto de hora. De{' '}
           {franjas[0]} a {comoHora(arranca + franjas.length * PASO_MIN)}.
         </p>
         <button

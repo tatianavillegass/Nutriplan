@@ -58,23 +58,31 @@ export function DetalleDeCita({
 
   return (
     <div className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <Link
-            to={`/clientes/${client.id}`}
-            className="text-sm font-semibold text-brand-700 underline-offset-2 hover:underline"
-          >
-            {client.nombre}
-          </Link>
+          <p className="text-sm font-semibold text-slate-800">{client.nombre}</p>
           <p className="text-[11px] text-slate-500">
             {cita.fecha}
             {cita.hora && ` · ${cita.hora}`} · {LABEL_MODO_CITA[cita.modo]}
             {anulada && ' · anulada'}
           </p>
         </div>
-        <button onClick={onCerrar} className="text-xs text-slate-400 hover:text-slate-600">
-          Cerrar
-        </button>
+        <div className="flex items-center gap-2">
+          {/*
+            UN BOTÓN, NO UN NOMBRE SUBRAYADO
+            El nombre era el enlace a su ficha y no se veía como tal, así que
+            desde la cita parecía que no había forma de llegar a ella.
+          */}
+          <Link
+            to={`/clientes/${client.id}`}
+            className="rounded-lg border border-brand-300 px-2.5 py-1 text-[11px] font-medium text-brand-700 transition hover:bg-brand-50"
+          >
+            Abrir su ficha →
+          </Link>
+          <button onClick={onCerrar} className="text-xs text-slate-400 hover:text-slate-600">
+            Cerrar
+          </button>
+        </div>
       </div>
 
       {/*

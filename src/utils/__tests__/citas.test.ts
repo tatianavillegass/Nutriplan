@@ -307,11 +307,14 @@ describe('Lo que hay que recordarle', () => {
 });
 
 describe('Las horas de la semana', () => {
-  it('van de media hora en media hora, de seis de la mañana a diez de la noche', () => {
+  it('van de cuarto en cuarto, de seis de la mañana a diez de la noche', () => {
+    /* Una llamada dura quince minutos: después de la de y media entra otra a
+       menos cuarto, y ese hueco tiene que poder pulsarse. */
     const franjas = franjasDeLaSemana([clienta()], diasDeLaSemana('2026-09-21'));
     expect(franjas[0]).toBe('06:00');
-    expect(franjas[1]).toBe('06:30');
-    expect(franjas[franjas.length - 1]).toBe('21:30');
+    expect(franjas[1]).toBe('06:15');
+    expect(franjas).toContain('17:45');
+    expect(franjas[franjas.length - 1]).toBe('21:45');
   });
 
   it('una duración disparatada NO estira la agenda hasta las 78:00', () => {
@@ -321,7 +324,7 @@ describe('Las horas de la semana', () => {
       citas: [{ ...cita({ fecha: '2026-09-23', hora: '18:00', duracionMin: 3600 }), id: 'x' }],
     });
     const franjas = franjasDeLaSemana([c], diasDeLaSemana('2026-09-21'));
-    expect(franjas[franjas.length - 1]).toBe('21:30');
+    expect(franjas[franjas.length - 1]).toBe('21:45');
     expect(duracionDe({ duracionMin: 3600 })).toBe(240);
   });
 
@@ -330,7 +333,7 @@ describe('Las horas de la semana', () => {
       citas: [{ ...cita({ fecha: '2026-09-23', hora: '23:30', duracionMin: 240 }), id: 'x' }],
     });
     const franjas = franjasDeLaSemana([c], diasDeLaSemana('2026-09-21'), true);
-    expect(franjas[franjas.length - 1]).toBe('23:30');
+    expect(franjas[franjas.length - 1]).toBe('23:45');
   });
 
   it('se estiran para que quepa una cita fuera de horario', () => {
@@ -355,7 +358,7 @@ describe('Las horas de la semana', () => {
       ],
     });
     expect(huecoOcupado([c], '2026-09-25', '11:00')).toBe(true);
-    expect(huecoOcupado([c], '2026-09-25', '11:30')).toBe(true);
+    expect(huecoOcupado([c], '2026-09-25', '11:45')).toBe(true);
     expect(huecoOcupado([c], '2026-09-25', '12:00')).toBe(false);
   });
 
@@ -393,8 +396,8 @@ describe('Dos a la vez se puede, pero se avisa', () => {
   it('las 24 horas se piden aparte, que la jornada normal es de ocho a nueve', () => {
     const franjas = franjasDeLaSemana([clienta()], diasDeLaSemana('2026-09-21'), true);
     expect(franjas[0]).toBe('00:00');
-    expect(franjas[franjas.length - 1]).toBe('23:30');
-    expect(franjas).toHaveLength(48);
+    expect(franjas[franjas.length - 1]).toBe('23:45');
+    expect(franjas).toHaveLength(96);
   });
 });
 

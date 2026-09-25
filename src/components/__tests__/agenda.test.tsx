@@ -5,6 +5,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { AgendaPage } from '../../pages/AgendaPage';
 import { useAppStore } from '../../store/useAppStore';
 import type { Bono, Cita, Client } from '../../types/client';
+import { comoVaElBono } from '../../utils/bonos';
+import { ingresosDelMes } from '../../utils/finanzas';
+import { mesDeConsulta } from '../../utils/consulta';
 
 afterEach(cleanup);
 
@@ -245,5 +248,61 @@ describe('El bono y los pagos, al desplegar la cita', () => {
     expect(screen.getByText('Total')).toBeTruthy();
     /* El pago y el «pagado» de abajo dicen lo mismo: los dos son 210. */
     expect(screen.getAllByText(/210 €/).length).toBeGreaterThan(1);
+  });
+});
+
+describe('Lo que se cobra en la cita es lo mismo que la ficha y la caja', () => {
+  const mes = HOY.slice(0, 7);
+
+  it('el pago entra en su bono y cuenta en el mes, sin apuntarlo dos veces', () => {
+    pintar([clienta({ citas: [cita({ fecha: HOY, id: 'ci_1' })] })]);
+    fireEvent.click(screen.getByText('Ana'));
+
+    fireEvent.click(screen.getByText(/Cobrar · faltan 420/));
+    fireEvent.change(screen.getByLabelText(/Cuánto cobras/), { target: { value: '210' } });
+    fireEvent.click(screen.getByText('Apuntar el pago'));
+
+    const guardada = useAppStore.getState().clients[0];
+
+    /* 1 · En su ficha: el pago cuelga del bono, así que el «faltan» se entera. */
+    expect(comoVaElBono(BONO, guardada).pagado).toBe(210);
+    expect(comoVaElBono(BONO, guardada).pendiente).toBe(210);
+
+    /* 2 · En la caja del mes: es el mismo número, leído de los mismos pagos. */
+    expect(ingresosDelMes([guardada], mes)).toBe(210);
+    expect(mesDeConsulta([guardada], [], mes).cobrado).toBe(210);
+  });
+
+  it('y marcar la consulta cuenta como trabajo hecho, aunque no se cobre nada', () => {
+    pintar([clienta({ citas: [cita({ fecha: HOY, id: 'ci_1' })] })]);
+    fireEvent.click(screen.getByText('Ana'));
+    fireEvent.click(screen.getByText('Marcar realizada'));
+
+    const guardada = useAppStore.getState().clients[0];
+    const delMes = mesDeConsulta([guardada], [], mes);
+    expect(delMes.consultas).toBe(1);
+    /* Lo cobrado y lo trabajado son dos cosas: una consulta de un bono ya
+       pagado no mete nada en caja ese mes, pero sí es trabajo hecho. */
+    expect(delMes.devengado).toBeGreaterThan(0);
+    expect(delMes.cobrado).toBe(0);
+  });
+});
+
+describe('Llegar a la clienta desde su cita', () => {
+  it('hay un botón a su ficha, no un nombre subrayado que no se ve', () => {
+    pintar([clienta({ citas: [cita({ fecha: HOY, id: 'ci_1' })] })]);
+    fireEvent.click(screen.getByText('Ana'));
+
+    const ir = screen.getByText(/Abrir su ficha/) as HTMLAnchorElement;
+    expect(ir.getAttribute('href')).toBe('/clientes/c1');
+  });
+
+  it('se busca por palabras: «ana gar» la encuentra igual que el nombre entero', () => {
+    pintar([clienta()]);
+    fireEvent.click(screen.getByLabelText(`Agendar el ${HOY} a las 11:00`));
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
+      target: { value: 'ana gar' },
+    });
+    expect(screen.getAllByText('Ana García').length).toBeGreaterThan(0);
   });
 });
