@@ -56,6 +56,15 @@ export interface ComoVaElBono {
   bono: Bono;
   importe: number;
   pagado: number;
+  /**
+   * SESIONES DEL BONO QUE NO CUADRAN CON NINGUNA LÍNEA
+   *
+   * Cuentan como hechas —se dieron— pero no se les puede poner el «2 de 3» de
+   * nadie. Pasa con los bonos escritos sin líneas y con las marcadas cuando ya
+   * no quedaba hueco en ninguna. Sin esto **desaparecían**: marcar la consulta
+   * no se veía por ninguna parte, que es lo mismo que no haberla marcado.
+   */
+  sueltas: number;
   /** Lo que falta por cobrar. Nunca negativo: si pagó de más, es cero. */
   pendiente: number;
   lineas: ComoVaLinea[];
@@ -78,7 +87,12 @@ export function comoVaElBono(
 ): ComoVaElBono {
   const pagado = pagadoDelBono(client.pagos, bono.id);
   const lineas = comoVanLasSesiones(bono, client.sesiones);
-  const sesionesHechas = lineas.reduce((s, l) => s + l.hechas, 0);
+  /* Las del bono que no se apuntaron a ninguna línea siguen siendo suyas. */
+  const suyas = bono.incluye.map((l) => l.id);
+  const sueltas = (client.sesiones ?? []).filter(
+    (se) => se.bonoId === bono.id && (!se.lineaId || !suyas.includes(se.lineaId)),
+  ).length;
+  const sesionesHechas = lineas.reduce((s, l) => s + l.hechas, 0) + sueltas;
   const sesionesTotales = lineas.reduce((s, l) => s + l.linea.cuantas, 0);
   const diasParaVencer = bono.vence ? diasEntre(hoy, bono.vence) : undefined;
 
@@ -103,6 +117,7 @@ export function comoVaElBono(
     importe: bono.importe,
     pagado,
     pendiente: Math.max(0, bono.importe - pagado),
+    sueltas,
     lineas,
     sesionesHechas,
     sesionesTotales,

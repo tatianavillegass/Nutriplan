@@ -473,7 +473,7 @@ function UnBono({
   onCerrar: () => void;
   onBorrar: () => void;
 }) {
-  const { bono, pagado, pendiente, lineas, estado, diasParaVencer } = como;
+  const { bono, pagado, pendiente, lineas, estado, diasParaVencer, sueltas } = como;
   const moneda = bono.moneda || "€";
   const dinero = (n: number) => `${fmt(n, n % 1 ? 2 : 0)} ${moneda}`;
   const etiqueta = TONO[estado];
@@ -523,6 +523,21 @@ function UnBono({
           diasParaVencer <= 30 &&
           ` (quedan ${diasParaVencer} días)`}
       </p>
+
+      {/*
+        SESIONES DE ESTE BONO QUE NO CUADRAN CON NINGUNA LÍNEA
+        Se dieron —cuentan como hechas y como trabajo del mes— pero no tienen
+        un «2 de 3» donde apuntarse: pasa en los bonos escritos sin líneas.
+        Antes desaparecían de la pantalla, que es lo mismo que no haberlas
+        marcado.
+      */}
+      {sueltas > 0 && (
+        <p className="mt-2.5 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-900">
+          {sueltas} {sueltas === 1 ? 'sesión hecha' : 'sesiones hechas'} de este bono sin
+          asignar a ninguna línea. Cuentan como hechas; para que salgan en un «x de y», añade
+          la línea que les corresponda abajo.
+        </p>
+      )}
 
       {/* ── Las consultas, una a una y con su fecha ───────────── */}
       {lineas.map(({ linea, hechas }) => {

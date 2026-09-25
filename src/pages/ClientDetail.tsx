@@ -24,6 +24,7 @@ import { AdherenceTab } from "../components/client/AdherenceTab";
 import { SeguimientoResumen } from "../components/client/SeguimientoResumen";
 import { CitaPanel } from "../components/client/AgendaPanel";
 import { BonosPanel } from "../components/client/BonosPanel";
+import { SusCitas } from "../components/client/SusCitas";
 import {
   RecursosDeCliente,
   MetasDeCliente,
@@ -728,6 +729,16 @@ export function ClientDetail() {
       {tab === "agenda" && (
         <div className="space-y-5">
           <CitaPanel
+            client={client}
+            onChange={(patch) => updateClient(client.id, patch)}
+          />
+          {/*
+            TODAS SUS CITAS, NO SÓLO LA PRÓXIMA
+            Al repasar en consulta hace falta ver cuáles se dieron y cuáles no,
+            y poder marcar la que se quedó sin marcar sin irse a buscar la
+            semana que fuera. Es el mismo sitio que la agenda, leído aquí.
+          */}
+          <SusCitas
             client={client}
             onChange={(patch) => updateClient(client.id, patch)}
           />
