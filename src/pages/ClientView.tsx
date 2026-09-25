@@ -36,7 +36,6 @@ import { ScaledOptionsBoard } from "../components/phase2/ScaledOptionsBoard";
 import { FoodPortionPicker } from "../components/phase3/FoodPortionPicker";
 import { PresupuestoDia } from "../components/phase3/PresupuestoDia";
 import { ContadorDia } from "../components/phase4/ContadorDia";
-import { RecetasDeConsulta } from "../components/phase4/RecetasDeConsulta";
 import { MisComidas } from "../components/client/MisComidas";
 import { CalculadoraPorciones } from "../components/phase3/CalculadoraPorciones";
 import { ScaledRecipeView } from "../components/phase1/ScaledRecipeView";
@@ -49,6 +48,10 @@ import { MealExtras } from "../components/client/MealExtras";
 import { ComidaLibre } from "../components/client/ComidaLibre";
 import { ResumenTab } from "../components/client/ResumenTab";
 import { MisMedidas } from "../components/client/MisMedidas";
+import {
+  BibliotecaDeRecetas,
+  aportesDeLaReceta,
+} from "../components/client/BibliotecaDeRecetas";
 import { MetasDiarias } from "../components/client/MetasDiarias";
 import { EntrenosDelDia } from "../components/client/EntrenosDelDia";
 import { BotonPausa } from "../components/client/BotonPausa";
@@ -66,6 +69,7 @@ import {
   quitadosDeReceta,
   anadidosDeReceta,
   planParaCliente,
+  recetasDelPlan,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
 import { LABEL_MODO_CITA, metasActivas, seMide } from "../types/client";
@@ -113,6 +117,7 @@ import {
 } from "../utils/misComidas";
 import type { Bocado } from "../types/diary";
 import type { Alimento } from "../types/food";
+import type { Meal } from "../types/plan";
 
 /**
  * ICONOS DE LÍNEA, NO EMOJIS
@@ -144,6 +149,8 @@ const ICONOS = {
   resumen: "M5 20V10M12 20V4M19 20v-6",
   recursos:
     "M12 7c-1.5-1.3-3.5-2-6-2H4v13h2c2.5 0 4.5.7 6 2m0-13c1.5-1.3 3.5-2 6-2h2v13h-2c-2.5 0-4.5.7-6 2m0-13v13",
+  /** Un cazo: son ideas para cocinar, no otro sitio donde contar. */
+  recetas: "M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8zM12 3v4M8.5 4.5l7 5",
 } as const;
 
 /**
@@ -153,6 +160,15 @@ const ICONOS = {
 const PESTANAS = [
   ["hoy", "Hoy", ICONOS.hoy],
   ["resumen", "Resumen", ICONOS.resumen],
+  /**
+   * SU BIBLIOTECA, Y SÓLO EN LAS FASES EN LAS QUE COMPONE ELLA
+   *
+   * En fases 1 y 2 las recetas ya salen dentro de cada comida, que es donde se
+   * buscan al ir a comer; una pestaña más sería el mismo material dos veces.
+   * En 3 y 4 no hay recetas en el día —ahí manda lo suyo— así que sin esto no
+   * tienen dónde estar.
+   */
+  ["recetas", "Recetas", ICONOS.recetas],
   ["recursos", "Recursos", ICONOS.recursos],
 ] as const;
 
@@ -210,7 +226,9 @@ export function ClientView() {
    * En qué pestaña está. «Hoy» es lo primero y lo que se abre siempre: lo
    * demás se consulta de vez en cuando, la comida es todos los días.
    */
-  const [tab, setTab] = useState<"hoy" | "resumen" | "recursos">("hoy");
+  const [tab, setTab] = useState<"hoy" | "resumen" | "recetas" | "recursos">(
+    "hoy",
+  );
 
   /** Las costumbres de hoy y los recursos que su nutricionista le ha abierto. */
   const metas = useMemo(() => (client ? metasActivas(client) : []), [client]);
@@ -589,6 +607,52 @@ export function ClientView() {
       out = marcarAlimento(out, meal.id, ing.foodId, n);
     }
     guardar({ porciones: out });
+  };
+
+  /**
+   * SU BIBLIOTECA: SÓLO SI LE HAN PUESTO RECETAS Y COMPONE ELLA
+   *
+   * En fases 1 y 2 las recetas ya salen dentro de cada comida, así que una
+   * pestaña más sería el mismo material dos veces. Y si no le han elegido
+   * ninguna, una pestaña vacía es una promesa que no se cumple.
+   */
+  const hayBiblioteca =
+    plan.fase >= 3 &&
+    Object.values(recetasDelPlan(plan)).some((ids: string[]) => ids.length > 0);
+
+  /**
+   * «ME LO HE COMIDO», DESDE LA BIBLIOTECA
+   *
+   * En fase 3 le fija las porciones de esa comida, que es el mismo gesto que
+   * el atajo de receta que ya existe: la receta hace el trabajo que ella haría
+   * a mano, alimento por alimento. En fase 4 no hay porciones que marcar, así
+   * que entra como lo comido, en gramos.
+   *
+   * **No se le quita nada de lo que ya tuviera marcado en otros macros**: se
+   * fijan los alimentos de la receta y lo demás se queda como estaba.
+   */
+  const usarDeLaBiblioteca = (meal: Meal, receta: Receta) => {
+    const reparto = dayType.grid[meal.id] ?? {};
+    if (plan.fase === 4) {
+      const macros = exchangesToMacros(costeDelPostre(receta));
+      guardar({
+        bocados: [
+          ...(registro?.bocados ?? []),
+          {
+            id: uid("bo_"),
+            nombre: receta.nombre,
+            cantidad: 1,
+            unidad: "ración",
+            macros,
+            kcal: kcalFromMacros(macros),
+            momento: meal.id,
+            hora: new Date().toISOString().slice(11, 16),
+          },
+        ],
+      });
+      return;
+    }
+    usarReceta(meal.id, aportesDeLaReceta(receta, reparto, foods));
   };
 
   /** Y en fase 4, donde no hay porciones, entra como lo que se ha comido. */
@@ -1035,7 +1099,7 @@ export function ClientView() {
           las busca.
         */}
         <div className="hidden gap-1 border-b border-slate-200 no-print sm:flex">
-          {PESTANAS.map(([id, label]) => (
+          {PESTANAS.filter(([id]) => id !== "recetas" || hayBiblioteca).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -1050,6 +1114,17 @@ export function ClientView() {
             </button>
           ))}
         </div>
+
+        {tab === "recetas" && (
+          <BibliotecaDeRecetas
+            plan={plan}
+            dayType={dayType}
+            recipes={recipes}
+            foods={foods}
+            soyElCliente={soyElCliente}
+            onUsar={usarDeLaBiblioteca}
+          />
+        )}
 
         {tab === "resumen" && (
           <div className="space-y-5">
@@ -1562,14 +1637,12 @@ export function ClientView() {
               />
             )}
 
-            {plan.fase === 4 && (
-              <RecetasDeConsulta
-                plan={plan}
-                dayType={dayType}
-                recipes={recipes}
-                foods={foods}
-              />
-            )}
+            {/*
+              Sus recetas ya no van aquí: viven en su pestaña «Recetas», que
+              es donde se entra cuando no se te ocurre qué cocinar. Tenerlas
+              también dentro del día era el mismo material dos veces — y en
+              fase 4, encima, debajo del contador.
+            */}
 
             {/* Las comidas del día, que se van llenando */}
             {plan.fase !== 3 && plan.fase !== 4 && (
@@ -1926,7 +1999,7 @@ export function ClientView() {
           ve pasar por debajo en vez de quedar cortado en seco.
         */}
         <nav className="flex w-full max-w-sm items-stretch gap-1 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-lg shadow-slate-900/10 backdrop-blur">
-          {PESTANAS.map(([id, label, icono]) => (
+          {PESTANAS.filter(([id]) => id !== "recetas" || hayBiblioteca).map(([id, label, icono]) => (
             <button
               key={id}
               onClick={() => {

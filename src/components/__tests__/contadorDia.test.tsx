@@ -2,12 +2,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { ContadorDia } from '../phase4/ContadorDia';
-import { RecetasDeConsulta } from '../phase4/RecetasDeConsulta';
-import type { DayType, Plan } from '../../types/plan';
-import { DEMO_PLAN } from '../../data/demoSeed';
+import type { DayType } from '../../types/plan';
 import type { Bocado } from '../../types/diary';
 import type { Alimento } from '../../types/food';
-import type { Receta } from '../../types/recipe';
 
 afterEach(cleanup);
 
@@ -282,88 +279,13 @@ describe('Lo que ve quien cuenta macros', () => {
  * plegadas: si se abren solas, la pantalla vuelve a decirle qué comer, que es
  * lo que esta fase deja atrás.
  */
-describe('Las recetas en fase 4', () => {
-  const RECETA: Receta = {
-    id: 'rc1',
-    nombre: 'Wok de pollo',
-    categorias: ['comida'],
-    tags: [],
-    base: { proteicos_magros: 4, almidones: 3 },
-    ingredientes: [],
-    preparacion: '',
-    notas: '',
-    createdAt: '',
-    updatedAt: '',
-  };
-
-  /** Las recetas son del plan; los gramos, del día. */
-  const planCon = (recetasAsignadas?: Record<string, string[]>) =>
-    ({ ...DEMO_PLAN, fase: 4, dayTypes: [DIA], recetasAsignadas }) as Plan;
-
-  it('están a mano, pero cerradas', () => {
-    render(
-      <RecetasDeConsulta
-        plan={planCon({ comida: ['rc1'] })}
-        dayType={DIA}
-        recipes={[RECETA]}
-        foods={[POLLO]}
-      />,
-    );
-    expect(screen.getByText('Tus recetas')).toBeTruthy();
-    expect(screen.queryByText('Wok de pollo')).toBeNull();
-  });
-
-  it('y se abren cuando ella quiere', () => {
-    render(
-      <RecetasDeConsulta
-        plan={planCon({ comida: ['rc1'] })}
-        dayType={DIA}
-        recipes={[RECETA]}
-        foods={[POLLO]}
-      />,
-    );
-    fireEvent.click(screen.getByText('Tus recetas'));
-    expect(screen.getByText('Wok de pollo')).toBeTruthy();
-  });
-
-  /**
-   * Las que se pautaron cuando las recetas vivían en el tipo de día siguen
-   * saliendo: nadie tiene que volver a elegirlas.
-   */
-  it('y las del formato viejo también', () => {
-    const viejo: DayType = { ...DIA, recetasAsignadas: { comida: ['rc1'] } };
-    render(
-      <RecetasDeConsulta
-        plan={
-          {
-            ...DEMO_PLAN,
-            fase: 4,
-            dayTypes: [viejo],
-            recetasAsignadas: undefined,
-          } as Plan
-        }
-        dayType={viejo}
-        recipes={[RECETA]}
-        foods={[POLLO]}
-      />,
-    );
-    fireEvent.click(screen.getByText('Tus recetas'));
-    expect(screen.getByText('Wok de pollo')).toBeTruthy();
-  });
-
-  it('sin recetas asignadas no ocupa sitio', () => {
-    const { container } = render(
-      <RecetasDeConsulta
-        plan={planCon()}
-        dayType={DIA}
-        recipes={[RECETA]}
-        foods={[POLLO]}
-      />,
-    );
-    expect(container.textContent).toBe('');
-  });
-});
-
+/*
+ * LAS RECETAS DE FASE 4 SE MUDARON
+ *
+ * Ya no están dentro del día: viven en la pestaña «Recetas» de su app, que es
+ * su biblioteca. Lo que antes se probaba aquí se prueba en
+ * `bibliotecaDeRecetas.test.tsx`.
+ */
 
 /**
  * COMER FUERA, TAMBIÉN CONTANDO GRAMOS

@@ -856,13 +856,23 @@ export function ClientDetail() {
             quitarle una que no encaja. Y `RepartirLaSemana`, que ya se enseña
             en fase 2, leía estas mismas recetas sin que hubiera dónde ponerlas.
           */}
-          {plan.fase <= 2 && !suReto && (
+          {/*
+            LAS RECETAS NO SE ACABAN EN LA FASE 2
+            Hay quien quiere la autonomía de la fase 3 —componerse la comida
+            con sus porciones— pero sigue queriendo las ideas de la 1: «vale,
+            dos almidones y un proteico, ¿pero qué cocino?». Elegirle recetas
+            aquí le monta su **biblioteca**, que en su app es una pestaña
+            aparte: no le dice qué comer, está para cuando no se le ocurra.
+          */}
+          {!suReto && (
             <Card
               title={plan.fase === 1 ? 'Recetas por comida' : 'Ideas de receta por comida'}
               subtitle={
                 plan.fase === 1
                   ? `Al menos ${RECETAS_POR_COMIDA} opciones por comida, y en cada seguimiento puedes sumar más sin quitar las que ya se sabe`
-                  : 'Las que le salen en la hoja de la nevera y al pedir ideas. Si no eliges ninguna, la app propone las que encajan con lo pautado'
+                  : plan.fase === 2
+                    ? 'Las que le salen en la hoja de la nevera y al pedir ideas. Si no eliges ninguna, la app propone las que encajan con lo pautado'
+                    : 'Su biblioteca: las ve en su pestaña «Recetas» con los gramos hechos y puede marcarlas de un toque. No le dicen qué comer — están para cuando no se le ocurra'
               }
             >
               {/*
