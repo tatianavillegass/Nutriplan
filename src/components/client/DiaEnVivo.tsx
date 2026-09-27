@@ -259,9 +259,26 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
                     ))
                   )}
                 </span>
-                {susExtras.length > 0 && (
+                {/*
+                  Lo que ella mandó contar en su plan no es un extra: va en
+                  otro color y sin el «+», que si no parece que se ha pasado
+                  cuando lo que ha hecho es comer sin seguir las comidas.
+                */}
+                {susExtras.filter((e) => e.enElPlan).length > 0 && (
+                  <span className="tnum text-[11px] text-brand-700">
+                    {susExtras
+                      .filter((e) => e.enElPlan)
+                      .map((e) => e.nombre)
+                      .join(', ')}
+                  </span>
+                )}
+                {susExtras.filter((e) => !e.enElPlan).length > 0 && (
                   <span className="tnum text-[11px] text-amber-700">
-                    +{susExtras.map((e) => e.nombre).join(', ')}
+                    +
+                    {susExtras
+                      .filter((e) => !e.enElPlan)
+                      .map((e) => e.nombre)
+                      .join(', ')}
                   </span>
                 )}
                 <span
@@ -277,9 +294,18 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
         </ul>
       )}
 
-      {(registro?.extras?.length ?? 0) > 0 && (
+      {extras.some((e) => e.enElPlan) && (
+        <p className="tnum mt-2 text-[11px] text-brand-700">
+          {extras.filter((e) => e.enElPlan).length === 1
+            ? 'Una cosa apuntada fuera de las comidas'
+            : `${extras.filter((e) => e.enElPlan).length} cosas apuntadas fuera de las comidas`}{' '}
+          que gastan sus porciones: ese día está comiendo suelta, no por comidas.
+        </p>
+      )}
+
+      {extras.some((e) => !e.enElPlan) && (
         <p className="tnum mt-2 text-[11px] text-amber-700">
-          {fmt(extras.reduce((s, e) => s + e.kcal, 0))} kcal de extras, un{' '}
+          {fmt(extras.reduce((s, e) => s + (e.enElPlan ? 0 : e.kcal), 0))} kcal de extras, un{' '}
           {fmt(balance.pesoExtras, 0)} % sobre lo pautado.
         </p>
       )}

@@ -96,6 +96,7 @@ import {
   balanceDelDia,
   extrasDeComida,
   hayAlgoMarcado,
+  porcionesSueltas,
   vaciarLoMarcado,
 } from "../utils/diary";
 import {
@@ -920,6 +921,24 @@ export function ClientView() {
     guardar({ extras: extras.filter((e) => e.id !== extraId) });
 
   /**
+   * LO MISMO APUNTADO PUEDE SER SU COMIDA O ALGO DE MÁS
+   *
+   * Sólo en fase 3: es donde hay porciones que gastar. En fase 1 no se marca
+   * nada, en fase 2 se elige la comida entera y en fase 4 todo son bocados.
+   */
+  const puedeContarEnElPlan = plan.fase === 3;
+  const cambiarDestinoExtra = (extraId: string, enElPlan: boolean) =>
+    guardar({
+      extras: extras.map((e) =>
+        e.id === extraId ? { ...e, enElPlan: enElPlan || undefined } : e,
+      ),
+    });
+
+  /** Lo apuntado suelto que ella mandó contar, ya en porciones. */
+  const sueltas = porcionesSueltas(extras, foods);
+  const cuantasSueltas = extras.filter((e) => e.enElPlan).length;
+
+  /**
    * Marcar una comida como libre. No borra lo que hubiera marcado —puede haber
    * desayunado en casa y salido a comer— simplemente dice que esa comida no se
    * mide.
@@ -1009,6 +1028,8 @@ export function ClientView() {
       foods={foods}
       onAnadir={anadirExtra}
       onQuitar={quitarExtra}
+      onCambiarDestino={cambiarDestinoExtra}
+      puedeContarEnElPlan={puedeContarEnElPlan}
     />
   );
 
@@ -1428,7 +1449,12 @@ export function ClientView() {
           pensado— pero deja de parecer la regla.
         */}
             {plan.fase === 3 && (
-              <PresupuestoDia dayType={dayType} seleccion={porGrupo} />
+              <PresupuestoDia
+                dayType={dayType}
+                seleccion={porGrupo}
+                sueltas={sueltas}
+                cuantasSueltas={cuantasSueltas}
+              />
             )}
 
             {/*
@@ -1974,6 +2000,7 @@ export function ClientView() {
                 foods={foods}
                 balance={balance}
                 nombreMomento={nombreMomento}
+                puedeContarEnElPlan={puedeContarEnElPlan}
                 onChange={(nuevos) => guardar({ extras: nuevos })}
               />
             )}

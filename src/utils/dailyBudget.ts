@@ -479,6 +479,16 @@ export interface PresupuestoMacro {
 export function presupuestoDelDia(
   dayType: DayType,
   seleccion: SeleccionGrupos,
+  /**
+   * LO QUE COMIÓ SIN COMIDA A LA QUE APUNTARLO
+   *
+   * El fin de semana no se come por comidas: se va picoteando, se come con
+   * amigas. Lo que ella apunta y manda contar entra aquí, en el total del día
+   * y no en ninguna comida — que es justo lo que en fase 3 manda. Los anillos
+   * de cada comida se quedan como están: ese día no está comiendo por comidas
+   * y cuadrarlos sería inventarse a cuál pertenece cada cosa.
+   */
+  sueltas: Partial<Record<ExchangeGroupId, number>> = {},
 ): PresupuestoMacro[] {
   const pautadoPorGrupo = { ...gridTotals(dayType.grid, dayType.meals) };
 
@@ -507,6 +517,9 @@ export function presupuestoDelDia(
     ][]) {
       if (n) elegidoPorGrupo[g] = (elegidoPorGrupo[g] ?? 0) + n;
     }
+  }
+  for (const [g, n] of Object.entries(sueltas) as [ExchangeGroupId, number][]) {
+    if (n) elegidoPorGrupo[g] = (elegidoPorGrupo[g] ?? 0) + n;
   }
 
   // Los grupos que salen: los pautados más los que haya escogido de su cuenta.

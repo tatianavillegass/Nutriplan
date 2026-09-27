@@ -138,6 +138,119 @@ describe('Añadir extra en una comida', () => {
   });
 });
 
+/**
+ * EL FIN DE SEMANA DE NORMA
+ *
+ * No come por comidas: pica, come con amigas. Lo apunta aquí y lo que quiere
+ * saber no es cuánto se ha desviado, sino si ha llegado a su proteína. Por eso
+ * puede decir «esto era mi comida», igual que ya se podía con los postres.
+ */
+describe('Decir si lo apuntado era su comida o fue de más', () => {
+  const pintar = (onAnadir = vi.fn()) => {
+    render(
+      <MealExtras
+        mealId="cena"
+        mealNombre="Cena"
+        extras={[]}
+        foods={FOOD_CATALOG}
+        onAnadir={onAnadir}
+        onQuitar={() => {}}
+        puedeContarEnElPlan
+      />,
+    );
+    fireEvent.click(screen.getByText('+ Añadir extra en cena'));
+    return onAnadir;
+  };
+
+  it('con un alimento del catálogo elegido, salen los dos botones', () => {
+    pintar();
+    fireEvent.change(screen.getByPlaceholderText(/Lo que te hayas tomado de más/), {
+      target: { value: 'Pechuga de pollo' },
+    });
+    fireEvent.click(screen.getAllByText(/Pechuga de pollo/)[0]);
+    expect(screen.getByText('Cuéntamelo en el plan')).toBeTruthy();
+    expect(screen.getByText('Fue de más')).toBeTruthy();
+  });
+
+  it('y «cuéntamelo en el plan» lo deja marcado para gastar porciones', () => {
+    const onAnadir = pintar();
+    fireEvent.change(screen.getByPlaceholderText(/Lo que te hayas tomado de más/), {
+      target: { value: 'Pechuga de pollo' },
+    });
+    fireEvent.click(screen.getAllByText(/Pechuga de pollo/)[0]);
+    fireEvent.click(screen.getByText('Cuéntamelo en el plan'));
+    expect((onAnadir.mock.calls[0][0] as Extra).enElPlan).toBe(true);
+  });
+
+  /* Unas calorías escritas a ojo no dicen de qué grupo son: no hay porciones
+     que calcular, así que no se ofrece la elección. */
+  it('apuntado a ojo no se puede contar, y sigue el botón de siempre', () => {
+    pintar();
+    fireEvent.change(screen.getByPlaceholderText(/Lo que te hayas tomado de más/), {
+      target: { value: 'Tarta de la abuela' },
+    });
+    expect(screen.getByText('Añadir')).toBeTruthy();
+    expect(screen.queryByText('Cuéntamelo en el plan')).toBeNull();
+  });
+
+  it('en las demás fases no se pregunta', () => {
+    render(
+      <MealExtras
+        mealId="cena"
+        mealNombre="Cena"
+        extras={[]}
+        foods={FOOD_CATALOG}
+        onAnadir={() => {}}
+        onQuitar={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByText('+ Añadir extra en cena'));
+    fireEvent.change(screen.getByPlaceholderText(/Lo que te hayas tomado de más/), {
+      target: { value: 'Pechuga de pollo' },
+    });
+    fireEvent.click(screen.getAllByText(/Pechuga de pollo/)[0]);
+    expect(screen.queryByText('Cuéntamelo en el plan')).toBeNull();
+  });
+
+  /* Se apunta el postre pensando que va encima y luego se decide dejarse la
+     fruta de la merienda: un botón que sólo se pulsa una vez no se pulsa. */
+  it('se puede cambiar de idea después', () => {
+    const onCambiar = vi.fn();
+    render(
+      <MealExtras
+        mealId="cena"
+        mealNombre="Cena"
+        extras={[extra('a', 'Cerveza', 150, 'cena')]}
+        foods={FOOD_CATALOG}
+        onAnadir={() => {}}
+        onQuitar={() => {}}
+        onCambiarDestino={onCambiar}
+        puedeContarEnElPlan
+      />,
+    );
+    fireEvent.click(screen.getByText('de más'));
+    expect(onCambiar).toHaveBeenCalledWith('a', true);
+  });
+
+  /* Lo que cuenta en el plan ya está dentro de sus porciones: contarlo aquí
+     además sería decir dos veces lo mismo. */
+  it('lo que cuenta en el plan no suma en las kcal de extra de la comida', () => {
+    render(
+      <MealExtras
+        mealId="cena"
+        mealNombre="Cena"
+        extras={[{ ...extra('a', 'Pollo', 150, 'cena'), enElPlan: true }]}
+        foods={FOOD_CATALOG}
+        onAnadir={() => {}}
+        onQuitar={() => {}}
+        puedeContarEnElPlan
+      />,
+    );
+    expect(screen.queryByText(/kcal de extra en cena/)).toBeNull();
+    expect(screen.getByText('en el plan')).toBeTruthy();
+  });
+});
+
 describe('El resumen del día enseña dónde cayó cada extra', () => {
   it('pone el nombre de la comida junto al extra', () => {
     const todos = [extra('a', 'Cerveza', 150, 'cena')];

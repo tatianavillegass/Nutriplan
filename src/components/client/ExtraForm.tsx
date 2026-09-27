@@ -14,6 +14,12 @@ interface Props {
   onCerrar?: () => void;
   placeholder?: string;
   autoFocus?: boolean;
+  /**
+   * En fase 3 lo apuntado puede contar en su plan: entonces hay dos botones en
+   * vez de uno. En las demás fases no hay porciones que gastar, así que no se
+   * pregunta.
+   */
+  puedeContarEnElPlan?: boolean;
 }
 
 /**
@@ -31,6 +37,7 @@ export function ExtraForm({
   onCerrar,
   placeholder = 'Cerveza, tarta, patatas fritas…',
   autoFocus = true,
+  puedeContarEnElPlan = false,
 }: Props) {
   const [foodId, setFoodId] = useState<string | undefined>();
   const [nombre, setNombre] = useState('');
@@ -41,7 +48,14 @@ export function ExtraForm({
   const calculado = macrosDeExtra(cantidad, food);
   const kcal = food ? calculado.kcal : (kcalManual ?? 0);
 
-  const añadir = () => {
+  /**
+   * Sin alimento del catálogo no hay porciones que calcular: unas calorías a
+   * ojo no dicen si eran hidrato o proteína. Por eso la elección sólo aparece
+   * cuando hay alimento elegido.
+   */
+  const sePuedeContar = puedeContarEnElPlan && !!food;
+
+  const añadir = (enElPlan = false) => {
     const etiqueta = (food?.nombre ?? nombre).trim();
     if (!etiqueta) return;
     onAnadir({
@@ -53,6 +67,7 @@ export function ExtraForm({
       macros: food ? calculado.macros : { proteina: 0, hc: 0, grasa: 0 },
       kcal,
       momento,
+      enElPlan: enElPlan || undefined,
     });
     setFoodId(undefined);
     setNombre('');
@@ -119,8 +134,31 @@ export function ExtraForm({
           )}
         </p>
 
-        <Button onClick={añadir}>Añadir</Button>
+        {!sePuedeContar && <Button onClick={() => añadir(false)}>Añadir</Button>}
       </div>
+
+      {/*
+        LAS DOS SON VERDAD
+        Guardarse el hidrato de la cena para el helado es planificar; comérselo
+        después de haber cenado es un extra. Lo mismo apuntado puede ser una
+        cosa o la otra y sólo lo sabe quien se lo ha comido, así que se
+        pregunta — igual que ya se hace con los postres.
+      */}
+      {sePuedeContar && (
+        <div className="border-t border-amber-100 pt-2">
+          <p className="mb-1.5 text-[11px] text-slate-600">¿Esto era tu comida o fue de más?</p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => añadir(true)}>Cuéntamelo en el plan</Button>
+            <Button variant="outline" onClick={() => añadir(false)}>
+              Fue de más
+            </Button>
+          </div>
+          <p className="mt-1 text-[10px] leading-snug text-slate-400">
+            «En el plan» gasta tus porciones de hoy, como si lo hubieras marcado en una comida.
+            «De más» suma encima sin quitarte nada.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -129,9 +167,16 @@ export function ExtraForm({
 export function ExtraRow({
   extra,
   onQuitar,
+  onCambiarDestino,
 }: {
   extra: Extra;
   onQuitar?: (id: string) => void;
+  /**
+   * Cambiar de idea es normal: se apunta el postre pensando que va encima y
+   * luego se decide dejarse la fruta de la merienda. Un botón que sólo se
+   * puede pulsar una vez, en el momento de apuntar, se deja sin pulsar.
+   */
+  onCambiarDestino?: (id: string, enElPlan: boolean) => void;
 }) {
   return (
     <li className="flex items-baseline gap-2 rounded-lg bg-white px-3 py-1.5 text-xs">
@@ -143,6 +188,29 @@ export function ExtraRow({
           </span>
         ) : null}
       </span>
+
+      {onCambiarDestino ? (
+        <button
+          onClick={() => onCambiarDestino(extra.id, !extra.enElPlan)}
+          title={
+            extra.enElPlan
+              ? 'Cuenta en tus porciones de hoy. Pulsa para dejarlo como algo de más.'
+              : 'Suma encima del plan. Pulsa para que te cuente en tus porciones.'
+          }
+          className={`rounded px-1.5 py-0.5 text-[10px] transition ${
+            extra.enElPlan
+              ? 'bg-brand-50 text-brand-800 hover:bg-brand-100'
+              : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+          }`}
+        >
+          {extra.enElPlan ? 'en el plan' : 'de más'}
+        </button>
+      ) : extra.enElPlan ? (
+        <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] text-brand-800">
+          en el plan
+        </span>
+      ) : null}
+
       <span className="tnum text-slate-600">{fmt(extra.kcal)} kcal</span>
       {onQuitar && (
         <button

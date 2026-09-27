@@ -22,6 +22,23 @@ export interface Extra {
   macros: MacroGrams;
   kcal: number;
   momento?: string;
+  /**
+   * LO MISMO APUNTADO PUEDE SER DOS COSAS
+   *
+   * Hay días —el fin de semana, una comida con amigas— en los que no se come
+   * por comidas: se va picoteando. Eso no es «comerse algo de más sobre el
+   * plan», es la comida de ese día, y la pregunta que se hace al apuntarlo no
+   * es cuánto se ha desviado sino **si ha llegado a su proteína**.
+   *
+   * Con la marca puesta, lo apuntado gasta sus porciones del día igual que si
+   * lo hubiera marcado en una comida; sin ella sigue siendo lo de siempre, que
+   * suma encima sin recortar nada. Las dos son verdad y por eso lo elige ella
+   * en cada cosa, como ya se hace con los postres.
+   *
+   * Sólo se puede con alimento del catálogo y sus gramos: sin eso no hay
+   * porciones que calcular, sólo unas calorías escritas a ojo.
+   */
+  enElPlan?: boolean;
 }
 
 /** mealId → foodId → número de porciones marcadas. */

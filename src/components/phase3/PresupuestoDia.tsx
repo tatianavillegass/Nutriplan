@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { DayType } from '../../types/plan';
+import type { ExchangeGroupId } from '../../data/exchangeGroups';
 import {
   presupuestoDelDia,
   reservaAceiteDelDia,
@@ -10,6 +11,10 @@ import { BUCKET_LABEL } from '../../utils/mealOptions';
 interface Props {
   dayType: DayType;
   seleccion: SeleccionGrupos;
+  /** Lo que apuntó suelto y mandó contar: entra en el total, no en una comida. */
+  sueltas?: Partial<Record<ExchangeGroupId, number>>;
+  /** Cuántas cosas eran, para poder decirlo. */
+  cuantasSueltas?: number;
 }
 
 /** «3», «3½». Las medias porciones son parte del sistema. */
@@ -59,11 +64,11 @@ const COLOR: Record<EstadoMacro, { arco: string; texto: string }> = {
  * Por eso el presupuesto va arriba del todo y el desglose por comidas debajo:
  * el orden de la pantalla dice qué es lo que manda.
  */
-export function PresupuestoDia({ dayType, seleccion }: Props) {
+export function PresupuestoDia({ dayType, seleccion, sueltas, cuantasSueltas = 0 }: Props) {
   /** El desglose empieza plegado: en el móvil es lo que ahorra el scroll. */
   const [detalle, setDetalle] = useState(false);
 
-  const macros = presupuestoDelDia(dayType, seleccion);
+  const macros = presupuestoDelDia(dayType, seleccion, sueltas);
   const reserva = reservaAceiteDelDia(dayType);
   if (!macros.length) return null;
 
@@ -174,6 +179,19 @@ export function PresupuestoDia({ dayType, seleccion }: Props) {
             </div>
           ))}
         </div>
+      )}
+
+      {/*
+        Si no se dice, la cuenta de arriba se mueve sola y parece un fallo: la
+        clienta apuntó un bocadillo entre horas y de pronto le faltaban dos
+        almidones menos sin haber marcado nada en ninguna comida.
+      */}
+      {cuantasSueltas > 0 && (
+        <p className="mt-3 text-[11px] text-slate-600">
+          Aquí dentro van{' '}
+          {cuantasSueltas === 1 ? 'una cosa que apuntaste' : `${cuantasSueltas} cosas que apuntaste`}{' '}
+          fuera de las comidas y dijiste que te contara en el plan.
+        </p>
       )}
 
       <p className="mt-3 text-[11px] text-emerald-700">

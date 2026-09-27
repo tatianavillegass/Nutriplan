@@ -69,6 +69,57 @@ export function totalExtras(extras: Extra[]): { macros: MacroGrams; kcal: number
 }
 
 /**
+ * ¿ESTO SE PUEDE CONTAR EN SU PLAN?
+ *
+ * Hace falta el alimento del catálogo y los gramos: la porción sale de
+ * dividir lo que se ha comido entre lo que pesa una. Unas calorías escritas a
+ * ojo no dicen de qué grupo son, así que ésas siguen sumando encima y ya.
+ */
+export function sePuedeContar(extra: Extra, foods: Alimento[]): boolean {
+  if (!extra.foodId || !extra.cantidad) return false;
+  const food = foods.find((f) => f.id === extra.foodId);
+  return !!food && !!gramosPorIntercambio(food);
+}
+
+/** Cuántas porciones de cada subgrupo son los gramos de un extra. */
+export function porcionesDeExtra(
+  extra: Extra,
+  foods: Alimento[],
+): Partial<Record<ExchangeGroupId, number>> {
+  const food = foods.find((f) => f.id === extra.foodId);
+  const porPorcion = food ? gramosPorIntercambio(food) : 0;
+  if (!food || !porPorcion || !extra.cantidad) return {};
+  // `aporteDeAlimento` reparte los compuestos: el yogur griego gasta lácteo y
+  // media grasa a la vez, igual que si lo hubiera marcado en una comida.
+  return aporteDeAlimento(food, extra.cantidad / porPorcion);
+}
+
+/**
+ * LO QUE HA COMIDO SUELTO, EN PORCIONES
+ *
+ * Sólo lo que ella marcó como «cuéntamelo en el plan». Va aparte de las
+ * comidas a propósito: el día que se come de picoteo no hay comida a la que
+ * apuntarlo, y en fase 3 lo que manda es el total del día.
+ */
+export function porcionesSueltas(
+  extras: Extra[],
+  foods: Alimento[],
+): Partial<Record<ExchangeGroupId, number>> {
+  const out: Partial<Record<ExchangeGroupId, number>> = {};
+  for (const e of extras) {
+    if (!e.enElPlan) continue;
+    for (const [gid, n] of Object.entries(porcionesDeExtra(e, foods)) as [
+      ExchangeGroupId,
+      number,
+    ][]) {
+      if (!n || EXCHANGE_GROUPS[gid]?.ilimitado) continue;
+      out[gid] = (out[gid] ?? 0) + n;
+    }
+  }
+  return out;
+}
+
+/**
  * MARGEN ACEPTABLE DE EXTRAS
  *
  * Un extra no rompe el día, lo desplaza. Hasta un 10 % sobre lo pautado el
@@ -182,7 +233,21 @@ export function balanceDelDia(
         )
       : pautado;
 
-  const marcado = registro ? macrosDePorciones(registro, foods) : { ...CERO };
+  /**
+   * LO APUNTADO QUE ELLA MANDÓ CONTAR NO ES UN DESVÍO
+   *
+   * Si dijo «esto era mi comida», entra por el lado del plan: si siguiera en
+   * los extras, un fin de semana de picoteo apuntado entero saldría como un
+   * 80 % de desvío cuando lo que ha hecho es comer.
+   */
+  const todos = registro?.extras ?? [];
+  const contados = todos.filter((e) => e.enElPlan);
+  const extras = todos.filter((e) => !e.enElPlan);
+
+  const marcado = suma(
+    registro ? macrosDePorciones(registro, foods) : { ...CERO },
+    totalExtras(contados).macros,
+  );
   const hayMarcado = marcado.proteina + marcado.hc + marcado.grasa > 0;
 
   const delPlan =
@@ -192,7 +257,6 @@ export function balanceDelDia(
         : { ...CERO }
       : delPlanEntero;
 
-  const extras = registro?.extras ?? [];
   const { macros: deExtras, kcal: kcalExtras } = totalExtras(extras);
 
   /**

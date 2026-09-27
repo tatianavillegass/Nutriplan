@@ -13,6 +13,9 @@ interface Props {
   foods: Alimento[];
   onAnadir: (extra: Extra) => void;
   onQuitar: (id: string) => void;
+  /** Sólo en fase 3: cambiar de idea sobre si cuenta en el plan o va encima. */
+  onCambiarDestino?: (id: string, enElPlan: boolean) => void;
+  puedeContarEnElPlan?: boolean;
   soloLectura?: boolean;
 }
 
@@ -34,10 +37,14 @@ export function MealExtras({
   foods,
   onAnadir,
   onQuitar,
+  onCambiarDestino,
+  puedeContarEnElPlan = false,
   soloLectura = false,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
-  const kcal = extras.reduce((s, e) => s + e.kcal, 0);
+  // Lo que cuenta en el plan no es un extra, así que no suma en esta cuenta:
+  // si no, el mismo bocadillo salía en las porciones y encima como desvío.
+  const kcal = extras.reduce((s, e) => s + (e.enElPlan ? 0 : e.kcal), 0);
 
   if (soloLectura && !extras.length) return null;
 
@@ -75,6 +82,7 @@ export function MealExtras({
             foods={foods}
             momento={mealId}
             placeholder="Lo que te hayas tomado de más…"
+            puedeContarEnElPlan={puedeContarEnElPlan}
             onAnadir={onAnadir}
             onCerrar={() => setAbierto(false)}
           />
@@ -84,7 +92,12 @@ export function MealExtras({
       {extras.length > 0 && (
         <ul className="mt-2 space-y-1 rounded-lg border border-amber-200 bg-amber-50/40 p-1.5">
           {extras.map((e) => (
-            <ExtraRow key={e.id} extra={e} onQuitar={soloLectura ? undefined : onQuitar} />
+            <ExtraRow
+              key={e.id}
+              extra={e}
+              onQuitar={soloLectura ? undefined : onQuitar}
+              onCambiarDestino={soloLectura ? undefined : onCambiarDestino}
+            />
           ))}
         </ul>
       )}

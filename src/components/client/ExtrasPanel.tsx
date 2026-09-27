@@ -14,6 +14,8 @@ interface Props {
   onChange: (extras: Extra[]) => void;
   /** Nombre de la comida en la que se apuntó cada extra. */
   nombreMomento?: (momento: string) => string | undefined;
+  /** Sólo en fase 3, donde hay porciones que gastar. */
+  puedeContarEnElPlan?: boolean;
   soloLectura?: boolean;
 }
 
@@ -39,12 +41,20 @@ export function ExtrasPanel({
   balance,
   onChange,
   nombreMomento,
+  puedeContarEnElPlan = false,
   soloLectura,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
 
-  const kcalExtras = extras.reduce((s, e) => s + e.kcal, 0);
+  // Lo que cuenta en el plan sale de esta cuenta: ya está dentro de sus
+  // porciones, y contarlo también aquí sería decir dos veces lo mismo.
+  const deMas = extras.filter((e) => !e.enElPlan);
+  const enElPlan = extras.filter((e) => e.enElPlan);
+  const kcalExtras = deMas.reduce((s, e) => s + e.kcal, 0);
   const veredicto = veredictoExtras(balance.pesoExtras);
+
+  const cambiarDestino = (id: string, valor: boolean) =>
+    onChange(extras.map((e) => (e.id === id ? { ...e, enElPlan: valor || undefined } : e)));
 
   return (
     <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-4">
@@ -69,6 +79,7 @@ export function ExtrasPanel({
         <div className="mt-3">
           <ExtraForm
             foods={foods}
+            puedeContarEnElPlan={puedeContarEnElPlan}
             onAnadir={(e) => {
               onChange([...extras, e]);
               setAbierto(false);
@@ -95,6 +106,9 @@ export function ExtrasPanel({
                     onQuitar={
                       soloLectura ? undefined : (id) => onChange(extras.filter((x) => x.id !== id))
                     }
+                    onCambiarDestino={
+                      soloLectura || !puedeContarEnElPlan ? undefined : cambiarDestino
+                    }
                   />
                 </ul>
               </li>
@@ -103,7 +117,18 @@ export function ExtrasPanel({
         </ul>
       )}
 
-      {extras.length > 0 && (
+      {/*
+        Sin esta línea, una clienta que lo apunta todo «en el plan» ve el panel
+        de extras en cero y cree que no se le ha guardado nada.
+      */}
+      {enElPlan.length > 0 && (
+        <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-snug text-brand-900">
+          {enElPlan.length === 1 ? 'Una de ellas cuenta' : `${enElPlan.length} de ellas cuentan`} en
+          tu plan de hoy: están descontadas arriba, en «Lo que tienes para hoy».
+        </p>
+      )}
+
+      {deMas.length > 0 && (
         <div className="tnum mt-3 border-t border-amber-200 pt-2 text-[11px] text-slate-700">
           <p>
             <strong className="font-medium">{fmt(kcalExtras)} kcal</strong> de extras, un{' '}
