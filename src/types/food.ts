@@ -176,9 +176,17 @@ export interface Alimento {
 export function gramosEnCrudo(gramos: number, a: Alimento | undefined): number {
   if (!a?.equivalencia_cruda || a.gramos <= 0) return gramos;
   const factor = a.equivalencia_cruda / a.gramos;
-  // Un factor de 1 o más no es una cocción: es un dato mal puesto, y engordar
-  // la compra por un error de tecleo es peor que quedarse como estaba.
-  return factor > 0 && factor < 1 ? gramos * factor : gramos;
+  /**
+   * EL ARROZ CRECE Y LA CARNE ENCOGE
+   *
+   * El factor va hacia abajo en lo que absorbe agua —150 g de arroz cocido se
+   * compran con 54— y hacia **arriba** en lo que la suelta: 120 g de pollo en
+   * el plato se compran con 144. La primera versión sólo dejaba pasar los
+   * factores menores que 1 y se comía justo el caso de la carne, que es donde
+   * más se pierde. Lo que se descarta es un dedazo: nada se cuadriplica ni se
+   * queda en la quinta parte al cocinarse.
+   */
+  return factor >= 0.2 && factor <= 4 ? gramos * factor : gramos;
 }
 
 /** ¿Estos gramos son de olla o de plato? Lo segundo hay que decirlo. */
@@ -190,7 +198,9 @@ export function seSabeEnCrudo(a: Alimento | undefined, nombre: string): boolean 
 
 /** «18 g crudo · 50 g cocido» cuando se sabe; si no, los gramos y ya. */
 export function losDosGramajes(a: Alimento | undefined, gramos: number): string | undefined {
-  if (!a || a.gramos <= 0) return undefined;
+  // Sin gramos no hay dos números que dar: un ingrediente «al gusto» o uno que
+  // el tope dejó en cero leía «(0 g en crudo · 0 g ya cocido)» al lado.
+  if (!a || a.gramos <= 0 || !(gramos > 0)) return undefined;
   const u = a.unidad ?? 'g';
   if (a.equivalencia_cocido) {
     return `${gramos} ${u} en crudo · ${Math.round((gramos * a.equivalencia_cocido) / a.gramos)} ${u} ya cocido`;

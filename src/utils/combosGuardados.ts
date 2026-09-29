@@ -1,4 +1,5 @@
 import type { Alimento } from '../types/food';
+import { losDosGramajes } from '../types/food';
 import type { CombinacionGuardada, DayType, Meal } from '../types/plan';
 import type { MacroBucket } from '../data/exchangeGroups';
 import { textoItem, type OpcionEscalada } from './mealOptions';
@@ -37,9 +38,7 @@ export function materializar(
         gramos: roundPortion(gpi * it.porciones),
         unidad: food.unidad ?? 'g',
         medida: escalarMedida(food.medida_casera, it.porciones),
-        gramosCocido: food.equivalencia_cocido
-          ? roundPortion(food.equivalencia_cocido * it.porciones)
-          : undefined,
+        dosGramajes: losDosGramajes(food, roundPortion(gpi * it.porciones)),
       };
     })
     .filter((x): x is NonNullable<typeof x> => !!x);

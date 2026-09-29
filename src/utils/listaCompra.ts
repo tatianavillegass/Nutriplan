@@ -102,6 +102,15 @@ export interface LineaCompra {
    * mochila de uno en uno — «2 × bidón» se entiende y «1000 ml» no.
    */
   medida?: string;
+  /**
+   * LOS GRAMOS SON DE OLLA, NO DE PLATO
+   *
+   * Cuando el alimento está escrito en cocido, aquí ya se ha pasado a crudo —
+   * la receta habla de lo que se come y la compra de lo que se compra. Sin
+   * decirlo, la línea pone «Arroz blanco cocido · 60 g» y esos 60 g son de
+   * arroz seco: el nombre dice una cosa y el número otra.
+   */
+  enCrudo?: boolean;
   /** En cuántas comidas de la semana aparece. */
   veces: number;
   /**
@@ -328,9 +337,15 @@ function lineasDesde(acumulado: Acumulado, porId: Map<string, Alimento>): LineaC
      * es lo que se mete en la mochila y lo que se pide en la tienda. «1000 ml
      * de isotónica» no lo compra nadie; «2 bidones» sí.
      */
+    /*
+     * La pieza sale de `food.gramos`, que en un alimento escrito en cocido son
+     * los del plato — y lo que se está redondeando son ya los gramos de la
+     * olla. Con un «Huevo cocido» eso contaría medio huevo de más por unidad,
+     * así que ahí no se cuenta por piezas.
+     */
     const pieza = food?.avituallamiento
       ? food.gramos || undefined
-      : food
+      : food && !food.equivalencia_cruda
         ? gramosPorPieza(food)
         : undefined;
     const { cantidad, piezas } = redondearCompra(v.gramos, pieza);
@@ -343,6 +358,7 @@ function lineasDesde(acumulado: Acumulado, porId: Map<string, Alimento>): LineaC
       unidad: v.unidad,
       piezas,
       medida: food?.avituallamiento ? sinElUno(food.medida_casera) : undefined,
+      enCrudo: !!food?.equivalencia_cruda,
       veces: v.veces,
       sinEnlazar: v.sinEnlazar,
     };

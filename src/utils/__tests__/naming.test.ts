@@ -73,9 +73,15 @@ describe('Sin repetir la cantidad en la misma línea', () => {
 
   it('el crudo/cocido se sigue mostrando entero', () => {
     const t = textoItem(
-      item({ nombre: 'Arroz blanco crudo', medida: '60 g', gramos: 60, unidad: 'g', gramosCocido: 180 }),
+      item({
+        nombre: 'Arroz blanco crudo',
+        medida: '60 g',
+        gramos: 60,
+        unidad: 'g',
+        dosGramajes: '60 g en crudo · 180 g ya cocido',
+      }),
     );
-    expect(t).toMatch(/60 g crudo \/ 180 g cocido/);
+    expect(t).toMatch(/60 g en crudo · 180 g ya cocido/);
   });
 
   it('etiquetaItem sigue sin repetir el nombre del alimento', () => {

@@ -197,7 +197,8 @@ export function RecipeQuickEditor({ receta, foods, requeridos, onGuardar, onCerr
                       foodId: f.id,
                       nombre: f.nombre,
                       grupo: f.grupo,
-                      unidad: f.equivalencia_cocido ? 'g crudo' : (f.unidad ?? 'g'),
+                      // Los dos gramajes los dice ya la línea del ingrediente.
+                      unidad: f.unidad ?? 'g',
                       cantidad_base: ing.cantidad_base || f.gramos,
                     })
                   }

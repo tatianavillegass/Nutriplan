@@ -60,7 +60,7 @@ const COCINABLES = new Set<ExchangeGroupId>([
  * no es organizarse: es cenar huevos de cuatro días.
  */
 const TAL_CUAL =
-  /(queso|feta|mozzarella|burgos|cottage|requesón|yogur|kéfir|jamón|fiambre|loncha|pavo en|lata|conserva|ahumad|pan\b|tostada|biscote|tortita|wrap|hummus|aguacate|fruta|nuez|nueces|almendra|anacardo|pistacho|semilla|aceite|mantequilla|leche|batido|proteína|whey|cereal|granola|barrita|huevo)/i;
+  /(queso|feta|mozzarella|burgos|cottage|requesón|yogur|kéfir|jamón|fiambre|loncha|pavo en|lata|conserva|de bote|ahumad|microondas|vaso|pan\b|tostada|biscote|tortita|wrap|hummus|aguacate|fruta|nuez|nueces|almendra|anacardo|pistacho|semilla|aceite|mantequilla|leche|batido|proteína|whey|cereal|granola|barrita|huevo)/i;
 
 /**
  * Lo que sí pide fuego. Si el alimento trae equivalencia de cocido ya lo dice
@@ -182,6 +182,9 @@ export function queCocinar(
             grupo,
             batch: food?.batch,
             equivalencia_cocido: food?.equivalencia_cocido,
+            // Faltaba, y con ella se caía del batch cooking todo lo escrito en
+            // cocido que no estuviera además escrito en el listado de nombres.
+            equivalencia_cruda: food?.equivalencia_cruda,
           })
         )
           continue;

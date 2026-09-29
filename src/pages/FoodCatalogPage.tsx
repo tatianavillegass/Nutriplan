@@ -223,9 +223,15 @@ export function FoodCatalogPage() {
                             ≠{porcion!.gramos}
                           </span>
                         )}
+                        {/* Las dos, o desde la lista no se ve cuál falta. */}
                         {f.equivalencia_cocido && (
                           <span className="ml-1 text-[10px] font-normal text-slate-400">
                             / {f.equivalencia_cocido} coc.
+                          </span>
+                        )}
+                        {f.equivalencia_cruda && (
+                          <span className="ml-1 text-[10px] font-normal text-slate-400">
+                            / {f.equivalencia_cruda} crudo
                           </span>
                         )}
                       </td>

@@ -464,7 +464,11 @@ export function RecipeBankPage() {
                           foodId: f.id,
                           nombre: f.nombre,
                           grupo: f.grupo,
-                          unidad: f.equivalencia_cocido ? 'g crudo' : (f.unidad ?? 'g'),
+                          // Crudo o cocido ya lo dice la propia línea del
+                          // ingrediente con los dos gramajes: escribirlo
+                          // además en la unidad salía «60 g crudo (60 g en
+                          // crudo · 167 g ya cocido)».
+                          unidad: f.unidad ?? 'g',
                           cantidad_base: ing.cantidad_base || f.gramos,
                         })
                       }

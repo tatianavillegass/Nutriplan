@@ -397,7 +397,11 @@ export function OrganizaTuSemana({
                                          medida: «2 × bidón (500 ml)» se compra
                                          y «1000 ml» no. */
                                       `${l.piezas} ${l.medida ? `× ${l.medida}` : l.piezas === 1 ? 'ud' : 'uds'}`
-                                    : `${fmt(l.cantidad, 0)} ${l.unidad}`}
+                                    : /* Con el alimento escrito en cocido, estos
+                                         gramos ya son los de la olla: sin
+                                         decirlo, «Arroz blanco cocido · 60 g»
+                                         parece que son 60 g de arroz hecho. */
+                                      `${fmt(l.cantidad, 0)} ${l.unidad}${l.enCrudo ? ' en crudo' : ''}`}
                               </span>
                             </button>
                           </li>

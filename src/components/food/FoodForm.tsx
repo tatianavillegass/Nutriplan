@@ -559,9 +559,13 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
               step="1"
               min="0"
               value={cocido ?? ''}
-              onChange={(e) =>
-                setCocido(e.target.value === '' ? undefined : Number(e.target.value))
-              }
+              onChange={(e) => {
+                const v = e.target.value === '' ? undefined : Number(e.target.value);
+                setCocido(v);
+                // Los gramos de arriba son crudos o cocidos, no las dos cosas:
+                // con las dos puestas, la pantalla y la compra se contradicen.
+                if (v != null) setCrudo(undefined);
+              }}
               placeholder="50"
               className="w-full"
             />
@@ -575,18 +579,19 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
               step="1"
               min="0"
               value={crudo ?? ''}
-              onChange={(e) => setCrudo(e.target.value === '' ? undefined : Number(e.target.value))}
+              onChange={(e) => {
+                const v = e.target.value === '' ? undefined : Number(e.target.value);
+                setCrudo(v);
+                if (v != null) setCocido(undefined);
+              }}
               placeholder="18"
               className="w-full"
             />
           </Field>
         </div>
-        {/* Las dos a la vez es que una de ellas son los gramos de arriba. */}
-        {cocido != null && crudo != null && (
-          <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
-            Sólo va una: los gramos de la porción ya son crudos o ya son cocidos, no las dos cosas.
-          </p>
-        )}
+        <p className="mt-2 text-[10px] text-slate-400">
+          Sólo va una: al escribir en una se borra la otra.
+        </p>
       </div>
 
       <div className="mt-3">

@@ -1,4 +1,5 @@
 import type { Alimento } from '../types/food';
+import { losDosGramajes } from '../types/food';
 import type { PorcionesMarcadas } from '../types/diary';
 import { EXCHANGE_GROUPS, type MacroBucket } from '../data/exchangeGroups';
 import type { DayType, Meal } from '../types/plan';
@@ -171,9 +172,7 @@ function escalarA(f: Alimento, intercambios: number): ItemOpcion | undefined {
     gramos: roundPortion(gpi * intercambios),
     unidad: f.unidad ?? 'g',
     medida: escalarMedida(f.medida_casera, intercambios),
-    gramosCocido: f.equivalencia_cocido
-      ? roundPortion(f.equivalencia_cocido * intercambios)
-      : undefined,
+    dosGramajes: losDosGramajes(f, roundPortion(gpi * intercambios)),
   };
 }
 

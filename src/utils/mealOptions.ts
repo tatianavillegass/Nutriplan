@@ -5,6 +5,7 @@ import {
   type MacroBucket,
 } from '../data/exchangeGroups';
 import type { Alimento, MealSlot } from '../types/food';
+import { losDosGramajes } from '../types/food';
 import type { ExchangeCounts } from './exchanges';
 import { roundPortion } from './macros';
 import { gramosPorIntercambio } from './recipeComposition';
@@ -34,7 +35,8 @@ export interface ItemOpcion {
   /** Medida casera ya multiplicada: "2 huevos", "1 1/2 tazas". */
   medida: string;
   /** Gramos en cocido, si aplica. */
-  gramosCocido?: number;
+  /** «18 g en crudo · 50 g ya cocido», cuando el alimento lo sabe. */
+  dosGramajes?: string;
 }
 
 export interface OpcionEscalada {
@@ -69,7 +71,7 @@ const BUCKET_LABEL: Record<MacroBucket, string> = {
 
 export { BUCKET_LABEL };
 
-function escalarAlimento(f: Alimento, intercambios: number): ItemOpcion | undefined {
+export function escalarAlimento(f: Alimento, intercambios: number): ItemOpcion | undefined {
   const gpi = gramosPorIntercambio(f);
   if (!gpi || !f.grupo || intercambios <= 0) return undefined;
   const gramos = roundPortion(gpi * intercambios);
@@ -81,9 +83,7 @@ function escalarAlimento(f: Alimento, intercambios: number): ItemOpcion | undefi
     gramos,
     unidad: f.unidad ?? 'g',
     medida: escalarMedida(f.medida_casera, intercambios),
-    gramosCocido: f.equivalencia_cocido
-      ? roundPortion(f.equivalencia_cocido * intercambios)
-      : undefined,
+    dosGramajes: losDosGramajes(f, gramos),
   };
 }
 
@@ -132,13 +132,18 @@ export function etiquetaItem(medida: string, nombre: string): string {
 }
 
 export function textoItem(i: ItemOpcion): string {
-  const cantidad = i.gramosCocido
-    ? `${i.gramos} ${i.unidad} crudo / ${i.gramosCocido} ${i.unidad} cocido`
-    : `${i.gramos} ${i.unidad}`;
+  /*
+   * Los dos gramajes se dicen igual aquí que en la receta de fase 1: con la
+   * cuenta hecha en un solo sitio, y sirve en los dos sentidos —el alimento
+   * escrito en crudo y el escrito en cocido—. Antes se multiplicaba la
+   * equivalencia por las porciones sin dividir entre los intercambios del
+   * alimento, así que en cuanto uno no fuera de 1 intercambio salía mal.
+   */
+  const cantidad = i.dosGramajes ?? `${i.gramos} ${i.unidad}`;
 
   // Sin medida casera de verdad: "130 ml de clara de huevo", no
   // "130 ml de clara de huevo (130 ml)".
-  if (medidaEsGramaje(i.medida) && !i.gramosCocido) {
+  if (medidaEsGramaje(i.medida) && !i.dosGramajes) {
     return `${i.gramos} ${i.unidad} de ${i.nombre.toLowerCase()}`;
   }
   return `${etiquetaItem(i.medida, i.nombre)} (${cantidad})`;

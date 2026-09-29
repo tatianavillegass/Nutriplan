@@ -1,4 +1,5 @@
 import type { Alimento } from '../types/food';
+import { losDosGramajes } from '../types/food';
 import {
   EXCHANGE_GROUPS,
   KCAL_PER_GRAM,
@@ -108,9 +109,7 @@ function escalar(f: Alimento, porciones: number): ItemOpcion | undefined {
     gramos: roundPortion(gpi * porciones),
     unidad: f.unidad ?? 'g',
     medida: escalarMedida(f.medida_casera, porciones),
-    gramosCocido: f.equivalencia_cocido
-      ? roundPortion(f.equivalencia_cocido * porciones)
-      : undefined,
+    dosGramajes: losDosGramajes(f, roundPortion(gpi * porciones)),
   };
 }
 
