@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
+import { losDosGramajes } from '../../types/food';
 import type { ExchangeCounts } from '../../utils/exchanges';
 import { exchangesToMacros } from '../../utils/exchanges';
 import { scaleRecipe } from '../../utils/recipeScaling';
@@ -260,20 +261,29 @@ export function ScaledRecipeView({
                 ? foods.find((f) => f.id === equivalenteId)
                 : undefined;
               /**
-               * CUÁNTAS PORCIONES ES ESTE INGREDIENTE
+               * CUÁNTAS PORCIONES ES ESTE INGREDIENTE: LAS DEL PLATO
                *
-               * Salía del reparto pautado (`requeridos[su subgrupo]`), y eso
-               * deja sin botón de cambiar a **todo lo que cubre un macro con
-               * otro subgrupo** — que es la regla de siempre: pautas proteicos
-               * magros y la receta lo trae con salmón, que es graso. Ahí
-               * `requeridos['proteicos_grasos']` no existe, salía 0 y no había
-               * nada que cambiar. Por eso a unas recetas les salía el botón en
-               * la proteína y a otras no.
+               * Salía del reparto pautado (`requeridos[su subgrupo]`) y eso
+               * está mal por dos lados.
                *
-               * Cuando el subgrupo **sí** está pautado se sigue leyendo de ahí,
-               * que es lo que ya funcionaba. Si no, se cuenta **lo que hay en
-               * el plato**: sus gramos entre los que hacen una porción de su
-               * alimento. Es la misma cuenta, hecha por el otro lado.
+               * `requeridos` es de **la comida entera**, no de este
+               * ingrediente. Con 70 g de aguacate en un plato donde se pautó 1
+               * grasa, el cambio lo contaba como **una** porción y devolvía
+               * 35 g de guacamole donde tenían que ser 70 — aguacate y
+               * guacamole pesan lo mismo por porción, así que el cambio es
+               * 1:1. Y en una comida con aguacate **y** aceite, al cambiar el
+               * aguacate se le cargaban las grasas de los dos y se inflaba.
+               *
+               * Además dejaba sin botón a **todo lo que cubre un macro con
+               * otro subgrupo** —pautas proteicos magros y la receta lo trae
+               * con salmón, que es graso—: `requeridos['proteicos_grasos']` no
+               * existe, salía 0 y no había nada que cambiar.
+               *
+               * Lo que se cambia es lo que hay en el plato, así que es el
+               * plato el que manda: sus gramos entre los que pesa una porción
+               * de su alimento. Sin alimento del catálogo detrás no hay porción
+               * que calcular, y ahí se cae a lo pautado porque es lo único que
+               * se sabe.
                */
               const pautadas =
                 (requeridos[ing.grupo as keyof typeof requeridos] as number | undefined) ?? 0;
@@ -281,7 +291,7 @@ export function ScaledRecipeView({
               const gpiOriginal = original ? gramosPorIntercambio(original) : undefined;
               const enElPlato =
                 gpiOriginal && ing.cantidad_final ? ing.cantidad_final / gpiOriginal : 0;
-              const intercambios = pautadas > 0 ? pautadas : enElPlato;
+              const intercambios = enElPlato > 0 ? enElPlato : pautadas;
               const gpi = equivalente ? gramosPorIntercambio(equivalente) : undefined;
 
               const nombreFinal = equivalente?.nombre ?? ing.nombre;
@@ -302,6 +312,16 @@ export function ScaledRecipeView({
                   : undefined;
               const displayFinal = caseras && casera ? casera : enGramos;
 
+              /**
+               * CRUDO Y COCIDO PESAN DISTINTO, Y CADA UNA PESA UNA COSA
+               *
+               * Quien pone el arroz en la olla lo pesa antes; quien se sirve
+               * del táper del domingo, después. Con un solo número, la mitad
+               * tiene que echar la cuenta a mano cada vez — y el arroz pasa de
+               * 18 a 50 gramos, que no es una cuenta que se haga a ojo.
+               */
+              const dos = losDosGramajes(alimento, gramosFinales ?? 0);
+
               return (
                 <li key={ing.id} className="flex items-baseline gap-2 text-sm">
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-400" />
@@ -310,6 +330,9 @@ export function ScaledRecipeView({
                     <span className="tnum ml-1.5 font-medium text-brand-800">{displayFinal}</span>
                     {caseras && casera && (
                       <span className="tnum ml-1.5 text-[10px] text-slate-400">{enGramos}</span>
+                    )}
+                    {dos && (
+                      <span className="tnum ml-1.5 text-[10px] text-slate-400">({dos})</span>
                     )}
                     {onEquivalente && !soloLectura && intercambios > 0 && (
                       <IngredientSwap

@@ -1,5 +1,6 @@
 import type { MenuSemana } from '../types/diary';
 import type { Alimento } from '../types/food';
+import { gramosEnCrudo } from '../types/food';
 import type { DayType, Plan } from '../types/plan';
 import {
   ajustesDeReceta,
@@ -262,14 +263,11 @@ export function listaDeLaCompra(
 
         /**
          * De cocido a crudo: la receta habla de lo que se come, la lista de lo
-         * que se compra. Sin la equivalencia se deja tal cual, que inventarla
-         * sería peor que quedarse corto.
+         * que se compra. Sólo cambia en los alimentos escritos en cocido; los
+         * que ya están en crudo se compran tal cual. Sin la equivalencia se
+         * deja como está, que inventarla sería peor que quedarse corto.
          */
-        let gramos = ing.cantidad_final as number;
-        if (food?.equivalencia_cocido && food.gramos > 0) {
-          const deCocidoACrudo = food.gramos / food.equivalencia_cocido;
-          if (deCocidoACrudo > 0 && deCocidoACrudo < 1) gramos *= deCocidoACrudo;
-        }
+        const gramos = gramosEnCrudo(ing.cantidad_final as number, food);
 
         const clave = food ? `f:${food.id}` : `n:${ing.nombre.trim().toLowerCase()}`;
         const ya = acumulado.get(clave);
@@ -398,11 +396,7 @@ export function listaDesdeVeces(
          * De cocido a crudo: la opción habla de lo que se come, la lista de lo
          * que se compra. Sin la equivalencia se deja tal cual.
          */
-        let gramos = item.gramos * n;
-        if (food?.equivalencia_cocido && food.gramos > 0) {
-          const deCocidoACrudo = food.gramos / food.equivalencia_cocido;
-          if (deCocidoACrudo > 0 && deCocidoACrudo < 1) gramos *= deCocidoACrudo;
-        }
+        const gramos = gramosEnCrudo(item.gramos * n, food);
 
         const clave = `f:${item.foodId}`;
         const ya = acumulado.get(clave);

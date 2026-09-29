@@ -63,6 +63,7 @@ export interface FoodFormValue {
    */
   unidad?: 'g' | 'ml';
   equivalencia_cocido?: number;
+  equivalencia_cruda?: number;
   /** Si sale en la guía de cocinar de una vez. */
   batch?: boolean;
   /** Lleva glucosa y fructosa: sólo importa en el avituallamiento. */
@@ -114,6 +115,7 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
   const [gramosManual, setGramosManual] = useState<number | undefined>(inicial?.gramos);
   const [unidad, setUnidad] = useState<'g' | 'ml'>(inicial?.unidad ?? 'g');
   const [cocido, setCocido] = useState<number | undefined>(inicial?.equivalencia_cocido);
+  const [crudo, setCrudo] = useState<number | undefined>(inicial?.equivalencia_cruda);
   /** Si sale en la guía de cocinar de una vez. Sin tocar, lo decide la app. */
   const [conFructosa, setConFructosa] = useState<boolean>(!!inicial?.conFructosa);
   const [avituallamiento, setAvituallamiento] = useState<boolean>(!!inicial?.avituallamiento);
@@ -533,18 +535,61 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
         </span>
       </label>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <Field label="Equivalencia en cocido" hint="Sólo si el gramaje de arriba es en crudo">
-          <Input
-            type="number"
-            step="1"
-            min="0"
-            value={cocido ?? ''}
-            onChange={(e) => setCocido(e.target.value === '' ? undefined : Number(e.target.value))}
-            placeholder="45"
-            className="w-full"
-          />
-        </Field>
+      {/*
+        LAS DOS EQUIVALENCIAS SON DOS PREGUNTAS DISTINTAS
+
+        Se rellena **una de las dos**, la que no sean los gramos de arriba. La
+        de cocido sólo sirve para enseñarle a la clienta los dos números; la de
+        crudo es la que hace que la lista de la compra y el batch cooking
+        pidan lo que de verdad hay que comprar. Estaban en un solo campo, y por
+        eso 150 g de arroz cocido salían como 150 g a comprar.
+      */}
+      <div className="mt-3 rounded-lg border border-slate-200 p-3">
+        <p className="mb-2 text-[11px] leading-snug text-slate-500">
+          Si esto se cuece y pesa distinto crudo que hecho, rellena la casilla que{' '}
+          <strong className="font-medium">no</strong> sean los gramos de la porción de arriba.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label="Lo que pesa ya cocido"
+            hint="Si los gramos de arriba son en crudo. Arroz: 18 g crudo → 50 g"
+          >
+            <Input
+              type="number"
+              step="1"
+              min="0"
+              value={cocido ?? ''}
+              onChange={(e) =>
+                setCocido(e.target.value === '' ? undefined : Number(e.target.value))
+              }
+              placeholder="50"
+              className="w-full"
+            />
+          </Field>
+          <Field
+            label="Lo que hay que comprar en crudo"
+            hint="Si los gramos de arriba son en cocido. Arroz: 50 g cocido → 18 g"
+          >
+            <Input
+              type="number"
+              step="1"
+              min="0"
+              value={crudo ?? ''}
+              onChange={(e) => setCrudo(e.target.value === '' ? undefined : Number(e.target.value))}
+              placeholder="18"
+              className="w-full"
+            />
+          </Field>
+        </div>
+        {/* Las dos a la vez es que una de ellas son los gramos de arriba. */}
+        {cocido != null && crudo != null && (
+          <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+            Sólo va una: los gramos de la porción ya son crudos o ya son cocidos, no las dos cosas.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-3">
         <Field label="Notas">
           <Input value={notas} onChange={(e) => setNotas(e.target.value)} className="w-full" />
         </Field>
@@ -714,6 +759,7 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
               gramos: gramosFinales,
               unidad,
               equivalencia_cocido: cocido,
+              equivalencia_cruda: crudo,
               batch,
               conFructosa: conFructosa || undefined,
               avituallamiento: avituallamiento || undefined,

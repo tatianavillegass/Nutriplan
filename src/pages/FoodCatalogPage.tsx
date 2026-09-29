@@ -74,6 +74,7 @@ export function FoodCatalogPage() {
       equivale: v.equivale,
       nutrientes: v.nutrientes,
       equivalencia_cocido: v.equivalencia_cocido,
+      equivalencia_cruda: v.equivalencia_cruda,
       batch: v.batch,
       /*
         Estas dos se recogían en el formulario y se perdían aquí: marcar «aporta

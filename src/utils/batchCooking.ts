@@ -1,5 +1,6 @@
 import type { MenuSemana } from '../types/diary';
 import type { Alimento } from '../types/food';
+import { gramosEnCrudo, seSabeEnCrudo } from '../types/food';
 import type { DayType, Plan } from '../types/plan';
 import {
   ajustesDeReceta,
@@ -78,11 +79,14 @@ export function seCocinaEnTanda(alimento: {
   grupo?: string;
   batch?: boolean;
   equivalencia_cocido?: number;
+  equivalencia_cruda?: number;
 }): boolean {
   if (alimento.batch != null) return alimento.batch;
   if (!alimento.grupo || !COCINABLES.has(alimento.grupo as ExchangeGroupId)) return false;
   if (TAL_CUAL.test(alimento.nombre)) return false;
-  if (alimento.equivalencia_cocido) return true;
+  // Tener equivalencia, en cualquiera de los dos sentidos, es decir que eso
+  // pasa por el fuego: es lo que hace que crudo y cocido pesen distinto.
+  if (alimento.equivalencia_cocido || alimento.equivalencia_cruda) return true;
   return AL_FUEGO.test(alimento.nombre);
 }
 
@@ -187,14 +191,8 @@ export function queCocinar(
          * receta habla de cocido y el alimento tiene su equivalencia, se pasa;
          * si no la tiene, se dice que esos gramos son los del plato.
          */
-        let gramos = ing.cantidad_final;
-        let enCrudo = true;
-        if (food?.equivalencia_cocido && food.gramos > 0) {
-          const aCrudo = food.gramos / food.equivalencia_cocido;
-          if (aCrudo > 0 && aCrudo < 1) gramos *= aCrudo;
-        } else if (/cocid|hervid|asad/i.test(food?.nombre ?? ing.nombre)) {
-          enCrudo = false;
-        }
+        const gramos = gramosEnCrudo(ing.cantidad_final, food);
+        const enCrudo = seSabeEnCrudo(food, ing.nombre);
 
         const clave = food ? `f:${food.id}` : `n:${ing.nombre.trim().toLowerCase()}`;
         const ya = porAlimento.get(clave);

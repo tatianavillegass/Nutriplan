@@ -80,3 +80,64 @@ describe('Cambiar la proteína en una receta de fase 1', () => {
     expect(screen.queryByTitle(/Cambiar salmón/i)).toBeNull();
   });
 });
+
+/**
+ * «70 g DE AGUACATE ME DAN 35 g DE GUACAMOLE»
+ *
+ * Aguacate y guacamole pesan lo mismo por porción (35 g), así que el cambio es
+ * 1:1 en gramos. Salía la mitad porque las porciones del ingrediente se leían
+ * del reparto pautado de **la comida entera** en vez de contar lo que hay en
+ * el plato: con 1 grasa pautada, 70 g de aguacate se contaban como una
+ * porción. Y en una comida con aguacate y aceite pasaba lo contrario, que al
+ * cambiar uno se le cargaban las grasas de los dos.
+ */
+describe('Cambiar un ingrediente cuenta lo que hay en el plato', () => {
+  const aguacate = FOOD_CATALOG.find((f) => f.id === 'a-aguacate')!;
+  const guacamole = FOOD_CATALOG.find((f) => f.id === 'a-guacamole')!;
+
+  const conAguacate = (gramos: number): Receta =>
+    ({
+      ...receta(aguacate.id, 'grasas', 'Aguacate'),
+      base: { grasas: gramos / aguacate.gramos },
+      ingredientes: [
+        {
+          id: 'i1',
+          nombre: 'Aguacate',
+          foodId: aguacate.id,
+          cantidad_base: gramos,
+          unidad: 'g',
+          grupo: 'grasas',
+          escalable: false,
+          opcional: false,
+        },
+      ],
+    }) as unknown as Receta;
+
+  const pintarGrasa = (r: Receta, equivalentes = {}) =>
+    render(
+      <ScaledRecipeView
+        receta={r}
+        requeridos={{ grasas: 1 }}
+        foods={FOOD_CATALOG}
+        equivalentes={equivalentes}
+        onEquivalente={vi.fn()}
+      />,
+    );
+
+  it('aguacate y guacamole pesan lo mismo por porción', () => {
+    expect(aguacate.gramos / aguacate.intercambios).toBe(
+      guacamole.gramos / guacamole.intercambios,
+    );
+  });
+
+  it('70 g de aguacate son 70 g de guacamole, no 35', () => {
+    pintarGrasa(conAguacate(70), { i1: guacamole.id });
+    expect(screen.getByText(/70 g/)).toBeTruthy();
+    expect(screen.queryByText(/35 g/)).toBeNull();
+  });
+
+  it('y 35 g siguen siendo 35', () => {
+    pintarGrasa(conAguacate(35), { i1: guacamole.id });
+    expect(screen.getByText(/35 g/)).toBeTruthy();
+  });
+});

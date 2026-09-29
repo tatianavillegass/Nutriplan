@@ -71,8 +71,31 @@ export interface Alimento {
   /** Gramos (o ml) que corresponden a esa medida casera. */
   gramos: number;
   unidad?: 'g' | 'ml';
-  /** Gramos en cocido, si el gramaje base es en crudo. */
+  /**
+   * LAS DOS EQUIVALENCIAS NO SON LA MISMA, Y NO SIRVEN PARA LO MISMO
+   *
+   * `gramos` manda: es la medida en la que está escrito todo lo demás y en la
+   * que sale escalada la receta. Lo que cambia es si esos gramos son de olla o
+   * de plato, y eso lo dice cuál de estos dos campos lleva el alimento:
+   *
+   *  · **`equivalencia_cocido`** — el alimento está en **crudo** (arroz blanco
+   *    crudo, 18 g por porción) y esto es lo que pesan ya cocidos (50 g). Es
+   *    para **enseñar los dos números**: quien pesa antes de cocinar y quien se
+   *    sirve del táper leen lo suyo. Para comprar no hace falta convertir nada,
+   *    que los gramos ya son los del paquete.
+   *  · **`equivalencia_cruda`** — el alimento está en **cocido** (arroz blanco
+   *    cocido, 50 g por porción) y esto es lo que hay que echar a la olla
+   *    (18 g). Es la que usan **la lista de la compra y el batch cooking**: la
+   *    receta habla de lo que se come y la compra de lo que se compra.
+   *
+   * Estaban las dos en un solo campo y la lista de la compra dividía por él,
+   * así que los 150 g de arroz cocido de una receta salían como 150 g a
+   * comprar —no había equivalencia que leer— y, peor, rellenar la casilla en un
+   * alimento escrito en crudo le habría quitado dos tercios a lo que sí estaba
+   * bien. Son dos preguntas distintas y ahora son dos campos.
+   */
   equivalencia_cocido?: number;
+  equivalencia_cruda?: number;
   /**
    * SE COCINA EN TANDA
    *
@@ -142,11 +165,48 @@ export interface Alimento {
   notas?: string;
 }
 
+/**
+ * LOS GRAMOS QUE SE COMPRAN, QUE NO SON LOS QUE SE COMEN
+ *
+ * Lo que hay que echar a la olla para que salga lo que dice la receta. Sólo
+ * cambia algo en los alimentos escritos **en cocido**: los que ya están en
+ * crudo se compran tal cual. Vive aquí y no copiado en cada sitio porque la
+ * lista de la compra y el batch cooking tienen que decir lo mismo.
+ */
+export function gramosEnCrudo(gramos: number, a: Alimento | undefined): number {
+  if (!a?.equivalencia_cruda || a.gramos <= 0) return gramos;
+  const factor = a.equivalencia_cruda / a.gramos;
+  // Un factor de 1 o más no es una cocción: es un dato mal puesto, y engordar
+  // la compra por un error de tecleo es peor que quedarse como estaba.
+  return factor > 0 && factor < 1 ? gramos * factor : gramos;
+}
+
+/** ¿Estos gramos son de olla o de plato? Lo segundo hay que decirlo. */
+export function seSabeEnCrudo(a: Alimento | undefined, nombre: string): boolean {
+  if (a?.equivalencia_cruda) return true;
+  if (a?.equivalencia_cocido) return true;
+  return !/cocid|hervid|asad/i.test(a?.nombre ?? nombre);
+}
+
+/** «18 g crudo · 50 g cocido» cuando se sabe; si no, los gramos y ya. */
+export function losDosGramajes(a: Alimento | undefined, gramos: number): string | undefined {
+  if (!a || a.gramos <= 0) return undefined;
+  const u = a.unidad ?? 'g';
+  if (a.equivalencia_cocido) {
+    return `${gramos} ${u} en crudo · ${Math.round((gramos * a.equivalencia_cocido) / a.gramos)} ${u} ya cocido`;
+  }
+  if (a.equivalencia_cruda) {
+    return `${Math.round((gramos * a.equivalencia_cruda) / a.gramos)} ${u} en crudo · ${gramos} ${u} ya cocido`;
+  }
+  return undefined;
+}
+
 /** Texto que se imprime en la lista "escoge X" de Fase 2. */
 export function formatFoodOption(a: Alimento): string {
   const u = a.unidad ?? 'g';
-  const cantidad = a.equivalencia_cocido
-    ? `${a.medida_casera} (${a.gramos} ${u} crudo / ${a.equivalencia_cocido} ${u} cocido)`
+  const dos = losDosGramajes(a, a.gramos);
+  const cantidad = dos
+    ? `${a.medida_casera} (${dos})`
     : `${a.medida_casera} (${a.gramos} ${u})`;
   return `${a.nombre} — ${cantidad}`;
 }
