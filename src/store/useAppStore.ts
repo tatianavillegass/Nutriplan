@@ -16,6 +16,12 @@ import { SEED_RECIPES } from "../data/seedRecipes";
 import { DEMO_CLIENT, DEMO_PLAN } from "../data/demoSeed";
 import { storage, STORAGE_KEYS, uid, nowIso } from "../utils/storage";
 import { snapHalf } from "../utils/macros";
+import {
+  medicionesSinFotos,
+  registrosSinFotos,
+  sinLaFoto,
+  sinLaImagen,
+} from "../utils/sinFotos";
 
 interface AppState {
   clients: Client[];
@@ -334,15 +340,20 @@ export const useAppStore = create<AppState>((set, get) => {
   const persistPlans = (plans: Plan[]) =>
     storage.set(STORAGE_KEYS.plans, plans);
   const persistRecipes = (recipes: Receta[]) =>
-    storage.set(STORAGE_KEYS.recipes, recipes);
+    storage.set(STORAGE_KEYS.recipes, sinLaFoto(recipes));
   const persistFoods = (foods: Alimento[]) =>
     storage.set(STORAGE_KEYS.foods, foods);
+  /*
+   * A la copia del navegador va todo menos las fotos: ahí caben unos megas y
+   * las fotos de progreso son cientos. Ver `utils/sinFotos.ts` — es lo que
+   * acababa quedándose sin memoria al abrir la app.
+   */
   const persistMediciones = (ms: Medicion[]) =>
-    storage.set(STORAGE_KEYS.mediciones, ms);
+    storage.set(STORAGE_KEYS.mediciones, medicionesSinFotos(ms));
   const persistRegistros = (rs: RegistroDia[]) =>
-    storage.set(STORAGE_KEYS.registros, rs);
+    storage.set(STORAGE_KEYS.registros, registrosSinFotos(rs));
   const persistRecursos = (rs: Recurso[]) =>
-    storage.set(STORAGE_KEYS.recursos, rs);
+    storage.set(STORAGE_KEYS.recursos, sinLaImagen(rs));
   const persistRetos = (rs: Reto[]) => storage.set(STORAGE_KEYS.retos, rs);
   const persistGastos = (gs: Gasto[]) => storage.set(STORAGE_KEYS.gastos, gs);
 

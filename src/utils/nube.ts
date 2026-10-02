@@ -455,22 +455,72 @@ export async function bajarPlanDelCliente(
 ): Promise<Pick<Foto, "clients" | "plans"> | undefined> {
   if (perfil.rol !== "cliente" || !perfil.clientId) return undefined;
 
-  const { data, error } = await nube()
+  /*
+   * SIN `select("*")`, Y SÓLO SI HA CAMBIADO
+   *
+   * Traía la fila entera cada cinco minutos —y cada treinta segundos mientras
+   * esperaba plan—: todas sus planificaciones y todas sus mediciones, con las
+   * fotos de antropometría metidas dentro. Y las mediciones se tiraban aquí
+   * mismo, porque de esta consulta sólo se usan la ficha y los planes.
+   *
+   * Primero se pregunta la fecha del último cambio, que son unos pocos bytes.
+   * Si no se ha tocado nada desde la última vez —que es casi siempre— ahí
+   * acaba la consulta.
+   */
+  const sb = nube();
+  const { data: sello } = await sb
     .from("clientes")
-    .select("*")
+    .select("actualizado")
+    .eq("id", perfil.clientId)
+    .maybeSingle();
+
+  const cuando = (sello as { actualizado?: string } | null)?.actualizado;
+  if (cuando && cuando === ultimoPlanVisto) return undefined;
+
+  const { data, error } = await sb
+    .from("clientes")
+    .select("id, nutri_id, email, ficha, planes")
     .eq("id", perfil.clientId)
     .maybeSingle();
 
   if (error || !data) return undefined;
-  const { clients, plans } = deFilas([data as FilaCliente]);
+  ultimoPlanVisto = cuando;
+  // `mediciones` no se pide: las escribe la nutricionista y aquí no se leen.
+  const fila = {
+    ...(data as Omit<FilaCliente, "mediciones">),
+    mediciones: [],
+  } satisfies FilaCliente;
+  const { clients, plans } = deFilas([fila]);
   return { clients, plans };
 }
 
+/** La última versión de su ficha que ya se ha leído. */
+let ultimoPlanVisto: string | undefined;
+
+/** Al cambiar de sesión, lo leído antes no vale. */
+export function olvidarElPlanLeido(): void {
+  ultimoPlanVisto = undefined;
+}
+
 /**
- * Sólo los registros, sin traerse el resto. Es la consulta del seguimiento en
- * vivo: se repite cada poco, así que tiene que ser barata.
+ * SÓLO LOS REGISTROS, Y SÓLO LOS QUE HAN CAMBIADO
+ *
+ * Es la consulta del seguimiento en vivo, así que se repite cada poco y tiene
+ * que ser barata. **No lo era**: traía el registro entero de todas las
+ * clientas, de todas las fechas, cada veinte segundos — con cuarenta fichas y
+ * medio año de histórico son unos catorce megas por consulta, y encima las
+ * fotos de progreso viajan dentro. Eso solo se come la cuota del mes en un día.
+ *
+ * Con `desde` se piden únicamente las filas tocadas después de la última vez,
+ * que en un rato tranquilo son **cero**. El histórico completo sigue bajando
+ * una vez al entrar (`bajar`), que es donde tiene sentido traerlo: la racha,
+ * las comidas fuera del mes y los check-ins se leen de ahí y no se enteran de
+ * este cambio.
  */
-export async function bajarRegistros(perfil: Perfil): Promise<RegistroDia[]> {
+export async function bajarRegistros(
+  perfil: Perfil,
+  desde?: string,
+): Promise<RegistroDia[]> {
   const sb = nube();
 
   const { data: fichas } =
@@ -481,10 +531,10 @@ export async function bajarRegistros(perfil: Perfil): Promise<RegistroDia[]> {
   const ids = (fichas ?? []).map((f) => (f as { id: string }).id);
   if (!ids.length) return [];
 
-  const { data } = await sb
-    .from("registros")
-    .select("datos")
-    .in("cliente_id", ids);
+  let q = sb.from("registros").select("datos").in("cliente_id", ids);
+  if (desde) q = q.gt("actualizado", desde);
+
+  const { data } = await q;
   return (data ?? []).map((r) => (r as { datos: RegistroDia }).datos);
 }
 

@@ -274,20 +274,79 @@ function escucharRegistros(perfil: Perfil): void {
    * wifi, Supabase corta el socket—, cada poco se pregunta igualmente. Es una
    * consulta pequeña y evita que el seguimiento se quede mudo sin que nadie
    * se entere, que es lo que pasaba.
+   *
+   * ERA EL PLAN B Y CORRÍA COMO PLAN A
+   *
+   * Preguntaba cada veinte segundos aunque el directo estuviera perfectamente
+   * conectado, y seguía preguntando con la pestaña al fondo toda la tarde. Eso
+   * y traer el histórico entero en cada vuelta (ver `bajarRegistros`) es lo que
+   * se comió la cuota del servidor. Ahora sólo pregunta cuando de verdad hace
+   * falta: con el directo caído, y con la pantalla delante.
    */
   repaso = setInterval(() => {
-    void bajarRegistros(perfil)
-      .then((rs) => rs.forEach(aplicar))
-      .catch(() => ponerEstadoVivo("preguntando"));
+    if (estadoVivo === "en-directo") return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    void preguntarPorLoNuevo(perfil);
   }, REPASO_MS);
 }
 
-/** Trae los registros ahora mismo, sin esperar al siguiente repaso. */
+/** Desde cuándo pedir: la última vez que se trajo algo, o nada la primera. */
+let ultimoRepaso: string | undefined;
+
+/**
+ * MARCAR UNA PORCIÓN NO PUEDE REENVIAR MEDIO AÑO
+ *
+ * El cliente subía **todos** sus registros en cada guardado: ciento ochenta
+ * días, con sus fotos de progreso dentro, cada vez que tocaba un botón. Y como
+ * el envío reescribe la fecha de «actualizado» de todas las filas, cada toque
+ * disparaba ciento ochenta avisos en directo hacia la pantalla de la
+ * nutricionista, cada uno con su día entero.
+ *
+ * Se guarda lo que se mandó la última vez y sólo sale lo que de verdad ha
+ * cambiado — que al marcar el desayuno es **un** día. Lo que no se envió sigue
+ * pendiente, así que un fallo de red no se pierde: al reintentar vuelve a
+ * salir porque no llegó a apuntarse como enviado.
+ */
+const yaEnviados = new Map<string, string>();
+
+function soloLosQueCambiaron(registros: RegistroDia[]): RegistroDia[] {
+  return registros.filter((r) => yaEnviados.get(r.id) !== JSON.stringify(r));
+}
+
+function darPorEnviados(registros: RegistroDia[]): void {
+  for (const r of registros) yaEnviados.set(r.id, JSON.stringify(r));
+}
+
+/** Marca el momento del que parte el siguiente repaso incremental. */
+export function registrosAlDia(cuando = new Date()): void {
+  // Un segundo de holgura: dos escrituras en el mismo instante no se pierden
+  // por el redondeo del reloj del servidor.
+  ultimoRepaso = new Date(cuando.getTime() - 1000).toISOString();
+}
+
+async function preguntarPorLoNuevo(perfil: Perfil): Promise<void> {
+  const pedidoA = new Date();
+  try {
+    const rs = await bajarRegistros(perfil, ultimoRepaso);
+    rs.forEach(aplicar);
+    registrosAlDia(pedidoA);
+  } catch {
+    ponerEstadoVivo("preguntando");
+  }
+}
+
+/**
+ * Trae los registros ahora mismo, sin esperar al siguiente repaso. Es el botón
+ * «Actualizar»: ahí sí se trae todo, porque se pulsa cuando se sospecha que
+ * falta algo y es una vez, no cada veinte segundos.
+ */
 export async function refrescarRegistros(): Promise<void> {
   const perfil = perfilActivo;
   if (!perfil || !hayNube) return;
+  const pedidoA = new Date();
   const rs = await bajarRegistros(perfil);
   rs.forEach(aplicar);
+  registrosAlDia(pedidoA);
 }
 
 /**
@@ -348,6 +407,12 @@ async function repasarPlan(): Promise<void> {
   }
 }
 
+function alVolverAlSeguimiento() {
+  if (document.visibilityState !== "visible") return;
+  const perfil = perfilActivo;
+  if (perfil) void preguntarPorLoNuevo(perfil);
+}
+
 function alVolverAlaApp() {
   if (document.visibilityState !== "visible") return;
   void repasarPlan();
@@ -363,14 +428,30 @@ export function arrancarSincronizacion(perfil: Perfil): void {
    * otra persona —o la misma tras cerrar— hay que mandar todo de nuevo.
    */
   olvidarLoEnviado();
+  yaEnviados.clear();
   if (!hayNube) return;
   pararSincronizacion();
   perfilActivo = perfil;
   escucharRegistros(perfil);
 
+  /*
+   * Lo que ya se trajo al entrar no hay que volver a pedirlo: a partir de
+   * ahora sólo se pregunta por lo tocado después de este momento.
+   */
+  registrosAlDia();
+
   if (perfil.rol === "cliente" && typeof document !== "undefined") {
     document.addEventListener("visibilitychange", alVolverAlaApp);
     repasoDelPlan = setInterval(() => void repasarPlan(), REPASO_DEL_PLAN_MS);
+  }
+
+  /*
+   * Mientras la pestaña está al fondo no se pregunta nada, así que al volver a
+   * ella hay que ponerse al día de una vez — si no, el seguimiento enseñaría
+   * lo de hace una hora hasta el siguiente repaso.
+   */
+  if (perfil.rol === "nutricionista" && typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", alVolverAlSeguimiento);
   }
 
   desuscribir = useAppStore.subscribe(() => {
@@ -402,6 +483,8 @@ function alVolverLaRed() {
 
 export function pararSincronizacion(): void {
   olvidarLoEnviado();
+  yaEnviados.clear();
+  ultimoRepaso = undefined;
   if (reintento) clearTimeout(reintento);
   reintento = null;
   subiendo = false;
@@ -420,6 +503,7 @@ export function pararSincronizacion(): void {
   repasoDelPlan = null;
   if (typeof document !== "undefined") {
     document.removeEventListener("visibilitychange", alVolverAlaApp);
+    document.removeEventListener("visibilitychange", alVolverAlSeguimiento);
   }
   perfilActivo = null;
   pendiente = false;
@@ -500,7 +584,10 @@ export async function empujar(): Promise<void> {
       const mios = useAppStore
         .getState()
         .registros.filter((r) => r.clientId === perfil.clientId);
-      await subirRegistros(mios);
+      const nuevos = soloLosQueCambiaron(mios);
+      await subirRegistros(nuevos);
+      // Sólo después de que el envío entre: si falla, vuelven a salir.
+      darPorEnviados(nuevos);
     } else {
       // Primero las fotos: así lo que se guarda ya lleva enlaces y no fotos.
       await pasarFotosAlAlmacen(perfil);

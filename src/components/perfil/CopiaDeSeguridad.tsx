@@ -70,12 +70,24 @@ export function CopiaDeSeguridad({ correo }: { correo?: string }) {
   );
 
   const lleva = queLleva(datos);
-  /* Se mide de verdad: las fotos van dentro y son casi todo el peso. */
-  const peso = useMemo(() => JSON.stringify(datos).length, [datos]);
+
+  /**
+   * EL PESO SE MIDE AL BAJARLA, NO AL MIRAR LA PANTALLA
+   *
+   * Se medía de verdad —`JSON.stringify` de todo— y se recalculaba cada vez
+   * que cambiaba cualquier cosa, incluido cada aviso en directo de una
+   * clienta. Con las fotos dentro eso es convertir cientos de megas a texto
+   * con la pantalla abierta, y es de las cosas que dejaban la pestaña sin
+   * memoria. Ahora se sabe cuánto pesa cuando ya está hecha, que es cuando
+   * sirve de algo.
+   */
+  const [peso, setPeso] = useState<number | undefined>();
 
   const bajar = () => {
     const nombre = nombreDelArchivo();
-    descargarCopia(armarCopia(datos, correo), nombre);
+    const copia = armarCopia(datos, correo);
+    setPeso(JSON.stringify(copia).length);
+    descargarCopia(copia, nombre);
     setBajada(nombre);
   };
 
@@ -90,10 +102,12 @@ export function CopiaDeSeguridad({ correo }: { correo?: string }) {
         <Fila que="Recetas" cuantas={lleva.recetas} />
         <Fila que="Mediciones" cuantas={lleva.mediciones} />
         <Fila que="Días registrados" cuantas={lleva.registros} />
-        <div className="flex justify-between gap-3 pt-1">
-          <dt className="text-slate-500">Tamaño</dt>
-          <dd className="tnum font-medium text-slate-900">{pesoLegible(peso)}</dd>
-        </div>
+        {peso != null && (
+          <div className="flex justify-between gap-3 pt-1">
+            <dt className="text-slate-500">Tamaño</dt>
+            <dd className="tnum font-medium text-slate-900">{pesoLegible(peso)}</dd>
+          </div>
+        )}
       </dl>
 
       <Button onClick={bajar} className="mt-4 w-full justify-center">
