@@ -30,6 +30,7 @@ import { EntrenosDelReto } from "../components/retos/EntrenosDelReto";
 import { ParticipantesDelReto } from "../components/retos/ParticipantesDelReto";
 import { SeguimientoDelReto } from "../components/retos/SeguimientoDelReto";
 import { clienteDeSolicitud, comidasDelPlan } from "../utils/altaDeSolicitud";
+import { FotoPersonal } from '../components/common/FotoPersonal';
 
 const hoyIso = () => new Date().toISOString().slice(0, 10);
 
@@ -863,8 +864,8 @@ function ElegirRecetas({
                   }`}
                 >
                   {r.foto ? (
-                    <img
-                      src={r.foto}
+                    <FotoPersonal
+                      foto={r.foto}
                       alt=""
                       className="h-12 w-12 shrink-0 rounded-lg object-cover"
                     />

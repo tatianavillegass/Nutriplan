@@ -19,6 +19,7 @@ const pintar = () =>
       registros={[]}
       mediciones={[]}
       preparacion={{ hechos: [] }}
+      clientId="c1"
       onGuardar={vi.fn()}
     />,
   );

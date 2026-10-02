@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { tomasConFoto, type Medida } from '../../utils/misMedidas';
 import { Select } from '../common/ui';
+import { FotoPersonal } from '../common/FotoPersonal';
 
 const ANGULOS = [
   { id: 'frente', nombre: 'De frente' },
@@ -106,8 +107,8 @@ function Lado({ toma, angulo }: { toma: Medida; angulo: string }) {
   return (
     <figure>
       {src ? (
-        <img
-          src={src}
+        <FotoPersonal
+          foto={src}
           alt={`${fechaLegible(toma.fecha)}`}
           className="aspect-[3/4] w-full rounded-lg border border-slate-200 object-cover"
         />

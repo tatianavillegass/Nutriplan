@@ -11,6 +11,7 @@ import { entrenosAbiertos } from '../../utils/retos';
 import { PASOS_DE_PREPARACION, preparacionDe } from '../../utils/preparacion';
 import { medidasDe, tendenciaDePeso, ultimasMedidas } from '../../utils/misMedidas';
 import { Button, fmt } from '../common/ui';
+import { FotoPersonal } from '../common/FotoPersonal';
 
 interface Props {
   reto: Reto;
@@ -226,8 +227,8 @@ function Participante({
             )}
 
             {(preparacion.foto ?? fotoDeSusMediciones) && (
-              <img
-                src={preparacion.foto ?? fotoDeSusMediciones}
+              <FotoPersonal
+                foto={preparacion.foto ?? fotoDeSusMediciones}
                 alt={`Foto del primer día de ${client.nombre}`}
                 className="mt-2 max-h-48 rounded-lg border border-slate-200"
               />

@@ -6,6 +6,7 @@ import {
   type Preparacion as Datos,
 } from '../../utils/preparacion';
 import { ErrorImagen, prepararFoto } from '../../utils/imagen';
+import { guardarFotoPersonal } from '../../utils/almacen';
 import { Button } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
 
@@ -14,6 +15,12 @@ interface Props {
   /** Cuántos días faltan para empezar. 0 = empieza hoy. */
   faltan: number;
   datos: Datos;
+  /**
+   * De quién es, para poder guardar la foto en el almacén. Desde la cuenta
+   * atrás pública todavía no hay cuenta ni ficha, así que ahí no viene: esa
+   * foto se queda en el texto como hasta hoy y se mueve al darla de alta.
+   */
+  clientId?: string;
   onGuardar: (patch: Partial<Datos>) => void;
 }
 
@@ -30,7 +37,7 @@ interface Props {
  * Aquí para justo en tres pasos, que es donde deja de ser un empujón y empieza
  * a ser una tarea.
  */
-export function Preparacion({ nombreReto, faltan, datos, onGuardar }: Props) {
+export function Preparacion({ nombreReto, faltan, datos, clientId, onGuardar }: Props) {
   const [abierto, setAbierto] = useState<PasoId | null>(null);
   const hechos = new Set(datos.hechos);
   const completa = preparacionCompleta(datos);
@@ -122,7 +129,9 @@ export function Preparacion({ nombreReto, faltan, datos, onGuardar }: Props) {
                   {paso.id === 'medidas' && (
                     <MedidasDelPrimerDia datos={datos} onListo={(m) => marcar('medidas', m)} />
                   )}
-                  {paso.id === 'foto' && <FotoDelPrimerDia onListo={(f) => marcar('foto', f)} />}
+                  {paso.id === 'foto' && (
+                    <FotoDelPrimerDia clientId={clientId} onListo={(f) => marcar('foto', f)} />
+                  )}
                   {paso.id === 'guia' && (
                     <>
                       <p className="text-xs leading-snug text-slate-600">
@@ -196,7 +205,13 @@ function MedidasDelPrimerDia({
  * comparar— o quedársela en el móvil y marcar el paso: lo que hace falta es
  * que exista una foto del primer día, no que esté aquí.
  */
-function FotoDelPrimerDia({ onListo }: { onListo: (f: { foto?: string }) => void }) {
+function FotoDelPrimerDia({
+  clientId,
+  onListo,
+}: {
+  clientId?: string;
+  onListo: (f: { foto?: string }) => void;
+}) {
   const archivo = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
   /**
@@ -212,7 +227,11 @@ function FotoDelPrimerDia({ onListo }: { onListo: (f: { foto?: string }) => void
     setError(null);
     setSubiendo(true);
     try {
-      onListo({ foto: await prepararFoto(file) });
+      const lista = await prepararFoto(file);
+      // Al almacén si hay ficha; si no —la cuenta atrás pública— se queda en
+      // el texto, que es lo único que se puede hacer sin haber entrado.
+      const ruta = clientId ? await guardarFotoPersonal(lista, clientId, 'primer-dia') : undefined;
+      onListo({ foto: ruta ?? lista });
     } catch (e) {
       setError(e instanceof ErrorImagen ? e.message : 'No se pudo subir la foto. Prueba con otra.');
     } finally {

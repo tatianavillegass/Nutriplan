@@ -18,6 +18,8 @@ import { ComparaFotos } from './ComparaFotos';
 import { ErrorImagen, prepararFoto } from '../../utils/imagen';
 import { Button, fmt } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
+import { FotoPersonal } from '../common/FotoPersonal';
+import { guardarFotoPersonal } from '../../utils/almacen';
 
 interface Props {
   registros: RegistroDia[];
@@ -31,6 +33,8 @@ interface Props {
   preparacion: Preparacion;
   /** Lo de hoy, para poder corregirlo el mismo día. */
   deHoy?: MedidasDelDia;
+  /** De quién son: es la carpeta del almacén y lo que decide quién las ve. */
+  clientId: string;
   onGuardar: (medidas: MedidasDelDia) => void;
 }
 
@@ -72,6 +76,7 @@ export function MisMedidas({
   mediciones = [],
   preparacion,
   deHoy,
+  clientId,
   onGuardar,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
@@ -115,7 +120,13 @@ export function MisMedidas({
     setSubiendo(id);
     try {
       const lista = await prepararFoto(file);
-      setFotos((f) => ({ ...f, [id]: lista }));
+      /*
+       * La foto se sube al almacén en cuanto se hace y en los datos queda la
+       * ruta. Si el almacén no contesta se queda la foto en el texto, como
+       * siempre: lenta, pero nunca se pierde por intentar moverla.
+       */
+      const ruta = await guardarFotoPersonal(lista, clientId, id);
+      setFotos((f) => ({ ...f, [id]: ruta ?? lista }));
     } catch (e) {
       /*
         Sin este `catch` la foto que fallaba —un HEIC de iPhone, un archivo de
@@ -217,8 +228,8 @@ export function MisMedidas({
                   <span className="mb-0.5 block text-[10px] text-slate-500">{a.nombre}</span>
                   {fotos[a.id] ? (
                     <div className="relative">
-                      <img
-                        src={fotos[a.id]}
+                      <FotoPersonal
+                        foto={fotos[a.id]}
                         alt={a.nombre}
                         className="h-28 w-full rounded-lg border border-slate-200 object-cover"
                       />
@@ -374,7 +385,11 @@ function FilaDeEvolucion({ e }: { e: Evolucion }) {
 function Miniatura({ src, pie }: { src: string; pie: string }) {
   return (
     <figure className="w-24 shrink-0">
-      <img src={src} alt={pie} className="h-32 w-24 rounded-lg border border-slate-200 object-cover" />
+      <FotoPersonal
+        foto={src}
+        alt={pie}
+        className="h-32 w-24 rounded-lg border border-slate-200 object-cover"
+      />
       <figcaption className="mt-0.5 text-[9px] text-slate-500">{pie}</figcaption>
     </figure>
   );

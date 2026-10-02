@@ -5,6 +5,8 @@ import { A_PERIMETRO, CAMPOS, CAMPOS_BIO } from '../../utils/misMedidas';
 import { ErrorImagen, prepararFoto } from '../../utils/imagen';
 import { Button, Input } from '../common/ui';
 import { NumeroConComa, aNumero } from '../common/NumeroConComa';
+import { FotoPersonal } from '../common/FotoPersonal';
+import { guardarFotoPersonal } from '../../utils/almacen';
 
 const ANGULOS = [
   { id: 'frente', nombre: 'De frente' },
@@ -72,7 +74,9 @@ export function ApuntarUnaToma({
     setSubiendo(id);
     try {
       const lista = await prepararFoto(file);
-      setFotos((f) => ({ ...f, [id]: lista }));
+      // Al almacén en cuanto se hace; si no contesta, se queda en el texto.
+      const ruta = await guardarFotoPersonal(lista, clientId, id);
+      setFotos((f) => ({ ...f, [id]: ruta ?? lista }));
     } catch (e) {
       setError(e instanceof ErrorImagen ? e.message : 'No se pudo subir la foto. Prueba con otra.');
     } finally {
@@ -185,8 +189,8 @@ export function ApuntarUnaToma({
               <span className="mb-0.5 block text-[10px] text-slate-500">{a.nombre}</span>
               {fotos[a.id] ? (
                 <div className="relative">
-                  <img
-                    src={fotos[a.id]}
+                  <FotoPersonal
+                    foto={fotos[a.id]}
                     alt={a.nombre}
                     className="h-28 w-full rounded-lg border border-slate-200 object-cover"
                   />

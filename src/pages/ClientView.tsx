@@ -1162,6 +1162,7 @@ export function ClientView() {
                 mediciones={mediciones}
                 preparacion={preparacion}
                 deHoy={registro?.medidas}
+                clientId={client.id}
                 onGuardar={(medidas) => guardar({ medidas })}
               />
             )}
@@ -1223,6 +1224,7 @@ export function ClientView() {
                     nombreReto={reto.nombre}
                     faltan={diasEntre(fecha, reto.fechaInicio)}
                     datos={preparacion}
+                    clientId={client?.id}
                     onGuardar={(patch) =>
                       guardar({
                         preparacion: {

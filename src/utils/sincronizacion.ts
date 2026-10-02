@@ -1,6 +1,6 @@
 import { useAppStore } from "../store/useAppStore";
 import { storage } from "./storage";
-import { esDataUrl, guardarFoto } from "./almacen";
+import { esDataUrl, guardarFoto, guardarFotoPersonal, olvidarEnlaces } from "./almacen";
 import { hayNube, nube } from "./supabase";
 import {
   bajar,
@@ -483,6 +483,8 @@ function alVolverLaRed() {
 
 export function pararSincronizacion(): void {
   olvidarLoEnviado();
+  // Lo firmado para otra persona no vale, y además caduca.
+  olvidarEnlaces();
   yaEnviados.clear();
   ultimoRepaso = undefined;
   if (reintento) clearTimeout(reintento);
@@ -555,6 +557,136 @@ async function pasarFotosAlAlmacen(perfil: Perfil): Promise<void> {
 }
 
 /**
+ * Y LAS PERSONALES, QUE SON LAS QUE PESAN
+ *
+ * Las de progreso y las de antropometría son medio mega cada una y están
+ * escritas dentro de los datos: son las que llenaron la base de datos y las
+ * que reventaban la memoria del navegador.
+ *
+ * Se mueven con el mismo cuidado que las de receta: **de tres en tres por
+ * guardado**, para que nadie note una espera, y **si el almacén no contesta se
+ * quedan donde están** y se reintenta en el siguiente. Nunca se pierde una por
+ * intentar moverla.
+ *
+ * Cada una la mueve quien puede escribirla: la clienta las suyas —el registro
+ * del día sólo lo escribe ella, y esa regla no se toca— y la nutricionista las
+ * mediciones que ella misma apuntó.
+ */
+/**
+ * ¿QUEDA ALGUNA POR MOVER?
+ *
+ * Se mira antes de nada y sin esperar a nadie. La inmensa mayoría de los
+ * guardados no tienen ninguna foto que mover —se marca una porción, se escribe
+ * una nota— y recorrer el histórico entero en cada uno sería pagar el arrastre
+ * para siempre por un trabajo que se termina una vez.
+ */
+function quedanFotosEnTexto(perfil: Perfil): boolean {
+  const { registros, mediciones } = useAppStore.getState();
+
+  if (perfil.rol === "cliente" && perfil.clientId) {
+    return registros.some(
+      (r) =>
+        r.clientId === perfil.clientId &&
+        (esDataUrl(r.preparacion?.foto) ||
+          (!!r.medidas?.fotos &&
+            Object.values(r.medidas.fotos).some((f) => esDataUrl(f)))),
+    );
+  }
+
+  if (perfil.rol !== "nutricionista") return false;
+  return mediciones.some(
+    (m) =>
+      esDataUrl(m.foto) ||
+      (!!m.fotos && Object.values(m.fotos).some((f) => esDataUrl(f))),
+  );
+}
+
+async function pasarFotosPersonalesAlAlmacen(perfil: Perfil): Promise<void> {
+  const estado = useAppStore.getState();
+  let movidas = 0;
+
+  if (perfil.rol === "cliente" && perfil.clientId) {
+    for (const r of estado.registros) {
+      if (movidas >= FOTOS_POR_VEZ) break;
+      if (r.clientId !== perfil.clientId) continue;
+
+      const fotos = r.medidas?.fotos;
+      if (fotos) {
+        const nuevas: Record<string, string | undefined> = { ...fotos };
+        let cambio = false;
+        for (const angulo of ["frente", "perfil", "espalda"] as const) {
+          if (movidas >= FOTOS_POR_VEZ) break;
+          const foto = fotos[angulo];
+          if (!esDataUrl(foto)) continue;
+          const ruta = await guardarFotoPersonal(foto as string, r.clientId, `${r.fecha}-${angulo}`);
+          if (ruta) {
+            nuevas[angulo] = ruta;
+            cambio = true;
+            movidas++;
+          }
+        }
+        if (cambio)
+          useAppStore
+            .getState()
+            .upsertRegistro(r.clientId, r.fecha, {
+              medidas: { ...r.medidas, fotos: nuevas },
+            });
+      }
+
+      if (movidas < FOTOS_POR_VEZ && esDataUrl(r.preparacion?.foto)) {
+        const ruta = await guardarFotoPersonal(
+          r.preparacion!.foto as string,
+          r.clientId,
+          "primer-dia",
+        );
+        if (ruta) {
+          useAppStore
+            .getState()
+            .upsertRegistro(r.clientId, r.fecha, {
+              preparacion: { ...r.preparacion!, foto: ruta },
+            });
+          movidas++;
+        }
+      }
+    }
+    return;
+  }
+
+  if (perfil.rol !== "nutricionista") return;
+
+  for (const m of estado.mediciones) {
+    if (movidas >= FOTOS_POR_VEZ) break;
+    const patch: { foto?: string; fotos?: Record<string, string | undefined> } = {};
+
+    if (esDataUrl(m.foto)) {
+      const ruta = await guardarFotoPersonal(m.foto as string, m.clientId, `${m.fecha}-toma`);
+      if (ruta) {
+        patch.foto = ruta;
+        movidas++;
+      }
+    }
+    if (m.fotos) {
+      const nuevas: Record<string, string | undefined> = { ...m.fotos };
+      let cambio = false;
+      for (const angulo of ["frente", "perfil", "espalda"] as const) {
+        if (movidas >= FOTOS_POR_VEZ) break;
+        const foto = m.fotos[angulo];
+        if (!esDataUrl(foto)) continue;
+        const ruta = await guardarFotoPersonal(foto as string, m.clientId, `${m.fecha}-${angulo}`);
+        if (ruta) {
+          nuevas[angulo] = ruta;
+          cambio = true;
+          movidas++;
+        }
+      }
+      if (cambio) patch.fotos = nuevas;
+    }
+
+    if (Object.keys(patch).length) useAppStore.getState().updateMedicion(m.id, patch);
+  }
+}
+
+/**
  * UN GUARDADO CADA VEZ
  *
  * El guardado sale 1,5 segundos después de dejar de teclear, pero contra un
@@ -581,6 +713,8 @@ export async function empujar(): Promise<void> {
 
   try {
     if (perfil.rol === "cliente") {
+      // Primero las fotos: así lo que se guarda ya lleva rutas y no fotos.
+      if (quedanFotosEnTexto(perfil)) await pasarFotosPersonalesAlAlmacen(perfil);
       const mios = useAppStore
         .getState()
         .registros.filter((r) => r.clientId === perfil.clientId);
@@ -591,6 +725,7 @@ export async function empujar(): Promise<void> {
     } else {
       // Primero las fotos: así lo que se guarda ya lleva enlaces y no fotos.
       await pasarFotosAlAlmacen(perfil);
+      if (quedanFotosEnTexto(perfil)) await pasarFotosPersonalesAlAlmacen(perfil);
       await subirTodo(perfil, fotoActual());
     }
     fallos = 0;

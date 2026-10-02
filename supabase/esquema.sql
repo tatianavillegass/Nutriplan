@@ -396,3 +396,63 @@ drop policy if exists "fotos_de_recetas_las_borra_la_nutri" on storage.objects;
 create policy "fotos_de_recetas_las_borra_la_nutri"
   on storage.objects for delete to authenticated
   using (bucket_id = 'recetas');
+
+
+-- ------------------------------------------------------------
+--  LAS FOTOS DE PROGRESO: EL MISMO ARREGLO, PERO CERRADO
+-- ------------------------------------------------------------
+-- Las de progreso y las de antropometría seguían dentro del registro,
+-- escritas como texto, porque son personales y el almacén de recetas es
+-- público. El precio de dejarlas ahí lo pagó todo lo demás: media sesión de
+-- fotos son medio mega, viajaban en cada consulta del seguimiento, se
+-- copiaban en cada guardado y acabaron llenando la base de datos y la memoria
+-- del navegador.
+--
+-- Así que tienen su propio sitio y **no es público**: no hay enlace que valga
+-- sin haber iniciado sesión, y para verlas la app pide un enlace firmado que
+-- caduca. Quién puede pedirlo lo decide esta tabla, no la app.
+--
+-- La carpeta es el id de la clienta: `cl_a1b2/frente-1730000000.jpg`. La regla
+-- lee esa primera carpeta y la busca en `clientes`, que ya tiene sus propias
+-- reglas —la nutricionista ve a las suyas y la clienta se ve a sí misma—, así
+-- que el permiso sale solo y no hay una segunda lista que mantener.
+
+insert into storage.buckets (id, name, public)
+values ('progreso', 'progreso', false)
+on conflict (id) do nothing;
+
+drop policy if exists "progreso_lo_ve_ella_y_su_nutri" on storage.objects;
+create policy "progreso_lo_ve_ella_y_su_nutri"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'progreso'
+    and (storage.foldername(name))[1] in (select id from public.clientes)
+  );
+
+drop policy if exists "progreso_lo_sube_ella_o_su_nutri" on storage.objects;
+create policy "progreso_lo_sube_ella_o_su_nutri"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'progreso'
+    and (storage.foldername(name))[1] in (select id from public.clientes)
+  );
+
+drop policy if exists "progreso_lo_cambia_ella_o_su_nutri" on storage.objects;
+create policy "progreso_lo_cambia_ella_o_su_nutri"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'progreso'
+    and (storage.foldername(name))[1] in (select id from public.clientes)
+  );
+
+-- Borrar sólo la nutricionista: una foto del día 1 es contra lo que se compara
+-- todo lo demás, y que desaparezca sin querer no se puede deshacer.
+drop policy if exists "progreso_lo_borra_la_nutri" on storage.objects;
+create policy "progreso_lo_borra_la_nutri"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'progreso'
+    and (storage.foldername(name))[1] in (
+      select id from public.clientes where nutri_id = auth.uid()
+    )
+  );
