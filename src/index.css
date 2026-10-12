@@ -33,6 +33,101 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── La letra de la app de la clienta ──────────────────── */
+/*
+ * NADIE TIENE QUE HACER ZOOM PARA LEER LO QUE COME
+ *
+ * La app se escribió con la letra de una pantalla de ordenador: 14 px el
+ * cuerpo, 11 px las etiquetas y 9 px en algún rincón. En un móvil, 11 px no
+ * se lee de un vistazo y 9 px no se lee en absoluto, así que la clienta
+ * ampliaba con los dedos — y con la pantalla ampliada, cualquier cosa que
+ * estuviera agarrada a la ventana (un desplegable centrado, por ejemplo) se
+ * sale por un lado y aparece cortada. No eran dos fallos: el desplegable
+ * cortado era la consecuencia de que la letra fuera pequeña.
+ *
+ * Esto sube todos los tamaños de golpe en un solo sitio en vez de tocarlos
+ * uno a uno en cincuenta pantallas. Se hace así por tres razones:
+ *
+ * · **Se cambia de una vez.** Subir «un punto» todo el cuerpo son dos líneas
+ *   aquí y cincuenta archivos allí, con el riesgo de dejarse la mitad.
+ * · **No toca la pantalla de la nutricionista.** Ella trabaja en el ordenador
+ *   con tablas densas —la agenda por cuartos de hora, la lista de clientas—
+ *   donde la letra grande quita filas de la pantalla. Sólo entra lo que esté
+ *   dentro de `.vista-cliente`.
+ * · **No toca el papel.** Va dentro de `@media screen`, así que el PDF del
+ *   plan y la hoja de la nevera siguen saliendo con los tamaños con los que
+ *   se cuadraron: una hoja de nevera que se va a dos folios ya no se cuelga.
+ *
+ * El suelo es 12 px para los adornos (la estrellita de «lo más parecido») y
+ * 13 px para cualquier cosa que haya que leer. El cuerpo queda en 16 px, que
+ * es lo normal hoy en un móvil.
+ *
+ * Es el tamaño y el aire, no el estilo: ni colores nuevos, ni modo oscuro, ni
+ * tipografía distinta. La marca se queda como está.
+ */
+@media screen {
+  .vista-cliente {
+    font-size: 1rem;
+  }
+
+  /* Los tamaños escritos a mano, de los más pequeños a los normales. */
+  .vista-cliente .text-\[7px\],
+  .vista-cliente .text-\[8px\],
+  .vista-cliente .text-\[9px\],
+  .vista-cliente .text-\[10px\] {
+    font-size: 0.75rem; /* 12 px — adornos y chivatos */
+    line-height: 1.1rem;
+  }
+  .vista-cliente .text-\[11px\],
+  .vista-cliente .text-\[12px\],
+  .vista-cliente .text-\[13px\] {
+    font-size: 0.8125rem; /* 13 px — etiquetas que hay que leer */
+    line-height: 1.2rem;
+  }
+
+  /* Y la escala de Tailwind: el cuerpo pasa de 14 a 16. */
+  .vista-cliente .text-xs {
+    font-size: 0.875rem; /* 14 px */
+    line-height: 1.3rem;
+  }
+  .vista-cliente .text-sm {
+    font-size: 1rem; /* 16 px */
+    line-height: 1.5rem;
+  }
+  .vista-cliente .text-base {
+    font-size: 1.0625rem; /* 17 px */
+    line-height: 1.6rem;
+  }
+  .vista-cliente .text-lg {
+    font-size: 1.1875rem; /* 19 px */
+    line-height: 1.7rem;
+  }
+  .vista-cliente .text-xl {
+    font-size: 1.375rem; /* 22 px */
+    line-height: 1.85rem;
+  }
+  .vista-cliente .text-2xl {
+    font-size: 1.625rem; /* 26 px */
+    line-height: 2rem;
+  }
+
+  /*
+   * Y un poco de aire donde se pulsa con el dedo. Las pastillas y los botones
+   * de una lista estaban calculados para la letra de antes: con la letra más
+   * grande y el mismo hueco, el texto queda pegado al borde. No se tocan los
+   * márgenes de las tarjetas, que eso sí movería la pantalla entera.
+   */
+  .vista-cliente button.py-0\.5,
+  .vista-cliente button .py-0\.5 {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  .vista-cliente button.py-1 {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+}
+
 /* ── Impresión ─────────────────────────────────────────── */
 @media print {
   .no-print {

@@ -1044,7 +1044,15 @@ export function ClientView() {
 
   return (
     <>
-      <div className="screen-only space-y-5 pb-24 sm:pb-0">
+      {/*
+        `vista-cliente` es lo que sube la letra de toda esta pantalla (está en
+        `index.css`). Va aquí, en la raíz de lo que ve quien come, y no en el
+        `<body>`: la pantalla de la nutricionista se usa en el ordenador y con
+        tablas densas —la agenda por cuartos de hora— donde la letra grande
+        quita filas. Y va dentro de `screen-only`, así que el PDF del plan que
+        se imprime desde aquí no se entera.
+      */}
+      <div className="vista-cliente screen-only space-y-5 pb-24 sm:pb-0">
         <div className="flex flex-wrap items-end justify-between gap-3 no-print">
           <div>
             <Link

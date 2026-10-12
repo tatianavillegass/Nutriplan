@@ -73,12 +73,26 @@ export function IngredientSwap({
 
   if (!info || alternativas.length < 1) return null;
 
+  /**
+   * LA LISTA VA DEBAJO DEL INGREDIENTE, NO FLOTANDO SOBRE LA PANTALLA
+   *
+   * Estaba centrada en la ventana, agarrada a la pantalla y no a la página. Eso
+   * se rompe en cuanto alguien hace zoom con los dedos: al ampliar, la ventana
+   * se queda más pequeña que la página, la lista sigue midiendo lo de antes y
+   * se sale por un lado — medio desplegable fuera y las palabras cortadas.
+   *
+   * Y quien hace zoom es justo quien más lo necesita: se amplía porque no se
+   * lee. Así que la lista se abre **donde está el ingrediente**, empujando lo
+   * de abajo, como cualquier otra cosa de la página. Aparece donde ella acaba
+   * de tocar, se puede ampliar cuanto haga falta y no hay ninguna capa oscura
+   * por encima.
+   */
   return (
-    <span className="relative inline-block">
+    <>
       <button
         onClick={() => setAbierto((v) => !v)}
         title={`Cambiar ${ingrediente.nombre.toLowerCase()} por otro equivalente`}
-        className={`ml-1.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition no-print ${
+        className={`ml-1.5 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium transition no-print ${
           actual
             ? 'border-brand-500 bg-brand-600 text-white hover:bg-brand-700'
             : 'border-brand-300 bg-white text-brand-700 hover:border-brand-500 hover:bg-brand-50'
@@ -91,78 +105,80 @@ export function IngredientSwap({
       </button>
 
       {abierto && (
-        <>
-          <span
-            className="fixed inset-0 z-20 bg-slate-900/20"
-            onClick={() => setAbierto(false)}
-            aria-hidden
-          />
-          <span className="fixed inset-x-3 top-1/2 z-30 block max-h-[70vh] -translate-y-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:left-auto sm:mt-1 sm:max-h-none sm:w-72 sm:translate-y-0 no-print">
-            <span className="block border-b border-slate-100 p-2">
-              <input
-                autoFocus
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                placeholder={`Buscar en ${info.nombre.toLowerCase()}…`}
-                className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400"
-              />
-              <span className="mt-1 block text-[10px] text-slate-400">
-                {original
-                  ? 'Ordenados por parecido — todos aportan los mismos intercambios'
-                  : 'Todos aportan los mismos intercambios'}
-              </span>
-            </span>
-
-            <span className="block max-h-60 overflow-auto py-1">
-              {cambiadoPor && (
-                <button
-                  onClick={() => {
-                    onCambiar(undefined);
-                    setAbierto(false);
-                    setBusqueda('');
-                  }}
-                  className="flex w-full items-baseline gap-2 px-3 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50"
-                >
-                  ← Volver a {ingrediente.nombre.toLowerCase()}
-                </button>
-              )}
-
-              {visibles.map(({ food, gramos, medida }, i) => (
-                <button
-                  key={food.id}
-                  onClick={() => {
-                    onCambiar(food.id);
-                    setAbierto(false);
-                    setBusqueda('');
-                  }}
-                  className={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left text-xs transition hover:bg-brand-50 ${
-                    food.id === cambiadoPor
-                      ? 'bg-brand-50 font-medium text-brand-800'
-                      : 'text-slate-700'
-                  }`}
-                >
-                  {!busqueda && i < 3 && original && (
-                    <span className="shrink-0 text-[9px] text-emerald-600" title="De lo más parecido">
-                      ★
-                    </span>
-                  )}
-                  <span className="flex-1 truncate">{food.nombre}</span>
-                  <span className="tnum shrink-0 text-[11px] text-slate-500">
-                    {gramos} {food.unidad ?? 'g'}
-                  </span>
-                  <span className="shrink-0 text-[10px] text-slate-400">{medida}</span>
-                </button>
-              ))}
-
-              {!visibles.length && (
-                <span className="block px-3 py-2 text-[11px] text-slate-500">
-                  Nada con «{busqueda.trim()}» en {info.nombre.toLowerCase()}.
-                </span>
-              )}
+        <span className="mt-2 block w-full overflow-hidden rounded-xl border border-brand-200 bg-white shadow-sm no-print">
+          <span className="block border-b border-slate-100 p-2">
+            <input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder={`Buscar en ${info.nombre.toLowerCase()}…`}
+              className="w-full rounded-md border border-slate-200 px-2 py-2 text-sm outline-none focus:border-brand-400"
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              {original
+                ? 'Ordenados por parecido — todos aportan los mismos intercambios'
+                : 'Todos aportan los mismos intercambios'}
             </span>
           </span>
-        </>
+
+          <span className="block max-h-80 overflow-auto py-1">
+            {cambiadoPor && (
+              <button
+                onClick={() => {
+                  onCambiar(undefined);
+                  setAbierto(false);
+                  setBusqueda('');
+                }}
+                className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-50"
+              >
+                ← Volver a {ingrediente.nombre.toLowerCase()}
+              </button>
+            )}
+
+            {visibles.map(({ food, gramos, medida }, i) => (
+              <button
+                key={food.id}
+                onClick={() => {
+                  onCambiar(food.id);
+                  setAbierto(false);
+                  setBusqueda('');
+                }}
+                className={`flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm transition hover:bg-brand-50 ${
+                  food.id === cambiadoPor
+                    ? 'bg-brand-50 font-medium text-brand-800'
+                    : 'text-slate-700'
+                }`}
+              >
+                {!busqueda && i < 3 && original && (
+                  <span className="shrink-0 text-xs text-emerald-600" title="De lo más parecido">
+                    ★
+                  </span>
+                )}
+                <span className="flex-1 truncate">{food.nombre}</span>
+                <span className="tnum shrink-0 text-[13px] text-slate-500">
+                  {gramos} {food.unidad ?? 'g'}
+                </span>
+                <span className="shrink-0 text-xs text-slate-400">{medida}</span>
+              </button>
+            ))}
+
+            {!visibles.length && (
+              <span className="block px-3 py-2 text-[13px] text-slate-500">
+                Nada con «{busqueda.trim()}» en {info.nombre.toLowerCase()}.
+              </span>
+            )}
+          </span>
+
+          <button
+            onClick={() => {
+              setAbierto(false);
+              setBusqueda('');
+            }}
+            className="block w-full border-t border-slate-100 px-3 py-2 text-center text-[13px] text-slate-500 hover:bg-slate-50"
+          >
+            Cerrar
+          </button>
+        </span>
       )}
-    </span>
+    </>
   );
 }
