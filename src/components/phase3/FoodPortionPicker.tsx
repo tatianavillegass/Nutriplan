@@ -296,7 +296,9 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, a
   return (
     <section className="rounded-xl border border-slate-200 bg-white">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-2.5">
-        <h3 className="text-base font-bold tracking-wide text-slate-300 uppercase">{meal.nombre}</h3>
+        {/* Mismo criterio que en la tarjeta de fase 1: el nombre de la comida
+            orienta, así que se lee — ni mayúsculas ni gris de adorno. */}
+        <h3 className="text-lg font-semibold text-slate-500">{meal.nombre}</h3>
         {acciones && <div className="flex flex-wrap items-center gap-1.5 no-print">{acciones}</div>}
       </header>
 

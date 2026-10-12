@@ -69,9 +69,15 @@ export function MealCard({
     >
       <div className="p-3 sm:p-4">
         <div className="mb-1 flex items-center gap-2">
-          <span className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
-            {meal.nombre}
-          </span>
+          {/*
+            EL NOMBRE DE LA COMIDA ES LO QUE ORIENTA, ASÍ QUE SE LEE
+            Iba en 11 px, en mayúsculas y en gris claro: una etiqueta de
+            esquina. Pero al abrir la app lo primero que se busca es «¿esto es
+            el desayuno o la comida?», y en mayúsculas pequeñas eso cuesta más
+            que en cualquier otro sitio — las mayúsculas quitan la forma de la
+            palabra, que es por donde se reconoce de un vistazo.
+          */}
+          <span className="text-base font-semibold text-slate-500">{meal.nombre}</span>
           {hecha && (
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
               ✓ hecha
@@ -94,7 +100,7 @@ export function MealCard({
           aria-expanded={desplegada}
           className="block w-full text-left"
         >
-          <span className="block text-lg leading-tight font-semibold text-balance text-brand-900">
+          <span className="block text-xl leading-tight font-semibold text-balance text-brand-900">
             {receta.nombre}
           </span>
         </button>
