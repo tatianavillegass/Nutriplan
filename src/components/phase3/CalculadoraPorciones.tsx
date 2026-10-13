@@ -82,8 +82,8 @@ export function CalculadoraPorciones({ comidas, foods = [], onAnadir }: Props) {
 
   const kcal = aporta.carbohidrato * 4 + aporta.proteina * 4 + aporta.grasa * 9;
   const hayAlgo = Object.keys(enPorciones).length > 0;
-  const setNut = (k: keyof Nutrientes100, v: string) =>
-    setN((p) => ({ ...p, [k]: aNumero(v) }) as Nutrientes100);
+  const setNut = (k: keyof Nutrientes100, v: number | undefined) =>
+    setN((p) => ({ ...p, [k]: v }) as Nutrientes100);
 
   const anadir = () => {
     /*
@@ -186,8 +186,9 @@ export function CalculadoraPorciones({ comidas, foods = [], onAnadir }: Props) {
           <label key={k} className="block">
             <span className="mb-0.5 block text-[10px] text-slate-500">{label}</span>
             <NumeroConComa
-              value={n[k] === undefined ? '' : String(n[k])}
-              onChange={(texto) => setNut(k, texto)}
+              numero={n[k]}
+              onNumero={(v) => setNut(k, v)}
+              cero
               className="w-full text-sm"
               aria-label={label}
             />

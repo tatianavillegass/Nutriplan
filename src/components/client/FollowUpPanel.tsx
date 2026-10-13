@@ -204,9 +204,7 @@ export function FollowUpPanel({ client, plan, registros, mediciones, foods }: Pr
       {!sinNada && (
         <Card title="Qué elige de verdad" subtitle="Para ajustar la despensa que le ofreces">
           {!uso.elegidos.length ? (
-            <p className="text-xs text-slate-500">
-              Todavía no ha marcado porciones alimento a alimento.
-            </p>
+            <p className="text-xs text-slate-500">Todavía no ha apuntado nada.</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -215,8 +213,15 @@ export function FollowUpPanel({ client, plan, registros, mediciones, foods }: Pr
                   {uso.elegidos.slice(0, 5).map((u) => (
                     <li key={u.foodId} className="flex items-baseline gap-2 text-xs">
                       <span className="flex-1 truncate text-slate-700">{u.nombre}</span>
+                      {/*
+                        En fase 4 no hay porciones que sumar: lo que informa es
+                        cuántas veces lo apunta y cuántos gramos lleva.
+                      */}
                       <span className="tnum shrink-0 text-slate-400">
-                        {fmt(u.porciones, u.porciones % 1 ? 1 : 0)} porc. · {u.dias} d
+                        {u.porciones
+                          ? `${fmt(u.porciones, u.porciones % 1 ? 1 : 0)} porc.`
+                          : `${u.veces} ×${u.gramos ? ` · ${fmt(u.gramos)} g` : ''}`}{' '}
+                        · {u.dias} d
                       </span>
                     </li>
                   ))}

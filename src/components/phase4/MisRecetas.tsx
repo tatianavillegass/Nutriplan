@@ -202,8 +202,9 @@ function Formulario({
               )}
             </span>
             <NumeroConComa
-              value={String(ing.gramos)}
-              onChange={(t) => poner(i, { gramos: aNumero(t) ?? 0 })}
+              numero={ing.gramos}
+              onNumero={(v) => poner(i, { gramos: v ?? 0 })}
+              cero
               className="w-20 shrink-0 text-sm"
               aria-label={`Gramos de ${ing.nombre}`}
             />

@@ -242,12 +242,12 @@ describe('Lo que ve quien cuenta macros', () => {
     fireEvent.change(screen.getByPlaceholderText(/Qué es:/i), {
       target: { value: 'Yogur de la marca esa' },
     });
-    const campos = document.querySelectorAll('input[inputmode="decimal"]');
-    // Proteína, carbohidrato, grasa y fibra por 100 g; el último es la cantidad.
-    fireEvent.change(campos[0], { target: { value: '10' } });
-    fireEvent.change(campos[1], { target: { value: '4' } });
-    fireEvent.change(campos[2], { target: { value: '3' } });
-    fireEvent.change(campos[4], { target: { value: '200' } });
+    // Por su nombre y no por su posición: añadir una casilla no puede hacer
+    // que este test deje de comprobar lo que dice que comprueba.
+    fireEvent.change(screen.getByLabelText('Proteína'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('Carbohidr.'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Grasa'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Cuánto has comido'), { target: { value: '200' } });
     fireEvent.click(screen.getByText('Añadir'));
 
     const [bocado, alimentoNuevo] = onAnadir.mock.calls[0];
@@ -343,5 +343,86 @@ describe('Una comida fuera en fase 4', () => {
       />,
     );
     expect(screen.getByText('Libre Cena')).toBeTruthy();
+  });
+});
+
+/**
+ * LAS CALORÍAS DE LA ETIQUETA
+ *
+ * Salen solas de los macros (4/4/9), pero el bote trae su propio número y casi
+ * nunca es el mismo: los fabricantes redondean y descuentan la fibra a su
+ * manera. Quien copia una etiqueta está copiando un bote, no resolviendo una
+ * cuenta, así que si las escribe mandan las suyas.
+ */
+describe('Copiar una etiqueta', () => {
+  const abrirEtiqueta = (onAnadir = vi.fn()) => {
+    render(
+      <ContadorDia
+        dayType={DIA}
+        bocados={[]}
+        foods={[POLLO]}
+        onAnadir={onAnadir}
+        onQuitar={vi.fn()}
+        onCantidad={vi.fn()}
+      />,
+    );
+    abrirEn('desayuno');
+    fireEvent.click(screen.getByText(/Copia su etiqueta/i));
+    fireEvent.change(screen.getByPlaceholderText(/Qué es:/i), {
+      target: { value: 'Barrita' },
+    });
+    return onAnadir;
+  };
+
+  const poner = (label: string, valor: string) =>
+    fireEvent.change(screen.getByLabelText(label), { target: { value: valor } });
+
+  it('hay casilla para las calorías', () => {
+    abrirEtiqueta();
+    expect(screen.getByLabelText('Calorías')).toBeTruthy();
+  });
+
+  it('sin escribirlas, salen de los macros', () => {
+    const onAnadir = abrirEtiqueta();
+    poner('Proteína', '10');
+    poner('Carbohidr.', '20');
+    poner('Grasa', '5');
+    poner('Cuánto has comido', '100');
+    fireEvent.click(screen.getByText('Añadir'));
+    // 10×4 + 20×4 + 5×9 = 165
+    expect(onAnadir.mock.calls[0][0].kcal).toBeCloseTo(165, 5);
+  });
+
+  it('escritas, mandan las del bote y se escalan a lo comido', () => {
+    const onAnadir = abrirEtiqueta();
+    poner('Calorías', '150');
+    poner('Proteína', '10');
+    poner('Carbohidr.', '20');
+    poner('Grasa', '5');
+    poner('Cuánto has comido', '200');
+    fireEvent.click(screen.getByText('Añadir'));
+    expect(onAnadir.mock.calls[0][0].kcal).toBeCloseTo(300, 5);
+  });
+
+  it('si no cuadran con los macros se avisa, sin bloquear', () => {
+    abrirEtiqueta();
+    poner('Calorías', '400');
+    poner('Proteína', '10');
+    poner('Carbohidr.', '20');
+    poner('Grasa', '5');
+    expect(screen.getByText(/La etiqueta pone 400 kcal/i)).toBeTruthy();
+    expect(screen.getByText('Añadir')).toBeTruthy();
+  });
+
+  it('y los decimales de la etiqueta se pueden escribir', () => {
+    const onAnadir = abrirEtiqueta();
+    const campo = screen.getByLabelText('Proteína') as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: '14' } });
+    fireEvent.change(campo, { target: { value: '14,' } });
+    expect(campo.value).toBe('14,');
+    fireEvent.change(campo, { target: { value: '14,4' } });
+    poner('Cuánto has comido', '100');
+    fireEvent.click(screen.getByText('Añadir'));
+    expect(onAnadir.mock.calls[0][0].macros.proteina).toBeCloseTo(14.4, 5);
   });
 });

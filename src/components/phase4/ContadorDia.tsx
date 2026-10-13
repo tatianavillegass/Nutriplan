@@ -403,7 +403,17 @@ function AnadirBocado({
 
   const food = foodId ? foods.find((f) => f.id === foodId) : undefined;
 
-  /** Del catálogo o de la etiqueta que acaba de copiar: se calcula igual. */
+  /**
+   * Del catálogo o de la etiqueta que acaba de copiar: se calcula igual.
+   *
+   * LAS KCAL SE DEDUCEN, SALVO QUE LAS COPIE
+   * ========================================
+   * Salen de los macros (4/4/9), así que no hay que teclearlas. Pero la
+   * etiqueta trae su propio número y casi nunca es el mismo: los fabricantes
+   * redondean, descuentan la fibra a su manera y usan los factores de Atwater
+   * por alimento. Si lo escribe, manda el suyo — está copiando un bote, no
+   * resolviendo una cuenta.
+   */
   const deEtiqueta = useMemo(() => {
     const f = (aNumero(cantidad) ?? 0) / 100;
     const macros = {
@@ -411,8 +421,17 @@ function AnadirBocado({
       hc: hcNeto(n) * f,
       grasa: (n.grasa || 0) * f,
     };
-    return { macros, kcal: kcalFromMacros(macros) };
+    return { macros, kcal: n.kcal ? n.kcal * f : kcalFromMacros(macros) };
   }, [n, cantidad]);
+
+  /** Lo que saldría de los macros, para avisar si no cuadra con la etiqueta. */
+  const kcalDeLosMacros = kcalFromMacros({
+    proteina: n.proteina || 0,
+    hc: hcNeto(n),
+    grasa: n.grasa || 0,
+  });
+  const kcalNoCuadran =
+    !!n.kcal && kcalDeLosMacros > 0 && Math.abs(n.kcal - kcalDeLosMacros) > kcalDeLosMacros * 0.15;
 
   const gramos = aNumero(cantidad) ?? 0;
   const calculado = porEtiqueta ? deEtiqueta : macrosDeCantidad(gramos, food);
@@ -504,9 +523,13 @@ function AnadirBocado({
           <p className="mt-2 mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
             Por 100 g, según la etiqueta
           </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <p className="mb-1 text-[10px] text-slate-400">
+            Las calorías salen solas de los macros. Cópialas si quieres las del bote.
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {(
               [
+                ['kcal', 'Calorías'],
                 ['proteina', 'Proteína'],
                 ['hc', 'Carbohidr.'],
                 ['grasa', 'Grasa'],
@@ -516,16 +539,21 @@ function AnadirBocado({
               <label key={k} className="block">
                 <span className="mb-0.5 block text-[10px] text-slate-500">{label}</span>
                 <NumeroConComa
-                  value={n[k] === undefined ? '' : String(n[k])}
-                  onChange={(texto) =>
-                    setN((p) => ({ ...p, [k]: aNumero(texto) }) as Nutrientes100)
-                  }
+                  numero={n[k]}
+                  onNumero={(v) => setN((p) => ({ ...p, [k]: v }) as Nutrientes100)}
+                  cero
                   className="w-full text-sm"
                   aria-label={label}
                 />
               </label>
             ))}
           </div>
+          {kcalNoCuadran && (
+            <p className="mt-1.5 text-[11px] text-amber-700">
+              La etiqueta pone {fmt(n.kcal as number)} kcal y de los macros salen{' '}
+              {fmt(kcalDeLosMacros)}. Se usan las de la etiqueta; si no era eso, revisa algún dato.
+            </p>
+          )}
         </>
       )}
 

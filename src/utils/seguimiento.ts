@@ -4,6 +4,7 @@ import type { Alimento } from '../types/food';
 import type { Medicion } from '../types/anthropometry';
 import type { Sexo } from '../types/calculations';
 import { adherenciaDelDia } from './diary';
+import { objetivoDelDia, totalContado } from './conteo';
 import { calcComposicion } from './anthropometry';
 import { gridMacros } from './exchanges';
 import { kcalFromMacros } from './macros';
@@ -29,6 +30,12 @@ export interface DiaAdherencia {
   fecha: string;
   /** 0–100. undefined si ese día no hay registro. */
   porcentaje?: number;
+  /**
+   * Sólo en fase 4: si ese día se quedó dentro del margen del objetivo. Ahí
+   * «completo» no es haber marcado todas las comidas, que no hay ninguna que
+   * marcar, sino haber cuadrado las calorías.
+   */
+  dentroDelMargen?: boolean;
   extras: number;
   kcalExtras: number;
 }
@@ -66,6 +73,34 @@ export function resumenAdherencia(
       continue;
     }
     const dayType = plan.dayTypes.find((d) => d.id === r.dayTypeId) ?? plan.dayTypes[0];
+
+    /*
+     * EN FASE 4 NO HAY COMIDAS QUE MARCAR
+     *
+     * La adherencia se calculaba contando comidas cumplidas, y quien cuenta
+     * gramos no marca ninguna: la pestaña decía «0 días apuntados» y un 0 %
+     * por mucho que llevara el mes entero apuntando lo que come. Aquí el día
+     * se juzga por lo que lleva contado frente a lo que tiene pautado.
+     */
+    if (plan.fase === 4) {
+      const objetivo = objetivoDelDia(dayType);
+      const llevado = totalContado(r.bocados ?? []);
+      if (!(r.bocados ?? []).length) {
+        lista.push({ fecha, extras: 0, kcalExtras: 0 });
+        continue;
+      }
+      const desvio = objetivo.kcal ? Math.abs(llevado.kcal - objetivo.kcal) / objetivo.kcal : 0;
+      lista.push({
+        fecha,
+        porcentaje: Math.max(0, Math.round((1 - desvio) * 100)),
+        // Hasta un 10 % arriba o abajo el día cuadra: es el margen de siempre.
+        dentroDelMargen: desvio <= 0.1,
+        extras: 0,
+        kcalExtras: 0,
+      });
+      continue;
+    }
+
     const a = adherenciaDelDia(r, dayType);
     lista.push({
       fecha,
@@ -83,7 +118,9 @@ export function resumenAdherencia(
       : undefined,
     registrados: conDatos.length,
     totalDias: dias,
-    completos: conDatos.filter((d) => (d.porcentaje ?? 0) >= 100).length,
+    completos: conDatos.filter((d) =>
+      d.dentroDelMargen !== undefined ? d.dentroDelMargen : (d.porcentaje ?? 0) >= 100,
+    ).length,
     kcalExtrasDia: conDatos.length
       ? conDatos.reduce((s, d) => s + d.kcalExtras, 0) / conDatos.length
       : undefined,
@@ -120,8 +157,12 @@ export function evolucionCorporal(
 export interface UsoAlimento {
   foodId: string;
   nombre: string;
-  /** Porciones sumadas en todo el periodo. */
+  /** Porciones sumadas en todo el periodo. Cero en fase 4, que va en gramos. */
   porciones: number;
+  /** Veces que lo ha apuntado. Es lo que se cuenta cuando no hay porciones. */
+  veces: number;
+  /** Gramos sumados, en fase 4. */
+  gramos: number;
   /** Días distintos en los que aparece. */
   dias: number;
 }
@@ -143,27 +184,57 @@ export function usoDeAlimentos(
 ): UsoDeAlimentos {
   const nombre = new Map(foods.map((f) => [f.id, f.nombre]));
   const porciones = new Map<string, number>();
+  const veces = new Map<string, number>();
+  const gramos = new Map<string, number>();
+  const comoSeLlama = new Map<string, string>();
   const dias = new Map<string, Set<string>>();
+  const apunta = (foodId: string, fecha: string) => {
+    if (!dias.has(foodId)) dias.set(foodId, new Set());
+    dias.get(foodId)!.add(fecha);
+  };
 
   for (const r of registros) {
     for (const comida of Object.values(r.porciones ?? {})) {
       for (const [foodId, n] of Object.entries(comida ?? {})) {
         if (!n) continue;
         porciones.set(foodId, (porciones.get(foodId) ?? 0) + n);
-        if (!dias.has(foodId)) dias.set(foodId, new Set());
-        dias.get(foodId)!.add(r.fecha);
+        veces.set(foodId, (veces.get(foodId) ?? 0) + 1);
+        apunta(foodId, r.fecha);
       }
+    }
+
+    /*
+     * EN FASE 4 LO QUE HAY SON BOCADOS, NO PORCIONES
+     *
+     * Esto sólo leía `porciones`, así que con una clienta contando gramos la
+     * tarjeta decía «todavía no ha marcado nada» por mucho que llevara el mes
+     * entero apuntando. Se cuenta cuántas veces lo apunta y cuántos gramos
+     * lleva; el nombre sale del bocado porque un alimento calculado de una
+     * etiqueta no está en el catálogo de ella.
+     */
+    for (const b of r.bocados ?? []) {
+      const foodId = b.foodId ?? `txt_${b.nombre.toLowerCase()}`;
+      veces.set(foodId, (veces.get(foodId) ?? 0) + 1);
+      gramos.set(foodId, (gramos.get(foodId) ?? 0) + (b.cantidad ?? 0));
+      if (!comoSeLlama.has(foodId)) comoSeLlama.set(foodId, b.nombre);
+      apunta(foodId, r.fecha);
     }
   }
 
-  const elegidos: UsoAlimento[] = [...porciones.entries()]
-    .map(([foodId, n]) => ({
+  const elegidos: UsoAlimento[] = [...dias.keys()]
+    .map((foodId) => ({
       foodId,
-      nombre: nombre.get(foodId) ?? foodId,
-      porciones: n,
+      nombre: nombre.get(foodId) ?? comoSeLlama.get(foodId) ?? foodId,
+      porciones: porciones.get(foodId) ?? 0,
+      veces: veces.get(foodId) ?? 0,
+      gramos: gramos.get(foodId) ?? 0,
       dias: dias.get(foodId)?.size ?? 0,
     }))
-    .sort((a, b) => b.porciones - a.porciones || a.nombre.localeCompare(b.nombre));
+    // Por porciones donde las hay y por veces donde se cuentan gramos.
+    .sort(
+      (a, b) =>
+        b.porciones - a.porciones || b.veces - a.veces || a.nombre.localeCompare(b.nombre),
+    );
 
   // Lo que se le ofrece: la selección de cada comida de cada tipo de día.
   const ofrecidos = new Set<string>();
