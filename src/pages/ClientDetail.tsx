@@ -31,12 +31,14 @@ import {
 } from "../components/planning/RecursosYMetas";
 import { PlanHistory } from "../components/client/PlanHistory";
 import { FollowUpPanel } from "../components/client/FollowUpPanel";
+import { QueRepite } from "../components/client/QueRepite";
 import { CheckInsDeLaClienta } from "../components/client/CheckInsDeLaClienta";
 import { PatronesDePausa } from "../components/client/PatronesDePausa";
 import { PausaDeCliente } from "../components/planning/PausaDeCliente";
 import { MedidasDeCliente } from "../components/planning/MedidasDeCliente";
 import { MedidasDeLaClienta } from "../components/client/MedidasDeLaClienta";
 import { EntrenosDeCliente } from "../components/planning/EntrenosDeCliente";
+import { SinNumerosDeCliente } from "../components/planning/SinNumerosDeCliente";
 import { SusEntrenos } from "../components/client/SusEntrenos";
 import { RepartirLaSemana } from "../components/planning/RepartirLaSemana";
 import { AvituallamientoDeComida } from "../components/planning/AvituallamientoDeComida";
@@ -384,6 +386,12 @@ export function ClientDetail() {
               foods={foods}
             />
           )}
+          <QueRepite
+            plan={planActivo}
+            registros={registrosCliente}
+            recipes={recipes}
+            foods={foods}
+          />
           <FollowUpPanel
             client={client}
             plan={planActivo}
@@ -790,6 +798,11 @@ export function ClientDetail() {
             />
             <EntrenosDeCliente
               client={client}
+              onChange={(patch) => updateClient(client.id, patch)}
+            />
+            <SinNumerosDeCliente
+              client={client}
+              fase={plan.fase}
               onChange={(patch) => updateClient(client.id, patch)}
             />
           </div>

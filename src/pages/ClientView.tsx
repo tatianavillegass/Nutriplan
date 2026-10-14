@@ -41,6 +41,7 @@ import { CalculadoraPorciones } from "../components/phase3/CalculadoraPorciones"
 import { ScaledRecipeView } from "../components/phase1/ScaledRecipeView";
 import { MealCard } from "../components/client/MealCard";
 import { WeekStrip } from "../components/client/WeekStrip";
+import { SinNumerosProvider, ConNumeros } from "../components/client/SinNumeros";
 import { DayProgressBar } from "../components/client/DayProgressBar";
 import { RecipeShortcuts } from "../components/client/RecipeShortcuts";
 import { ExtrasPanel } from "../components/client/ExtrasPanel";
@@ -1042,6 +1043,13 @@ export function ClientView() {
    */
   const comidas = comidasConPauta(dayType);
 
+  /*
+   * En fase 4 no se aplica: esa fase ES contar gramos, así que sin números no
+   * quedaría nada que enseñar. Si una clienta lo necesita, la fase 4 no es
+   * para ella — y eso lo decide la nutricionista, no un interruptor.
+   */
+  const sinNumeros = !!client.sinNumeros && plan.fase !== 4;
+
   return (
     <>
       {/*
@@ -1052,6 +1060,7 @@ export function ClientView() {
         quita filas. Y va dentro de `screen-only`, así que el PDF del plan que
         se imprime desde aquí no se entera.
       */}
+      <SinNumerosProvider activo={sinNumeros}>
       <div className="vista-cliente screen-only space-y-5 pb-24 sm:pb-0">
         <div className="flex flex-wrap items-end justify-between gap-3 no-print">
           <div>
@@ -1701,16 +1710,18 @@ export function ClientView() {
                 plan.fase === 4 ? "hidden" : "flex"
               }`}
             >
-              <span className="font-medium text-slate-700">
-                {fmt(balance.kcalTotal)} kcal
-                <span className="ml-1 font-normal text-slate-400">
-                  de {fmt(balance.kcalPautado)} pautadas
+              <ConNumeros>
+                <span className="font-medium text-slate-700">
+                  {fmt(balance.kcalTotal)} kcal
+                  <span className="ml-1 font-normal text-slate-400">
+                    de {fmt(balance.kcalPautado)} pautadas
+                  </span>
                 </span>
-              </span>
-              <span className="text-slate-500">
-                P {fmt(balance.total.proteina, 0)} · HC{" "}
-                {fmt(balance.total.hc, 0)} · G {fmt(balance.total.grasa, 0)} g
-              </span>
+                <span className="text-slate-500">
+                  P {fmt(balance.total.proteina, 0)} · HC{" "}
+                  {fmt(balance.total.hc, 0)} · G {fmt(balance.total.grasa, 0)} g
+                </span>
+              </ConNumeros>
               <span className="text-slate-500">
                 {comidas.filter((m) => cumplida(m.id)).length}/{comidas.length}{" "}
                 comidas hechas
@@ -2057,13 +2068,17 @@ export function ClientView() {
         </nav>
       </div>
 
-      {/* Documento que sale al imprimir / exportar a PDF */}
+      {/*
+        El PDF va dentro: es su plan, y si al exportarlo le salieran las kcal
+        que no le enseñamos en pantalla, esconderlas no habría servido de nada.
+      */}
       <PlanDocument
         client={client}
         plan={plan}
         recipes={recipes}
         foods={foods}
       />
+      </SinNumerosProvider>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { ConNumeros } from './SinNumeros';
 import { useMemo } from 'react';
 import type { DayType } from '../../types/plan';
 import type { RegistroDia } from '../../types/diary';
@@ -155,7 +156,9 @@ export function WeekStrip({ fecha, onFecha, dayTypes, registros, inicioPlan }: P
               >
                 {d.dayType?.nombre ?? '—'}
               </span>
-              <span className="tnum text-[10px] text-slate-400">{fmt(d.kcal)} kcal</span>
+              <ConNumeros>
+                <span className="tnum text-[10px] text-slate-400">{fmt(d.kcal)} kcal</span>
+              </ConNumeros>
             </button>
           );
         })}

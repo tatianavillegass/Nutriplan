@@ -1,3 +1,4 @@
+import { ConNumeros } from './SinNumeros';
 import { useState } from 'react';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
@@ -253,7 +254,8 @@ function Detalle({
           abajo son los de la receta entera y por eso se dice.
         */}
         {sale > 1 ? 'Una ración: ' : ''}
-        {enPorciones || 'Sin porciones que gastar'} · {fmt(kcal, 0)} kcal
+        {enPorciones || 'Sin porciones que gastar'}
+        <ConNumeros> · {fmt(kcal, 0)} kcal</ConNumeros>
       </p>
 
       {postre.ingredientes.length > 0 && (

@@ -121,6 +121,26 @@ export interface Client {
    */
   entrenos?: boolean;
   /**
+   * SIN NÚMEROS DE ENERGÍA
+   *
+   * Quita las calorías **y los macros** de su app en fases 1, 2 y 3. Ve su
+   * plan, sus porciones, sus recetas y sus gramos; lo que no ve es cuánta
+   * energía lleva.
+   *
+   * Se enciende persona a persona, como la pausa: a quien no lo necesita, el
+   * número no le hace daño y le sirve. A quien sí, no hay forma de usar la app
+   * sin tropezarse con él cinco veces al día.
+   *
+   * **Los macros se van con las calorías**, no aparte. A quien le hace daño
+   * contar, los gramos de proteína son otro número que vigilar: dejarlos sería
+   * quitar el cartel grande y dejar los pequeños.
+   *
+   * **En fase 4 no se aplica**, y no es un olvido: esa fase ES contar gramos,
+   * así que sin números no queda nada. Si una clienta necesita esto, la fase 4
+   * no es para ella — y eso lo decide la nutricionista, no un interruptor.
+   */
+  sinNumeros?: boolean;
+  /**
    * QUÉ HACER EN VEZ DE COMER
    *
    * La lista de actividades de la guía. Se le ofrecen **tres**, no la lista

@@ -1,3 +1,4 @@
+import { useSinNumeros } from './SinNumeros';
 import { useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { Extra } from '../../types/diary';
@@ -44,6 +45,7 @@ export function MealExtras({
   const [abierto, setAbierto] = useState(false);
   // Lo que cuenta en el plan no es un extra, así que no suma en esta cuenta:
   // si no, el mismo bocadillo salía en las porciones y encima como desvío.
+  const sinNumeros = useSinNumeros();
   const kcal = extras.reduce((s, e) => s + (e.enElPlan ? 0 : e.kcal), 0);
 
   if (soloLectura && !extras.length) return null;
@@ -51,7 +53,7 @@ export function MealExtras({
   return (
     <div className="mt-1.5 no-print">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {kcal > 0 && (
+        {kcal > 0 && !sinNumeros && (
           <span className="tnum text-[11px] text-amber-700">
             {fmt(kcal)} kcal de extra en {mealNombre.toLowerCase()}
           </span>

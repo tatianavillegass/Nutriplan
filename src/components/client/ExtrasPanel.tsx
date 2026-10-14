@@ -1,3 +1,4 @@
+import { useSinNumeros } from './SinNumeros';
 import { useState } from 'react';
 import type { Alimento } from '../../types/food';
 import type { Extra } from '../../types/diary';
@@ -50,6 +51,7 @@ export function ExtrasPanel({
   // porciones, y contarlo también aquí sería decir dos veces lo mismo.
   const deMas = extras.filter((e) => !e.enElPlan);
   const enElPlan = extras.filter((e) => e.enElPlan);
+  const sinNumeros = useSinNumeros();
   const kcalExtras = deMas.reduce((s, e) => s + e.kcal, 0);
   const veredicto = veredictoExtras(balance.pesoExtras);
 
@@ -128,7 +130,12 @@ export function ExtrasPanel({
         </p>
       )}
 
-      {deMas.length > 0 && (
+      {/*
+        El bloque entero, no sólo las cifras: «te has pasado un 25 %» es justo
+        lo que hace daño a quien lleva una cuenta de más en la cabeza. Lo
+        apuntado se queda; el juicio sobre lo apuntado, no.
+      */}
+      {deMas.length > 0 && !sinNumeros && (
         <div className="tnum mt-3 border-t border-amber-200 pt-2 text-[11px] text-slate-700">
           <p>
             <strong className="font-medium">{fmt(kcalExtras)} kcal</strong> de extras, un{' '}

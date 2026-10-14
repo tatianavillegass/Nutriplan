@@ -1,3 +1,4 @@
+import { ConNumeros } from './SinNumeros';
 import { useMemo, useState } from 'react';
 import type { Receta } from '../../types/recipe';
 import type { Alimento } from '../../types/food';
@@ -145,10 +146,12 @@ export function RecipeShortcuts({
                       {usada && <span className="text-[10px] text-brand-700">usada ✓</span>}
                     </span>
 
-                    <span className="tnum mt-0.5 block text-[10px] text-slate-500">
-                      {fmt(kcalFromMacros(macros))} kcal · P {fmt(macros.proteina, 0)} · HC{' '}
-                      {fmt(macros.hc, 0)} · G {fmt(macros.grasa, 0)} g
-                    </span>
+                    <ConNumeros>
+                      <span className="tnum mt-0.5 block text-[10px] text-slate-500">
+                        {fmt(kcalFromMacros(macros))} kcal · P {fmt(macros.proteina, 0)} · HC{' '}
+                        {fmt(macros.hc, 0)} · G {fmt(macros.grasa, 0)} g
+                      </span>
+                    </ConNumeros>
                   </span>
                 </div>
 

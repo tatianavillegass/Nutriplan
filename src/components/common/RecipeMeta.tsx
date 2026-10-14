@@ -1,6 +1,7 @@
 import type { Receta } from '../../types/recipe';
 import { kcalFromMacros } from '../../utils/macros';
 import type { MacroGrams } from '../../types/calculations';
+import { useSinNumeros } from '../client/SinNumeros';
 import { fmt } from './ui';
 
 const trazo = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const };
@@ -62,6 +63,10 @@ const COLORES = {
 /**
  * Kcal grandes con la barra de proporción H / P / G.
  * El rango min-max sale del margen de ±25 % que deja el escalado de porciones.
+ *
+ * Entera o nada: con el modo sin números encendido no se enseña la barra
+ * vacía ni las siglas sin cifra, que seguirían diciendo que hay algo que no
+ * estás mirando. Ver `components/client/SinNumeros.tsx`.
  */
 export function MacroBar({
   macros,
@@ -72,6 +77,7 @@ export function MacroBar({
   margen?: number;
   compacto?: boolean;
 }) {
+  const sinNumeros = useSinNumeros();
   const kcal = kcalFromMacros(macros);
   const partes = [
     { k: 'hc' as const, g: macros.hc, kcal: macros.hc * 4, sigla: 'H' },
@@ -79,6 +85,8 @@ export function MacroBar({
     { k: 'grasa' as const, g: macros.grasa, kcal: macros.grasa * 9, sigla: 'G' },
   ];
   const total = partes.reduce((s, p) => s + p.kcal, 0) || 1;
+
+  if (sinNumeros) return null;
 
   return (
     <div className={compacto ? '' : 'space-y-1.5'}>
