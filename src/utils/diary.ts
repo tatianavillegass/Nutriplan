@@ -222,16 +222,35 @@ export function balanceDelDia(
    * que se ha comido del plan. Así, si el postre pesa parecido, el día cuadra;
    * si pesa más, se pasa; y si pesa menos, se queda corta. Que es la verdad.
    */
+  /**
+   * Y LO QUE SE CAMBIÓ POR OTRA COSA, TAMPOCO
+   *
+   * Misma idea para «no comí lo que me pusiste, comí otra cosa»: esa comida
+   * deja de contar como comida del plan y lo que de verdad comió entra en su
+   * lugar (`loSustituido`, más abajo). Sin esto, apuntarlo como extra hacía
+   * que un día en que comió MENOS saliera pasado de calorías.
+   */
   const cambiadas = Object.keys(registro?.cambiadasPorPostre ?? {});
+  const sustituidas = Object.keys(registro?.sustituidas ?? {});
+  const fuera = [...cambiadas, ...sustituidas];
   const delPlanEntero =
-    dayType && cambiadas.length
+    dayType && fuera.length
       ? exchangesToMacros(
           gridTotals(
             dayType.grid,
-            dayType.meals.filter((m) => !cambiadas.includes(m.id)),
+            dayType.meals.filter((m) => !fuera.includes(m.id)),
           ),
         )
       : pautado;
+
+  /** Lo que comió en las comidas que sustituyó. Vacío = no comió nada. */
+  const comidoFueraDelPlan = (registro?.bocados ?? []).filter(
+    (b) => b.momento && sustituidas.includes(b.momento),
+  );
+  const loSustituido = comidoFueraDelPlan.reduce(
+    (acc, b) => suma(acc, b.macros),
+    { ...CERO },
+  );
 
   /**
    * LO APUNTADO QUE ELLA MANDÓ CONTAR NO ES UN DESVÍO
@@ -250,12 +269,14 @@ export function balanceDelDia(
   );
   const hayMarcado = marcado.proteina + marcado.hc + marcado.grasa > 0;
 
-  const delPlan =
+  const delPlan = suma(
     hayMarcado || !opciones.asumirPlanCumplido
       ? hayMarcado
         ? marcado
         : { ...CERO }
-      : delPlanEntero;
+      : delPlanEntero,
+    loSustituido,
+  );
 
   const { macros: deExtras, kcal: kcalExtras } = totalExtras(extras);
 
@@ -265,10 +286,13 @@ export function balanceDelDia(
    * contara: el cliente apuntaba algo y el contador de arriba no se movía.
    * Esas calorías sin macros se suman aparte.
    */
-  const kcalSinMacros = extras.reduce(
-    (s, e) => s + Math.max(0, e.kcal - kcalFromMacros(e.macros)),
-    0,
-  );
+  const kcalSinMacros =
+    extras.reduce((s, e) => s + Math.max(0, e.kcal - kcalFromMacros(e.macros)), 0) +
+    // Lo mismo con lo apuntado por etiqueta: sus kcal pueden no salir de los macros.
+    comidoFueraDelPlan.reduce(
+      (s, b) => s + Math.max(0, b.kcal - kcalFromMacros(b.macros)),
+      0,
+    );
 
   const total = suma(delPlan, deExtras);
   const kcalPautado = kcalFromMacros(pautado);

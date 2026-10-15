@@ -47,6 +47,7 @@ import { RecipeShortcuts } from "../components/client/RecipeShortcuts";
 import { ExtrasPanel } from "../components/client/ExtrasPanel";
 import { MealExtras } from "../components/client/MealExtras";
 import { ComidaLibre } from "../components/client/ComidaLibre";
+import { ComiOtraCosa } from "../components/client/ComiOtraCosa";
 import { ResumenTab } from "../components/client/ResumenTab";
 import { MisMedidas } from "../components/client/MisMedidas";
 import {
@@ -953,6 +954,57 @@ export function ClientView() {
   };
 
   /**
+   * COMÍ OTRA COSA
+   *
+   * Lo que comió de verdad va en `bocados` con el `momento` de esa comida —el
+   * mismo sitio donde apunta la fase 4, para que haya una sola forma de decir
+   * «esto me he comido»— y `sustituidas` marca que esa comida ya no es la
+   * pautada. `balanceDelDia` hace el resto: deja de contar lo pautado de ahí y
+   * cuenta esto en su lugar, en vez de sumarlo encima.
+   */
+  const sustituidas = registro?.sustituidas ?? {};
+  const abrirOtraCosa = (mealId: string) =>
+    guardar({ sustituidas: { ...sustituidas, [mealId]: {} } });
+  const cerrarOtraCosa = (mealId: string) => {
+    const { [mealId]: _fuera, ...resto } = sustituidas;
+    // Al deshacer se va también lo que hubiera apuntado ahí: si vuelve a la
+    // receta pautada, lo de antes ya no es lo que comió.
+    guardar({
+      sustituidas: resto,
+      bocados: (registro?.bocados ?? []).filter((b) => b.momento !== mealId),
+    });
+  };
+  const notaOtraCosa = (mealId: string, nota: string) =>
+    guardar({ sustituidas: { ...sustituidas, [mealId]: { nota: nota || undefined } } });
+
+  const anadirBocado = (bocado: Bocado, alimentoNuevo?: Alimento) =>
+    guardar({
+      bocados: [...(registro?.bocados ?? []), bocado],
+      ...(alimentoNuevo
+        ? { alimentosPropios: [...(registro?.alimentosPropios ?? []), alimentoNuevo] }
+        : {}),
+    });
+
+  const quitarBocado = (id: string) =>
+    guardar({ bocados: (registro?.bocados ?? []).filter((b) => b.id !== id) });
+
+  const otraCosaDe = (mealId: string, nombre: string) => (
+    <ComiOtraCosa
+      mealId={mealId}
+      mealNombre={nombre}
+      foods={foods}
+      bocados={(registro?.bocados ?? []).filter((b) => b.momento === mealId)}
+      activa={!!sustituidas[mealId]}
+      nota={sustituidas[mealId]?.nota}
+      onAbrir={() => abrirOtraCosa(mealId)}
+      onCerrar={() => cerrarOtraCosa(mealId)}
+      onAnadir={anadirBocado}
+      onQuitar={quitarBocado}
+      onNota={(n) => notaOtraCosa(mealId, n)}
+    />
+  );
+
+  /**
    * Marcar una meta del día. Va en el registro, como las comidas hechas: es de
    * hoy, no de la ficha.
    */
@@ -1015,6 +1067,20 @@ export function ClientView() {
           title={`Marcar ${nombre.toLowerCase()} como comida libre`}
         >
           Libre
+        </button>
+      )}
+      {/*
+        Va con el mismo peso que «Libre» —un enlace pequeño— porque es para lo
+        mismo: la excepción. Si apuntar lo suyo fuera tan cómodo como seguir el
+        plan, dejaría de ser un plan.
+      */}
+      {!libres[mealId] && !sustituidas[mealId] && (
+        <button
+          onClick={() => abrirOtraCosa(mealId)}
+          className="self-center text-[11px] text-slate-400 underline transition hover:text-sky-700"
+          title={`Apuntar lo que comiste de verdad en ${nombre.toLowerCase()}`}
+        >
+          Comí otra cosa
         </button>
       )}
     </>
@@ -1696,6 +1762,7 @@ export function ClientView() {
                 porciones={porciones}
                 cumplidas={registro?.cumplidas ?? []}
                 libres={libres}
+                sustituidas={sustituidas}
                 onIr={(mealId) =>
                   document
                     .getElementById(`comida-${mealId}`)
@@ -1774,6 +1841,7 @@ export function ClientView() {
                           acciones={accionesDe(m.id, m.nombre)}
                         />
                         {libreDe(m.id, m.nombre)}
+                        {otraCosaDe(m.id, m.nombre)}
                       </div>
                     );
 
@@ -1860,6 +1928,7 @@ export function ClientView() {
                       </MealCard>
                       {extrasDe(m.id, m.nombre)}
                       {libreDe(m.id, m.nombre)}
+                        {otraCosaDe(m.id, m.nombre)}
                     </div>
                   );
                 })}
@@ -1907,6 +1976,7 @@ export function ClientView() {
                     />
                     {extrasDe(m.id, m.nombre)}
                     {libreDe(m.id, m.nombre)}
+                        {otraCosaDe(m.id, m.nombre)}
                   </div>
                 ))}
               </div>
@@ -1944,6 +2014,7 @@ export function ClientView() {
                       />
                       {extrasDe(m.id, m.nombre)}
                       {libreDe(m.id, m.nombre)}
+                        {otraCosaDe(m.id, m.nombre)}
                     </div>
                   ))}
 
@@ -1984,6 +2055,7 @@ export function ClientView() {
                       porciones={porciones}
                       cumplidas={registro?.cumplidas ?? []}
                       libres={libres}
+                      sustituidas={sustituidas}
                       onIr={(mealId) =>
                         document
                           .getElementById(`comida-${mealId}`)

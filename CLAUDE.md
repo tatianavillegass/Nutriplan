@@ -825,6 +825,36 @@ si es una de estas decisiones:
   no se sabía si eran de la comida de arriba o de la de abajo. Por eso
   `ComidaLibre` acepta `sinBoton` y se abre desde fuera, y el de extras lleva
   el nombre de la comida escrito.
+- **«Comí otra cosa» no es comer fuera, y no puede sumarse encima.** Era la
+  queja que más se repetía en fase 1, y eran tres: «no comí tus recetas pero
+  comí sano — no quiero marcarlo libre», «comí menos de lo que me pusiste» y
+  «no merendé, pero comí otra cosa». Las tres acababan igual de mal: o se
+  marcaba hecha una comida que no se hizo, o se apuntaba como **extra** — y
+  entonces un día en que comió MENOS salía pasado de calorías, porque el extra
+  se sumaba encima de una merienda que nunca se comió.
+  `RegistroDia.sustituidas` (mealId → nota) marca esa comida y lo que de verdad
+  comió va en **`bocados` con ese `momento`**, el mismo sitio de la fase 4: una
+  sola forma de decir «esto me he comido» en toda la app, y por eso
+  `AnadirBocado` se sacó de `ContadorDia` a su propio archivo. **Sustituye, no
+  suma**: `balanceDelDia` saca esa comida de `delPlanEntero` —igual que ya hacía
+  con `cambiadasPorPostre`— y añade lo apuntado; lo **pautado no se toca**, que
+  es lo que su cuerpo necesitaba, así que comer menos deja el día corto y comer
+  más lo pasa. Que es la verdad. Y **no cuenta como desvío**: no entra en
+  `pesoExtras`, porque no se ha pasado, ha comido otra cosa.
+  **Sin bocados significa «no comí nada»**, que es una respuesta y no un hueco
+  a rellenar: hasta ahora una comida sin marcar era lo mismo que una que se
+  olvidó de apuntar. Cierra el día (`diaCerrado`) como lo cierra una libre.
+  **Ahí hubo un fallo a punto de colarse**: `diaCerrado` daba el día por cerrado
+  con un solo bocado —el atajo de la fase 4— así que en fase 1 apuntar la
+  merienda regalaba la racha con la cena sin contestar; ahora sólo cuentan los
+  bocados **sueltos**, los que no pertenecen a una comida sustituida, y en fase
+  4 no hay ninguna sustituida, así que ahí se comporta igual que siempre.
+  **Va con el mismo peso que «Libre»** —un enlace pequeño, no un botón—: si
+  apuntar lo suyo fuera tan cómodo como seguir el plan, dejaría de ser un plan.
+  Deshacerlo **borra lo apuntado ahí**: si vuelve a la receta pautada, lo de
+  antes ya no es lo que comió. La nutricionista lo ve en «Hoy» con nombres y
+  gramos, en azul y aparte de las libres, que es justo lo que se perdía cuando
+  esto se apuntaba como extra.
 - **Comer fuera también en fase 4.** El botón «Libre» sólo se pintaba en las
   fases 1, 2 y 3 porque el contador (`ContadorDia`) se dibuja por otro camino.
   Y es donde más falta hace: a una hamburguesa no se le ponen gramos. A la

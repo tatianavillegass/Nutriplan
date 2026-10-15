@@ -427,6 +427,28 @@ export interface RegistroDia {
    */
   libres?: Record<string, { nota?: string }>;
   /**
+   * COMÍ OTRA COSA
+   *
+   * La queja que más se repetía en fase 1: «no comí ninguna de las recetas
+   * que me pusiste, pero comí sano — no quiero marcarlo libre». Y sus
+   * hermanas: «comí menos de lo que me pusiste» y «no merendé, pero comí
+   * otra cosa». Las tres acababan igual: o se marcaba hecha una comida que
+   * no se hizo, o se apuntaba como extra y el día salía pasado de calorías
+   * por haber comido menos.
+   *
+   * mealId → nota opcional. Lo que de verdad comió va en `bocados` con ese
+   * mismo `momento`, que es el mismo sitio donde apunta la fase 4: así hay
+   * una sola forma de decir «esto me he comido» en toda la app.
+   *
+   * **Sustituye, no suma**: `balanceDelDia` deja de contar lo pautado de esa
+   * comida y cuenta esto en su lugar. Sin bocados significa «no comí nada en
+   * esta comida», que también es una respuesta.
+   *
+   * No es lo mismo que **libre** —comer fuera no se mide a propósito— ni que
+   * dejarla sin marcar, que es no haber contestado.
+   */
+  sustituidas?: Record<string, { nota?: string }>;
+  /**
    * Metas diarias cumplidas: ids de `Client.metas`. Van aquí y no en la ficha
    * porque son de ese día concreto, como las comidas hechas.
    */
@@ -573,6 +595,16 @@ export function esComidaLibre(registro: RegistroDia | undefined, mealId: string)
 /** Cuántas comidas libres hay en un puñado de días. Es el dato que importa. */
 export function contarLibres(registros: RegistroDia[]): number {
   return registros.reduce((s, r) => s + Object.keys(r.libres ?? {}).length, 0);
+}
+
+/** ¿En esta comida comió otra cosa (o no comió)? */
+export function estaSustituida(registro: RegistroDia | undefined, mealId: string): boolean {
+  return !!registro?.sustituidas?.[mealId];
+}
+
+/** Lo que de verdad comió en esa comida. Vacío = no comió nada. */
+export function loComidoEn(registro: RegistroDia | undefined, mealId: string): Bocado[] {
+  return (registro?.bocados ?? []).filter((b) => b.momento === mealId);
 }
 
 export const DIAS_CORTOS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];

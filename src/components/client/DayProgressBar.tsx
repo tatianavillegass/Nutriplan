@@ -6,6 +6,8 @@ interface Props {
   dayType: DayType;
   /** Comidas que la clienta se ha tomado libres: ni pendientes ni hechas. */
   libres?: Record<string, unknown>;
+  /** Comidas en las que comió otra cosa: contestadas, pero no lo pautado. */
+  sustituidas?: Record<string, unknown>;
   /** Lo marcado hoy: mealId → foodId → porciones. */
   porciones: PorcionesMarcadas;
   /** Comidas que el cliente ha dado por hechas. */
@@ -14,7 +16,7 @@ interface Props {
   onIr?: (mealId: string) => void;
 }
 
-type EstadoComida = 'pendiente' | 'elegida' | 'hecha' | 'libre';
+type EstadoComida = 'pendiente' | 'elegida' | 'hecha' | 'libre' | 'otra';
 
 function estadoDe(mealId: string, porciones: PorcionesMarcadas, cumplidas: string[]): EstadoComida {
   if (cumplidas.includes(mealId)) return 'hecha';
@@ -29,15 +31,29 @@ function estadoDe(mealId: string, porciones: PorcionesMarcadas, cumplidas: strin
  * Sirve para saber de un vistazo qué le queda por decidir, sin bajar por toda
  * la página.
  */
-export function DayProgressBar({ dayType, porciones, cumplidas, libres = {}, onIr }: Props) {
+export function DayProgressBar({
+  dayType,
+  porciones,
+  cumplidas,
+  libres = {},
+  sustituidas = {},
+  onIr,
+}: Props) {
   /** Sólo las comidas con algo pautado: las vacías ese día no existen. */
   const estados = comidasConPauta(dayType).map((m) => ({
     meal: m,
     // Una comida libre no está a medias: está resuelta de otra manera.
-    estado: libres[m.id] ? ('libre' as const) : estadoDe(m.id, porciones, cumplidas),
+    estado: libres[m.id]
+      ? ('libre' as const)
+      : sustituidas[m.id]
+        ? ('otra' as const)
+        : estadoDe(m.id, porciones, cumplidas),
   }));
 
-  const hechas = estados.filter((e) => e.estado === 'hecha' || e.estado === 'libre').length;
+  // Contestadas: comida hecha, comida fuera o comida cambiada por otra cosa.
+  const hechas = estados.filter((e) =>
+    ['hecha', 'libre', 'otra'].includes(e.estado),
+  ).length;
   const empezadas = estados.filter((e) => e.estado !== 'pendiente').length;
 
   return (
@@ -57,6 +73,7 @@ export function DayProgressBar({ dayType, porciones, cumplidas, libres = {}, onI
             elegida: 'border-brand-300 bg-brand-100 text-brand-800',
             hecha: 'border-brand-600 bg-brand-600 text-white',
             libre: 'border-violet-300 bg-violet-100 text-violet-800',
+            otra: 'border-sky-300 bg-sky-100 text-sky-800',
           }[estado];
 
           return (
@@ -66,6 +83,8 @@ export function DayProgressBar({ dayType, porciones, cumplidas, libres = {}, onI
               title={
                 estado === 'libre'
                   ? `${meal.nombre}: libre, no se cuenta`
+                  : estado === 'otra'
+                  ? `${meal.nombre}: comiste otra cosa`
                   : estado === 'hecha'
                   ? `${meal.nombre}: hecha`
                   : estado === 'elegida'
@@ -78,7 +97,9 @@ export function DayProgressBar({ dayType, porciones, cumplidas, libres = {}, onI
               <span className="mt-0.5 block text-[10px] opacity-80">
                 {estado === 'libre'
                   ? 'libre'
-                  : estado === 'hecha'
+                  : estado === 'otra'
+                    ? 'otra cosa'
+                    : estado === 'hecha'
                     ? '✓ hecha'
                     : estado === 'elegida'
                       ? 'elegida'

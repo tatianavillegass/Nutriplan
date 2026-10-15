@@ -202,6 +202,13 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
             const hecha = (registro.cumplidas ?? []).includes(m.id);
             const susExtras = extrasDeComida(extras, m.id);
             const libre = registro.libres?.[m.id];
+            /*
+             * «Comí otra cosa»: ni lo pautado ni comida fuera. Hay que verlo
+             * con nombres y gramos, que es justo lo que se perdía cuando esto
+             * se apuntaba como extra.
+             */
+            const otra = registro.sustituidas?.[m.id];
+            const loOtro = (registro.bocados ?? []).filter((b) => b.momento === m.id);
 
             /**
              * QUÉ SE ENSEÑA DEPENDE DE LA FASE
@@ -235,7 +242,9 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
                 className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-lg border px-2.5 py-1.5 text-xs ${
                   libre
                     ? 'border-violet-200 bg-violet-50/50'
-                    : hecha
+                    : otra
+                      ? 'border-sky-200 bg-sky-50/50'
+                      : hecha
                       ? 'border-emerald-200 bg-emerald-50/50'
                       : 'border-slate-200'
                 }`}
@@ -249,6 +258,17 @@ export function DiaEnVivo({ client, plan, registros, recipes, foods }: Props) {
                       Comida libre
                       {libre.nota && (
                         <span className="ml-1.5 text-slate-500 italic">«{libre.nota}»</span>
+                      )}
+                    </span>
+                  ) : otra ? (
+                    <span className="text-sky-900">
+                      {loOtro.length
+                        ? loOtro
+                            .map((b) => `${b.nombre} ${fmt(b.cantidad)} ${b.unidad}`)
+                            .join(' · ')
+                        : 'No comió nada en esta comida'}
+                      {otra.nota && (
+                        <span className="ml-1.5 text-slate-500 italic">«{otra.nota}»</span>
                       )}
                     </span>
                   ) : (

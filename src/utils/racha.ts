@@ -25,19 +25,30 @@ export function diaCerrado(
 ): boolean {
   if (!registro || !dayType) return false;
 
+  const sustituidas = registro.sustituidas ?? {};
+
   /**
    * En fase 4 no hay comidas que marcar: el día se cierra apuntando lo que se
    * ha comido. Sin esto, quien cuenta macros perdía la racha todos los días
    * haciéndolo bien.
+   *
+   * Se miran sólo los bocados **sueltos**: en fases 1, 2 y 3 también hay
+   * bocados —los de una comida en la que comió otra cosa— y dar el día por
+   * cerrado con uno solo le regalaría la racha teniendo la cena sin contestar.
+   * En fase 4 no hay comidas sustituidas, así que ahí cuentan todos, como
+   * siempre.
    */
-  if ((registro.bocados?.length ?? 0) > 0) return true;
+  const sueltos = (registro.bocados ?? []).filter(
+    (b) => !b.momento || !sustituidas[b.momento],
+  );
+  if (sueltos.length > 0) return true;
 
   const comidas = comidasConPauta(dayType);
   if (!comidas.length) return false;
 
   const cumplidas = new Set(registro.cumplidas ?? []);
   const libres = registro.libres ?? {};
-  return comidas.every((m) => cumplidas.has(m.id) || !!libres[m.id]);
+  return comidas.every((m) => cumplidas.has(m.id) || !!libres[m.id] || !!sustituidas[m.id]);
 }
 
 /** El día anterior a una fecha ISO (YYYY-MM-DD), sin líos de zona horaria. */
