@@ -69,7 +69,7 @@ describe('Un día tiene las comidas que se le han pautado', () => {
         cumplidas={['desayuno', 'comida', 'cena']}
       />,
     );
-    expect(screen.getByText('3 de 3 comidas hechas')).toBeTruthy();
+    expect(screen.getAllByText('✓ hecha')).toHaveLength(3);
     expect(screen.getByText('Desayuno')).toBeTruthy();
     expect(screen.queryByText('Almuerzo')).toBeNull();
     expect(screen.queryByText('Merienda')).toBeNull();

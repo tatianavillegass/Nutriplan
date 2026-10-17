@@ -125,7 +125,11 @@ describe('La barra del día lo enseña', () => {
     expect(screen.getByText('otra cosa')).toBeTruthy();
   });
 
-  it('y cuenta como contestada en el resumen', () => {
+  /*
+   * Lo dice la pastilla, no un contador: «2 de 2 comidas hechas» repetía con
+   * números lo que los colores ya dicen, y se quitó.
+   */
+  it('y cuenta como contestada, no como pendiente', () => {
     render(
       <DayProgressBar
         dayType={DIA}
@@ -134,7 +138,8 @@ describe('La barra del día lo enseña', () => {
         sustituidas={{ merienda: {} }}
       />,
     );
-    expect(screen.getByText(/2 de 2 comidas hechas/)).toBeTruthy();
+    expect(screen.getByText('✓ hecha')).toBeTruthy();
+    expect(screen.queryByText('—')).toBeNull();
   });
 });
 

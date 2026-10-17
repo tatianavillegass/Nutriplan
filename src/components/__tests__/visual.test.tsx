@@ -134,9 +134,16 @@ describe('Barra del día', () => {
     expect(within(comida).getByText('✓ hecha')).toBeTruthy();
   });
 
-  it('resume cuántas van hechas', () => {
+  /*
+   * El contador de arriba («1 de 2 comidas hechas») se quitó: decía con
+   * números lo que las pastillas ya dicen con colores y con palabras, y en una
+   * pantalla que se mira de reojo eso es una forma de contar de más.
+   */
+  it('no repite el recuento con números: lo dicen las pastillas', () => {
     render(<DayProgressBar dayType={DIA} porciones={{}} cumplidas={['m1']} />);
-    expect(screen.getByText(/1 de 2 comidas hechas/)).toBeTruthy();
+    expect(screen.queryByText(/comidas hechas/)).toBeNull();
+    expect(screen.getByText('✓ hecha')).toBeTruthy();
+    expect(screen.getByText('—')).toBeTruthy();
   });
 
   it('pulsar una comida avisa de a cuál ir', () => {

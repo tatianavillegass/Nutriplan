@@ -50,20 +50,19 @@ export function DayProgressBar({
         : estadoDe(m.id, porciones, cumplidas),
   }));
 
-  // Contestadas: comida hecha, comida fuera o comida cambiada por otra cosa.
-  const hechas = estados.filter((e) =>
-    ['hecha', 'libre', 'otra'].includes(e.estado),
-  ).length;
-  const empezadas = estados.filter((e) => e.estado !== 'pendiente').length;
-
   return (
     <div className="rounded-xl border border-brand-100 bg-white px-4 py-3 no-print">
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+      {/*
+        EL CONTADOR SE FUE, LAS PASTILLAS SE QUEDAN
+        «0 de 3 comidas hechas» decía con números lo que las pastillas de abajo
+        ya dicen con colores y con palabras («✓ hecha», «libre», «otra cosa»),
+        y en una pantalla que se mira de reojo dos formas de contar lo mismo es
+        una de más. Cada pastilla sigue diciendo en su `title` cómo está, que
+        es lo que se lee al pasar por encima y lo que lee un lector de
+        pantalla.
+      */}
+      <div className="mb-2">
         <p className="text-xs font-semibold text-slate-800">Cómo va tu día</p>
-        <p className="tnum text-[11px] text-slate-500">
-          {hechas} de {estados.length} comidas hechas
-          {empezadas > hechas && ` · ${empezadas - hechas} empezadas`}
-        </p>
       </div>
 
       <div className="flex gap-1.5">

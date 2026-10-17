@@ -666,6 +666,36 @@ export function ClientView() {
   const laPestana = hayPestana(tab) ? tab : "hoy";
 
   /**
+   * EL PLAN EN PAPEL, NO EN LA CABECERA
+   * ===================================
+   * «Exportar PDF» estaba arriba, al lado de su nombre, compitiendo con lo
+   * primero que se mira — y es algo que se hace una vez, el día que llega el
+   * plan, para colgarlo en la nevera. Así que baja a «Recetas», que es la
+   * pestaña de lo que se consulta y se imprime, con una frase que dice para
+   * qué sirve. Si esa pestaña no existe en su fase, se queda al final del
+   * plan: fuera del paso, pero nunca inalcanzable.
+   */
+  const planEnPapel = (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 no-print">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-800">
+          {plan.fase === 2 ? "Tus comidas en papel" : "Tu plan en papel"}
+        </p>
+        <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+          {plan.fase === 2
+            ? "Una hoja para colgar en la nevera, con tus combinaciones."
+            : "Para imprimirlo o tenerlo guardado sin abrir la app."}
+        </p>
+      </div>
+      {/* En fase 2 lo que sale es una hoja para colgar, y decirlo cambia
+          lo que se espera del botón: no es «el plan en PDF». */}
+      <Button variant="outline" onClick={imprimir}>
+        {plan.fase === 2 ? "Hoja para la nevera" : "Exportar PDF"}
+      </Button>
+    </div>
+  );
+
+  /**
    * «ME LO HE COMIDO», DESDE LA BIBLIOTECA
    *
    * En fase 3 le fija las porciones de esa comida, que es el mismo gesto que
@@ -1200,11 +1230,6 @@ export function ClientView() {
                 {interactivo ? "Ver como documento" : "Marcar lo que como"}
               </Button>
             )}
-            {/* En fase 2 lo que sale es una hoja para colgar, y decirlo cambia
-                lo que se espera del botón: no es «el plan en PDF». */}
-            <Button onClick={imprimir}>
-              {plan?.fase === 2 ? "Hoja para la nevera" : "Exportar PDF"}
-            </Button>
           </div>
         </div>
 
@@ -1457,6 +1482,8 @@ export function ClientView() {
               pestaña propia.
             */}
             {susRecursos.length > 0 && <RecursosTab recursos={susRecursos} />}
+
+            {planEnPapel}
           </div>
         )}
 
@@ -2202,6 +2229,9 @@ export function ClientView() {
                 onChange={(nuevos) => guardar({ extras: nuevos })}
               />
             )}
+
+            {/* Sin pestaña «Recetas» que lo acoja, al final del día. */}
+            {!hayPestana("recetas") && planEnPapel}
           </div>
         )}
       </div>

@@ -160,8 +160,9 @@ describe('Una comida libre no queda pendiente', () => {
       <DayProgressBar dayType={DIA} porciones={{}} cumplidas={['comida']} libres={{ cena: {} }} />,
     );
     expect(screen.getByText('libre')).toBeTruthy();
-    // La hecha y la libre: el día está resuelto.
-    expect(screen.getByText('2 de 2 comidas hechas')).toBeTruthy();
+    // La hecha y la libre: el día está resuelto, y ninguna queda pendiente.
+    expect(screen.getByText('✓ hecha')).toBeTruthy();
+    expect(screen.queryByText('—')).toBeNull();
   });
 });
 

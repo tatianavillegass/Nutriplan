@@ -956,6 +956,18 @@ si es una de estas decisiones:
   cocino las legumbres») es de la misma familia que lo que se cocina. **La
   pausa se queda en «Plan»**: el impulso no tiene hora, y si hay que cambiar de
   pestaña para encontrarla, cuando se encuentre ya se ha comido.
+- **«Cómo va tu día» no lleva contador.** Decía «0 de 3 comidas hechas» encima
+  de las pastillas que ya dicen lo mismo con colores y con palabras («✓ hecha»,
+  «libre», «otra cosa»), y en una pantalla que se mira de reojo dos formas de
+  contar lo mismo es una de más. Cada pastilla sigue diciendo cómo está en su
+  `title`, que es lo que lee un lector de pantalla.
+- **«Exportar PDF» no va en la cabecera.** Estaba arriba, al lado de su nombre,
+  compitiendo con lo primero que se mira — y es algo que se hace una vez, el
+  día que llega el plan, para colgarlo en la nevera. Ahora es una tarjeta al
+  final de «Recetas» («Tu plan en papel», o «Tus comidas en papel» en fase 2)
+  que dice para qué sirve, porque un botón suelto no lo dice. Si esa pestaña no
+  existe en su fase se queda al final del plan: fuera del paso, pero nunca
+  inalcanzable.
 - **El nombre del plato no se corta en «Reajustes».** Iba con `truncate` y al
   lado van siete botones de día: en un móvil lo que sobraba era el nombre,
   justo lo que hay que leer para decidir. Ahora se envuelve y en pantalla

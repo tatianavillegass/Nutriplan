@@ -214,6 +214,42 @@ describe('Las cinco pestañas', () => {
     expect(screen.queryByText(/Di cuántas veces comes/i)).toBeNull();
   });
 
+  /**
+   * EL PLAN EN PAPEL, NO EN LA CABECERA
+   * «Exportar PDF» estaba arriba, al lado de su nombre, compitiendo con lo
+   * primero que se mira — y es algo que se hace una vez, para colgarlo en la
+   * nevera.
+   */
+  it('exportar no vive en la cabecera', () => {
+    abrir();
+    const cabecera = screen.getByText(/Hola,/).closest('div')!.parentElement!;
+    expect(
+      Array.from(cabecera.querySelectorAll('button')).some((b) =>
+        /nevera|PDF/i.test(b.textContent ?? ''),
+      ),
+    ).toBe(false);
+  });
+
+  it('pero se llega a él desde «Recetas», con su para qué', () => {
+    useAppStore.setState({
+      clients: [{ ...DEMO_CLIENT, recursos: ['r1'] }],
+      recursos: [
+        { id: 'r1', titulo: 'Guía de raciones', orden: 1, createdAt: '2026-01-01' },
+      ],
+    });
+    abrir();
+    fireEvent.click(pestana('Recetas'));
+    expect(screen.getByText(/en papel/i)).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /nevera|PDF/i }).length).toBeGreaterThan(0);
+  });
+
+  /** Y si esa pestaña no existe en su fase, se queda al final del plan. */
+  it('y si no hay pestaña «Recetas», al final del plan', () => {
+    abrir();
+    expect(hayPestana('Recetas')).toBe(false);
+    expect(screen.getAllByRole('button', { name: /nevera|PDF/i }).length).toBeGreaterThan(0);
+  });
+
   /*
    * En fase 3 y 4 elige alimentos sueltos: nadie sabe qué va a comer el
    * jueves, así que la lista de la compra sería un invento.
