@@ -5,6 +5,11 @@ import { ComiOtraCosa } from '../client/ComiOtraCosa';
 import { DayProgressBar } from '../client/DayProgressBar';
 import type { Bocado } from '../../types/diary';
 import type { DayType } from '../../types/plan';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { ClientView } from '../../pages/ClientView';
+import { useAppStore } from '../../store/useAppStore';
+import { DEMO_CLIENT, DEMO_PLAN } from '../../data/demoSeed';
+import { FOOD_CATALOG } from '../../data/foodCatalog';
 
 afterEach(cleanup);
 
@@ -26,7 +31,6 @@ const pintar = (props: Partial<Parameters<typeof ComiOtraCosa>[0]> = {}) =>
       foods={[]}
       bocados={[]}
       activa={false}
-      onAbrir={() => {}}
       onCerrar={() => {}}
       onAnadir={() => {}}
       onQuitar={() => {}}
@@ -35,19 +39,15 @@ const pintar = (props: Partial<Parameters<typeof ComiOtraCosa>[0]> = {}) =>
     />,
   );
 
-describe('Cerrado, es un enlace discreto', () => {
-  it('se ofrece sin ocupar sitio', () => {
-    pintar();
-    expect(screen.getByText('Comí otra cosa')).toBeTruthy();
-    // Es para la excepción: nada de formulario abierto de entrada.
-    expect(screen.queryByText(/Apuntar lo que comiste/)).toBeNull();
-  });
-
-  it('al pulsarlo se abre', () => {
-    const onAbrir = vi.fn();
-    pintar({ onAbrir });
-    fireEvent.click(screen.getByText('Comí otra cosa'));
-    expect(onAbrir).toHaveBeenCalled();
+/**
+ * Quien lo abre es el botón «Otro» de la fila de acciones de la comida, al
+ * lado de «Libre». Aquí había además un enlace y salían los dos, uno debajo
+ * del otro.
+ */
+describe('Cerrado no ocupa sitio', () => {
+  it('no pinta nada hasta que se dice que se comió otra cosa', () => {
+    const { container } = pintar();
+    expect(container.firstChild).toBeNull();
   });
 });
 
@@ -135,5 +135,43 @@ describe('La barra del día lo enseña', () => {
       />,
     );
     expect(screen.getByText(/2 de 2 comidas hechas/)).toBeTruthy();
+  });
+});
+
+/**
+ * «OTRO», AL LADO DE «LIBRE»
+ * ==========================
+ * Empezó siendo un enlace pequeño debajo de la comida, pensando que lo
+ * discreto evitaría que se usara de más. No se usaba de más: no se
+ * encontraba. Son los dos la misma cosa —la excepción del día— así que son el
+ * mismo botón con dos colores, en la misma fila.
+ */
+describe('El botón que lo abre está en la fila de la comida', () => {
+  it('sale junto a «Libre», con su misma forma', () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    useAppStore.setState({
+      clients: [DEMO_CLIENT],
+      plans: [DEMO_PLAN],
+      foods: FOOD_CATALOG,
+      recipes: [],
+      registros: [],
+      mediciones: [],
+      recursos: [],
+    });
+    render(
+      <MemoryRouter initialEntries={[`/clientes/${DEMO_CLIENT.id}/vista`]}>
+        <Routes>
+          <Route path="/clientes/:id/vista" element={<ClientView />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const libre = screen.getAllByRole('button', { name: 'Libre' })[0];
+    const otro = screen.getAllByRole('button', { name: 'Otro' })[0];
+    expect(otro).toBeTruthy();
+    // La misma fila: comparten padre, que es lo que los pone al lado.
+    expect(otro.parentElement).toBe(libre.parentElement);
+    // Y ya no está el enlace de antes, que salía además de éste.
+    expect(screen.queryByText('Comí otra cosa')).toBeNull();
   });
 });

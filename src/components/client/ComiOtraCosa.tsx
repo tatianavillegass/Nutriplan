@@ -11,10 +11,12 @@ interface Props {
   foods: Alimento[];
   /** Lo que ya ha apuntado en esta comida. */
   bocados: Bocado[];
-  /** Si ya dijo que aquí comió otra cosa (o que no comió nada). */
+  /**
+   * Si ya dijo que aquí comió otra cosa (o que no comió nada). Quien lo abre
+   * es el botón «Otro» de la fila de acciones de la comida, no este panel.
+   */
   activa: boolean;
   nota?: string;
-  onAbrir: () => void;
   onCerrar: () => void;
   onAnadir: (bocado: Bocado, alimentoNuevo?: Alimento) => void;
   onQuitar: (bocadoId: string) => void;
@@ -53,7 +55,6 @@ export function ComiOtraCosa({
   bocados,
   activa,
   nota,
-  onAbrir,
   onCerrar,
   onAnadir,
   onQuitar,
@@ -62,16 +63,14 @@ export function ComiOtraCosa({
   const [anadiendo, setAnadiendo] = useState(false);
   const [texto, setTexto] = useState(nota ?? '');
 
-  if (!activa) {
-    return (
-      <button
-        onClick={onAbrir}
-        className="text-[11px] text-slate-400 underline transition hover:text-brand-700"
-      >
-        Comí otra cosa
-      </button>
-    );
-  }
+  /*
+   * EL BOTÓN QUE LO ABRE NO ESTÁ AQUÍ
+   * =================================
+   * Está en la fila de acciones de la comida, al lado de «Libre» y con su
+   * misma forma: se llama «Otro». Aquí había también un enlace y salían los
+   * dos, uno debajo del otro.
+   */
+  if (!activa) return null;
 
   const total = bocados.reduce((s, b) => s + b.kcal, 0);
 

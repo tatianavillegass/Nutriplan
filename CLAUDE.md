@@ -579,7 +579,9 @@ si es una de estas decisiones:
   cocinar para una comida no es batch cooking, es cenar. Y va **partido en
   tandas de 3 días**, porque es lo que aguanta un táper: no se inventa una
   caducidad por alimento —depende de cómo lo guarde— pero decirle que cocine el
-  domingo lo que se come el sábado sí sería mentirle. **La despensa no se
+  domingo lo que se come el sábado sí sería mentirle. **En su pantalla se llama
+  «Mealprep»**, no «Cocina de una vez»: es la palabra que ella y sus clientas ya
+  usan, y la app no está para enseñarles otra. **La despensa no se
   descuenta a propósito**: si la app se equivoca en lo que cree que hay en
   casa, se queda sin cenar.
 - **Las porciones son del plan; las calorías, de la comida.** Lo que una receta
@@ -851,8 +853,14 @@ si es una de estas decisiones:
   merienda regalaba la racha con la cena sin contestar; ahora sólo cuentan los
   bocados **sueltos**, los que no pertenecen a una comida sustituida, y en fase
   4 no hay ninguna sustituida, así que ahí se comporta igual que siempre.
-  **Va con el mismo peso que «Libre»** —un enlace pequeño, no un botón—: si
-  apuntar lo suyo fuera tan cómodo como seguir el plan, dejaría de ser un plan.
+  **Se llama «Otro» y va al lado de «Libre», con su misma forma.** Empezó
+  siendo un enlace pequeño debajo de la comida, pensando que lo discreto
+  evitaría que se usara de más. No se usaba de más: **no se encontraba**. Son
+  los dos la misma cosa —la excepción del día— así que son el mismo botón con
+  dos colores y en la misma fila, y el nombre es la palabra corta que se lee de
+  un vistazo («Comí otra cosa» no cabía). El panel (`ComiOtraCosa`) **no pinta
+  nada cuando está cerrado**: tenía su propio enlace y salían los dos, uno
+  debajo del otro.
   Deshacerlo **borra lo apuntado ahí**: si vuelve a la receta pautada, lo de
   antes ya no es lo que comió. La nutricionista lo ve en «Hoy» con nombres y
   gramos, en azul y aparte de las libres, que es justo lo que se perdía cuando
@@ -948,6 +956,10 @@ si es una de estas decisiones:
   cocino las legumbres») es de la misma familia que lo que se cocina. **La
   pausa se queda en «Plan»**: el impulso no tiene hora, y si hay que cambiar de
   pestaña para encontrarla, cuando se encuentre ya se ha comido.
+- **El nombre del plato no se corta en «Reajustes».** Iba con `truncate` y al
+  lado van siete botones de día: en un móvil lo que sobraba era el nombre,
+  justo lo que hay que leer para decidir. Ahora se envuelve y en pantalla
+  estrecha se lleva la línea entera, con los días debajo.
 - **Una pestaña vacía enseña a no pulsarla.** Es lo que pasó con «Recursos»: se
   entró dos veces, no había nada, y se dejó de entrar — también cuando luego
   hubo algo. Así que cada pestaña aparece sólo donde tiene algo que enseñar

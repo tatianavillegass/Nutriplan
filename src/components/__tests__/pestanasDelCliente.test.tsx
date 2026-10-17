@@ -193,6 +193,19 @@ describe('Las cinco pestañas', () => {
     expect(screen.getByText(/Di cuántas veces comes/i)).toBeTruthy();
   });
 
+  /*
+   * «Cocina de una vez» lo llama ella y lo llaman sus clientas mealprep: es la
+   * palabra que ya usan, y la app no está para enseñarles otra.
+   */
+  it('y la pestaña de cocinar de una vez se llama Mealprep', () => {
+    comoLaClienta();
+    useAppStore.setState({ plans: [{ ...DEMO_PLAN, fase: 1 }] });
+    abrir();
+    fireEvent.click(pestana('Compra'));
+    expect(screen.queryAllByRole('button', { name: /^Cocina/ })).toHaveLength(0);
+    expect(screen.getAllByRole('button', { name: /Mealprep/ }).length).toBeGreaterThan(0);
+  });
+
   it('y en compra se abre la lista, sin pasar por el menú', () => {
     comoLaClienta();
     abrir();

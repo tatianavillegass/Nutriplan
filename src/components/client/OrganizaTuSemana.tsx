@@ -229,7 +229,15 @@ export function OrganizaTuSemana({
                 ...(porVeces
                   ? []
                   : ([
-                      ['cocina', `Cocina${cocinar.length ? ` (${cocinar.length})` : ''}`],
+                      [
+                        'cocina',
+                        /*
+                         * Lo llama así ella y lo llaman así sus clientas: es
+                         * la palabra que ya usan, y la app no está para
+                         * enseñarles otra.
+                         */
+                        `Mealprep${cocinar.length ? ` (${cocinar.length})` : ''}`,
+                      ],
                     ] as const)),
               ] as const
             ).map(([id, texto]) => (
@@ -309,7 +317,15 @@ export function OrganizaTuSemana({
                       key={receta.id}
                       className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5"
                     >
-                      <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
+                      {/*
+                        EL NOMBRE DEL PLATO, ENTERO
+                        Estaba cortado con `truncate`: al lado van siete
+                        botones de día, y en un móvil lo que sobraba era el
+                        nombre — justo lo que hay que leer para decidir. Ahora
+                        se envuelve, y en pantalla estrecha se lleva la línea
+                        entera (`basis-full`) con los días debajo.
+                      */}
+                      <span className="min-w-0 flex-1 basis-full text-sm leading-snug text-slate-800 sm:basis-auto">
                         {receta.nombre}
                       </span>
                       <div className="flex gap-1">
@@ -461,7 +477,7 @@ export function OrganizaTuSemana({
             </div>
           )}
 
-          {/* ── Lo que puedes cocinar de una vez ─────────── */}
+          {/* ── Mealprep: lo que se cocina de una vez ───── */}
           {laQueToca === 'cocina' && cocinar.length === 0 && (
             <p className="mt-4 text-xs leading-snug text-slate-500">
               Nada que adelantar por ahora. Aquí sale lo que se cocina y se guarda —arroz, pollo,
@@ -470,7 +486,7 @@ export function OrganizaTuSemana({
           )}
           {laQueToca === 'cocina' && cocinar.length > 0 && (
             <div className="mt-3 rounded-xl bg-slate-50 p-3">
-              <p className="text-sm font-semibold text-slate-800">Cocina de una vez</p>
+              <p className="text-sm font-semibold text-slate-800">Mealprep</p>
               <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
                 Lo cocinado aguanta unos {DIAS_QUE_AGUANTA} o 4 días en la nevera, así que va
                 partido en tandas: cada una se hace el primer día que la necesitas.

@@ -1038,7 +1038,6 @@ export function ClientView() {
       bocados={(registro?.bocados ?? []).filter((b) => b.momento === mealId)}
       activa={!!sustituidas[mealId]}
       nota={sustituidas[mealId]?.nota}
-      onAbrir={() => abrirOtraCosa(mealId)}
       onCerrar={() => cerrarOtraCosa(mealId)}
       onAnadir={anadirBocado}
       onQuitar={quitarBocado}
@@ -1112,17 +1111,20 @@ export function ClientView() {
         </button>
       )}
       {/*
-        Va con el mismo peso que «Libre» —un enlace pequeño— porque es para lo
-        mismo: la excepción. Si apuntar lo suyo fuera tan cómodo como seguir el
-        plan, dejaría de ser un plan.
+        «OTRO», AL LADO DE «LIBRE» Y CON SU MISMA FORMA
+        Empezó siendo un enlace pequeño, pensando que lo discreto evitaría que
+        se usara de más. Pero no se usaba de más: no se encontraba. Son los dos
+        la misma cosa —la excepción del día— así que son el mismo botón con dos
+        colores, y el nombre es la palabra corta que se lee de un vistazo
+        («Comí otra cosa» no cabía en la fila).
       */}
       {!libres[mealId] && !sustituidas[mealId] && (
         <button
           onClick={() => abrirOtraCosa(mealId)}
-          className="self-center text-[11px] text-slate-400 underline transition hover:text-sky-700"
+          className="rounded-lg border border-sky-200 px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:bg-sky-50"
           title={`Apuntar lo que comiste de verdad en ${nombre.toLowerCase()}`}
         >
-          Comí otra cosa
+          Otro
         </button>
       )}
     </>
@@ -2031,7 +2033,7 @@ export function ClientView() {
                       </MealCard>
                       {extrasDe(m.id, m.nombre)}
                       {libreDe(m.id, m.nombre)}
-                        {otraCosaDe(m.id, m.nombre)}
+                      {otraCosaDe(m.id, m.nombre)}
                     </div>
                   );
                 })}
@@ -2079,7 +2081,7 @@ export function ClientView() {
                     />
                     {extrasDe(m.id, m.nombre)}
                     {libreDe(m.id, m.nombre)}
-                        {otraCosaDe(m.id, m.nombre)}
+                    {otraCosaDe(m.id, m.nombre)}
                   </div>
                 ))}
               </div>
@@ -2117,7 +2119,7 @@ export function ClientView() {
                       />
                       {extrasDe(m.id, m.nombre)}
                       {libreDe(m.id, m.nombre)}
-                        {otraCosaDe(m.id, m.nombre)}
+                      {otraCosaDe(m.id, m.nombre)}
                     </div>
                   ))}
 
