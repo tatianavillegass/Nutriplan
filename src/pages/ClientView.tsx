@@ -154,25 +154,40 @@ const ICONOS = {
     "M12 7c-1.5-1.3-3.5-2-6-2H4v13h2c2.5 0 4.5.7 6 2m0-13c1.5-1.3 3.5-2 6-2h2v13h-2c-2.5 0-4.5.7-6 2m0-13v13",
   /** Un cazo: son ideas para cocinar, no otro sitio donde contar. */
   recetas: "M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8zM12 3v4M8.5 4.5l7 5",
+  /** Un calendario: la semana que se deja puesta antes de que empiece. */
+  reajustes:
+    "M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 9h16M9 3v3M15 3v3",
+  /** El carrito de la compra. */
+  compra:
+    "M3 4h2l2.4 10.4A2 2 0 0 0 9.3 16h8.1a2 2 0 0 0 2-1.6L21 7H6M9 20h.01M17 20h.01",
 } as const;
 
 /**
- * Las tres pestañas de la clienta. El icono sólo se usa en la barra del móvil,
- * donde el texto solo se lee peor de reojo.
+ * LAS CINCO PESTAÑAS DE LA CLIENTA
+ * ================================
+ * Antes eran tres y se usaba una. Todo lo que se hace una vez a la semana
+ * —organizar el menú, la compra, los postres, la encuesta— estaba apilado
+ * dentro de «Hoy», que es la que se abre para comer; y las otras dos se
+ * miraban poco o estaban vacías. Así que lo de la semana sale del día:
+ *
+ *   Reajustes · dejar puesta la semana: qué come y qué días entrena
+ *   Compra    · el carrito y el cocinado de una vez
+ *   Plan      · el día, que es lo que se abre todos los días → va en el centro
+ *   Resumen   · composición corporal, encuesta semanal y racha
+ *   Recetas   · lo que puede cocinar, los postres y sus recursos
+ *
+ * «Plan» en el centro no es estética: en el móvil es donde cae el pulgar, y es
+ * la que se pulsa diez veces por cada una de las otras.
+ *
+ * El icono sólo se usa en la barra del móvil, donde el texto solo se lee peor
+ * de reojo.
  */
 const PESTANAS = [
-  ["hoy", "Hoy", ICONOS.hoy],
+  ["reajustes", "Reajustes", ICONOS.reajustes],
+  ["compra", "Compra", ICONOS.compra],
+  ["hoy", "Plan", ICONOS.hoy],
   ["resumen", "Resumen", ICONOS.resumen],
-  /**
-   * SU BIBLIOTECA, Y SÓLO EN LAS FASES EN LAS QUE COMPONE ELLA
-   *
-   * En fases 1 y 2 las recetas ya salen dentro de cada comida, que es donde se
-   * buscan al ir a comer; una pestaña más sería el mismo material dos veces.
-   * En 3 y 4 no hay recetas en el día —ahí manda lo suyo— así que sin esto no
-   * tienen dónde estar.
-   */
   ["recetas", "Recetas", ICONOS.recetas],
-  ["recursos", "Recursos", ICONOS.recursos],
 ] as const;
 
 /** Lo que ve el cliente: su día, lo pautado y lo que va cumpliendo. */
@@ -229,9 +244,7 @@ export function ClientView() {
    * En qué pestaña está. «Hoy» es lo primero y lo que se abre siempre: lo
    * demás se consulta de vez en cuando, la comida es todos los días.
    */
-  const [tab, setTab] = useState<"hoy" | "resumen" | "recetas" | "recursos">(
-    "hoy",
-  );
+  const [tab, setTab] = useState<(typeof PESTANAS)[number][0]>("hoy");
 
   /** Las costumbres de hoy y los recursos que su nutricionista le ha abierto. */
   const metas = useMemo(() => (client ? metasActivas(client) : []), [client]);
@@ -622,6 +635,35 @@ export function ClientView() {
   const hayBiblioteca =
     plan.fase >= 3 &&
     Object.values(recetasDelPlan(plan)).some((ids: string[]) => ids.length > 0);
+
+  /**
+   * UNA PESTAÑA VACÍA ENSEÑA A NO PULSARLA
+   * ======================================
+   * Es lo que pasó con «Recursos»: se entró dos veces, no había nada, y se
+   * dejó de entrar — también cuando luego hubo algo. Así que cada pestaña
+   * aparece sólo donde tiene algo que enseñar.
+   *
+   * El menú y la compra son de fase 1 y 2: son las fases con recetas fijas
+   * entre las que elegir, y por tanto las únicas en las que se puede saber qué
+   * va a comer el jueves. En 3 y 4 elige alimentos sueltos y la lista de la
+   * compra sería un invento.
+   */
+  const laSemanaSePuedeDejarPuesta =
+    (plan.fase === 1 || plan.fase === 2) && soyElCliente;
+  const hayPestana = (id: (typeof PESTANAS)[number][0]) => {
+    if (id === "reajustes" || id === "compra")
+      return laSemanaSePuedeDejarPuesta;
+    if (id === "recetas")
+      return (
+        hayBiblioteca ||
+        postres.length > 0 ||
+        susRecursos.length > 0 ||
+        (plan.fase === 4 && soyElCliente)
+      );
+    return true;
+  };
+  /** Si la que tenía abierta ha dejado de existir, el día nunca falla. */
+  const laPestana = hayPestana(tab) ? tab : "hoy";
 
   /**
    * «ME LO HE COMIDO», DESDE LA BIBLIOTECA
@@ -1193,23 +1235,23 @@ export function ClientView() {
         )}
 
         {/*
-          TRES PESTAÑAS
+          CINCO PESTAÑAS
           ==========================================================
-          «Hoy» es la app: lo que se abre y lo que se usa. Las otras dos se
-          miran de vez en cuando, así que van al lado y no encima.
+          «Plan» es la app: lo que se abre y lo que se usa. Las otras se miran
+          de vez en cuando, así que van al lado y no encima.
         */}
         {/*
           En pantalla ancha van arriba, junto al título, que es donde el ojo
           las busca.
         */}
         <div className="hidden gap-1 border-b border-slate-200 no-print sm:flex">
-          {PESTANAS.filter(([id]) => id !== "recetas" || hayBiblioteca).map(([id, label]) => (
+          {PESTANAS.filter(([id]) => hayPestana(id)).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              aria-current={tab === id}
+              aria-current={laPestana === id}
               className={`-mb-px border-b-2 px-3.5 py-2 text-sm font-medium transition ${
-                tab === id
+                laPestana === id
                   ? "border-brand-600 text-brand-800"
                   : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
@@ -1219,18 +1261,204 @@ export function ClientView() {
           ))}
         </div>
 
-        {tab === "recetas" && (
-          <BibliotecaDeRecetas
-            plan={plan}
-            dayType={dayType}
-            recipes={recipes}
-            foods={foods}
-            soyElCliente={soyElCliente}
-            onUsar={usarDeLaBiblioteca}
-          />
+        {/*
+          REAJUSTES: LA SEMANA, ANTES DE QUE EMPIECE
+          ==========================================================
+          Dejar puesto qué come cada día y qué días entrena es trabajo de una
+          vez a la semana, y estaba metido dentro del día — donde sólo se entra
+          para comer, y donde era una tarjeta más que abrir. Aquí tiene su
+          sitio, y la pestaña sólo existe en las fases en las que hay algo que
+          dejar puesto.
+        */}
+        {laPestana === "reajustes" && (
+          <div className="space-y-5">
+            <OrganizaTuSemana
+              solo="menu"
+              menu={menu}
+              menuSuyo={menuSuyo}
+              /*
+               * En fase 2 no come platos: come combinaciones que elige cada
+               * mañana. Repartirlas por días le quitaría esa libertad, así
+               * que dice cuántas veces come cada una y de ahí sale la compra.
+               */
+              porVeces={porVeces}
+              plan={plan}
+              /*
+               * Todas las comidas de la semana, no sólo las de hoy: si la
+               * merienda sólo la hace los días de entreno y hoy es domingo,
+               * si no no había forma de dejar puesta la del martes.
+               */
+              comidas={comidasDeLaSemana(plan).map((m) => ({
+                meal: { id: m.id, nombre: m.nombre },
+                opciones: opcionesDeComida(m),
+              }))}
+              recetas={recipes}
+              foods={foods}
+              onCambiar={(nuevo) =>
+                upsertRegistro(client.id, lunesDe(fecha), { menuSemana: nuevo })
+              }
+            />
+          </div>
         )}
 
-        {tab === "resumen" && (
+        {/*
+          LA COMPRA, APARTE DEL MENÚ
+          ==========================================================
+          Es la misma tarjeta —la lista sale del menú, así que duplicarla sería
+          duplicar el cálculo— pero son dos momentos distintos: el menú se deja
+          puesto el domingo en el sofá y la lista se abre de pie en el
+          supermercado. Juntos, en el supermercado había que pasar por encima
+          del menú entero para llegar a la lista.
+        */}
+        {laPestana === "compra" && (
+          <div className="space-y-5">
+            <OrganizaTuSemana
+              solo="compra"
+              menu={menu}
+              menuSuyo={menuSuyo}
+              /*
+               * En fase 2 no come platos: come combinaciones que elige cada
+               * mañana. Repartirlas por días le quitaría esa libertad, así
+               * que dice cuántas veces come cada una y de ahí sale la compra.
+               */
+              porVeces={porVeces}
+              plan={plan}
+              /*
+               * Todas las comidas de la semana, no sólo las de hoy: si la
+               * merienda sólo la hace los días de entreno y hoy es domingo,
+               * si no no había forma de dejar puesta la del martes.
+               */
+              comidas={comidasDeLaSemana(plan).map((m) => ({
+                meal: { id: m.id, nombre: m.nombre },
+                opciones: opcionesDeComida(m),
+              }))}
+              recetas={recipes}
+              foods={foods}
+              onCambiar={(nuevo) =>
+                upsertRegistro(client.id, lunesDe(fecha), { menuSemana: nuevo })
+              }
+            />
+          </div>
+        )}
+
+        {/*
+          RECETAS: TODO LO QUE PUEDE COCINAR, EN UN SITIO
+          ==========================================================
+          Se entra aquí cuando no se te ocurre qué hacer de comer, y hasta
+          ahora eso estaba repartido: la biblioteca en su pestaña, los postres
+          a mitad del día y sus recetas debajo del contador. Y «Recursos»,
+          sola, en una pestaña casi siempre vacía.
+        */}
+        {laPestana === "recetas" && (
+          <div className="space-y-5">
+            {hayBiblioteca && (
+              <BibliotecaDeRecetas
+                plan={plan}
+                dayType={dayType}
+                recipes={recipes}
+                foods={foods}
+                soyElCliente={soyElCliente}
+                onUsar={usarDeLaBiblioteca}
+              />
+            )}
+
+            {/*
+              ALGO DULCE, EN CUALQUIER FASE
+              =============================
+              Fuera de las comidas a propósito: el antojo no tiene hora, y
+              meterlo dentro de la merienda sería decirle cuándo le toca
+              querer algo dulce. En fase 1 sólo cabe como extra: ahí las
+              recetas son cerradas y no hay porciones que gastar.
+            */}
+            <AlgoDulce
+              postres={postres}
+              foods={foods}
+              soloExtra={plan.fase === 1}
+              comidas={dayType.meals.map((m) => ({ id: m.id, nombre: m.nombre }))}
+              cambiadas={registro?.cambiadasPorPostre ?? {}}
+              onEnPlan={(postre) =>
+                plan.fase === 4
+                  ? contarPostreEnGramos(postre)
+                  : contarPostreEnElPlan(postre)
+              }
+              onComoExtra={apuntarPostreComoExtra}
+              /**
+               * Cambiar una comida por el postre: se apunta el postre y esa
+               * comida deja de contar en el día. Ver `balanceDelDia`.
+               */
+              onEnLugarDe={(postre, mealId) => {
+                const macros = exchangesToMacros(costeDelPostre(postre));
+                guardar({
+                  extras: [
+                    ...(registro?.extras ?? []),
+                    {
+                      id: uid("ex_"),
+                      nombre: postre.nombre,
+                      macros,
+                      kcal: kcalFromMacros(macros),
+                      momento: mealId,
+                    },
+                  ],
+                  cambiadasPorPostre: {
+                    ...(registro?.cambiadasPorPostre ?? {}),
+                    [mealId]: postre.id,
+                  },
+                });
+              }}
+              onDeshacerCambio={(mealId) => {
+                const { [mealId]: quitado, ...resto } =
+                  registro?.cambiadasPorPostre ?? {};
+                const postre = recipes.find((r) => r.id === quitado);
+                guardar({
+                  cambiadasPorPostre: resto,
+                  // Y se lleva por delante el postre que se apuntó con él.
+                  extras: (registro?.extras ?? []).filter(
+                    (e) => !(e.momento === mealId && e.nombre === postre?.nombre),
+                  ),
+                });
+              }}
+            />
+
+            {plan.fase === 4 && soyElCliente && (
+              <MisRecetas
+                recetas={misRecetas}
+                foods={foods}
+                /**
+                 * Guardar es volver a escribirla en el día de hoy: el registro
+                 * es lo único que sube el cliente, y la lista se junta leyendo
+                 * todos sus días quedándose con la versión más nueva.
+                 */
+                onGuardar={(receta) =>
+                  guardar({
+                    recetasPropias: [
+                      ...(registro?.recetasPropias ?? []).filter(
+                        (r) => r.id !== receta.id,
+                      ),
+                      receta,
+                    ],
+                  })
+                }
+                onBorrar={(id) =>
+                  guardar({
+                    recetasBorradas: [...(registro?.recetasBorradas ?? []), id],
+                    recetasPropias: (registro?.recetasPropias ?? []).filter(
+                      (r) => r.id !== id,
+                    ),
+                  })
+                }
+              />
+            )}
+
+            {/*
+              Lo que se lee («cómo cocino las legumbres») es de la misma
+              familia que lo que se cocina, así que va aquí dentro y no en una
+              pestaña propia.
+            */}
+            {susRecursos.length > 0 && <RecursosTab recursos={susRecursos} />}
+          </div>
+        )}
+
+        {laPestana === "resumen" && (
           <div className="space-y-5">
             {/*
               A las presenciales las mide la nutricionista con el plicómetro;
@@ -1249,6 +1477,21 @@ export function ClientView() {
                 onGuardar={(medidas) => guardar({ medidas })}
               />
             )}
+            {/*
+              La encuesta de la semana: se abre el domingo, pregunta por la
+              semana que acaba, se queda hasta la siguiente y no bloquea nada.
+              Ver `utils/checkin.ts`.
+            */}
+            {soyElCliente && pendiente && (
+              <CheckInSemanal
+                semana={pendiente}
+                fecha={fecha}
+                onGuardar={(checkin) =>
+                  guardar({ checkins: [...(registro?.checkins ?? []), checkin] })
+                }
+              />
+            )}
+
             <ResumenTab
               client={client}
               dayTypes={plan.dayTypes}
@@ -1261,9 +1504,7 @@ export function ClientView() {
           </div>
         )}
 
-        {tab === "recursos" && <RecursosTab recursos={susRecursos} />}
-
-        {tab === "hoy" && (
+        {laPestana === "hoy" && (
           <div className="space-y-5">
             {/*
               EL RETO, LO PRIMERO
@@ -1393,21 +1634,6 @@ export function ClientView() {
                 mejorRacha={calcularRacha(mios, plan.dayTypes, fecha).mejor}
                 cerrados={cerradosDelMes}
                 hoy={fecha}
-              />
-            )}
-
-            {/*
-              La encuesta de la semana: se abre el domingo, pregunta por la
-              semana que acaba, se queda hasta la siguiente y no bloquea nada.
-              Ver `utils/checkin.ts`.
-            */}
-            {soyElCliente && pendiente && (
-              <CheckInSemanal
-                semana={pendiente}
-                fecha={fecha}
-                onGuardar={(checkin) =>
-                  guardar({ checkins: [...(registro?.checkins ?? []), checkin] })
-                }
               />
             )}
 
@@ -1626,133 +1852,10 @@ export function ClientView() {
             )}
 
             {/*
-              ORGANIZA TU SEMANA
-              ==================
-              Sólo en fase 1 y 2: son las fases en las que hay recetas fijas
-              entre las que elegir, y por tanto en las que se puede saber qué
-              va a comer el jueves. En fase 3 y 4 elige alimentos sueltos, así
-              que la lista de la compra sería un invento.
-            */}
-            {(plan.fase === 1 || plan.fase === 2) && soyElCliente && (
-              <OrganizaTuSemana
-                menu={menu}
-                menuSuyo={menuSuyo}
-                /*
-                 * En fase 2 no come platos: come combinaciones que elige cada
-                 * mañana. Repartirlas por días le quitaría esa libertad, así
-                 * que dice cuántas veces come cada una y de ahí sale la compra.
-                 */
-                porVeces={porVeces}
-                plan={plan}
-                /*
-                 * Todas las comidas de la semana, no sólo las de hoy: si la
-                 * merienda sólo la hace los días de entreno y hoy es domingo,
-                 * si no no había forma de dejar puesta la del martes.
-                 */
-                comidas={comidasDeLaSemana(plan).map((m) => ({
-                  meal: { id: m.id, nombre: m.nombre },
-                  opciones: opcionesDeComida(m),
-                }))}
-                recetas={recipes}
-                foods={foods}
-                onCambiar={(nuevo) =>
-                  upsertRegistro(client.id, lunesDe(fecha), { menuSemana: nuevo })
-                }
-              />
-            )}
-
-            {/*
-              ALGO DULCE, EN CUALQUIER FASE
-              =============================
-              Fuera de las comidas a propósito: el antojo no tiene hora, y
-              meterlo dentro de la merienda sería decirle cuándo le toca
-              querer algo dulce. En fase 1 sólo cabe como extra: ahí las
-              recetas son cerradas y no hay porciones que gastar.
-            */}
-            <AlgoDulce
-              postres={postres}
-              foods={foods}
-              soloExtra={plan.fase === 1}
-              comidas={dayType.meals.map((m) => ({ id: m.id, nombre: m.nombre }))}
-              cambiadas={registro?.cambiadasPorPostre ?? {}}
-              onEnPlan={(postre) =>
-                plan.fase === 4
-                  ? contarPostreEnGramos(postre)
-                  : contarPostreEnElPlan(postre)
-              }
-              onComoExtra={apuntarPostreComoExtra}
-              /**
-               * Cambiar una comida por el postre: se apunta el postre y esa
-               * comida deja de contar en el día. Ver `balanceDelDia`.
-               */
-              onEnLugarDe={(postre, mealId) => {
-                const macros = exchangesToMacros(costeDelPostre(postre));
-                guardar({
-                  extras: [
-                    ...(registro?.extras ?? []),
-                    {
-                      id: uid("ex_"),
-                      nombre: postre.nombre,
-                      macros,
-                      kcal: kcalFromMacros(macros),
-                      momento: mealId,
-                    },
-                  ],
-                  cambiadasPorPostre: {
-                    ...(registro?.cambiadasPorPostre ?? {}),
-                    [mealId]: postre.id,
-                  },
-                });
-              }}
-              onDeshacerCambio={(mealId) => {
-                const { [mealId]: quitado, ...resto } =
-                  registro?.cambiadasPorPostre ?? {};
-                const postre = recipes.find((r) => r.id === quitado);
-                guardar({
-                  cambiadasPorPostre: resto,
-                  // Y se lleva por delante el postre que se apuntó con él.
-                  extras: (registro?.extras ?? []).filter(
-                    (e) => !(e.momento === mealId && e.nombre === postre?.nombre),
-                  ),
-                });
-              }}
-            />
-
-            {plan.fase === 4 && soyElCliente && (
-              <MisRecetas
-                recetas={misRecetas}
-                foods={foods}
-                /**
-                 * Guardar es volver a escribirla en el día de hoy: el registro
-                 * es lo único que sube el cliente, y la lista se junta leyendo
-                 * todos sus días quedándose con la versión más nueva.
-                 */
-                onGuardar={(receta) =>
-                  guardar({
-                    recetasPropias: [
-                      ...(registro?.recetasPropias ?? []).filter(
-                        (r) => r.id !== receta.id,
-                      ),
-                      receta,
-                    ],
-                  })
-                }
-                onBorrar={(id) =>
-                  guardar({
-                    recetasBorradas: [...(registro?.recetasBorradas ?? []), id],
-                    recetasPropias: (registro?.recetasPropias ?? []).filter(
-                      (r) => r.id !== id,
-                    ),
-                  })
-                }
-              />
-            )}
-
-            {/*
-              Sus recetas ya no van aquí: viven en su pestaña «Recetas», que
-              es donde se entra cuando no se te ocurre qué cocinar. Tenerlas
-              también dentro del día era el mismo material dos veces — y en
-              fase 4, encima, debajo del contador.
+              Ni sus recetas ni los postres van aquí: viven en la pestaña
+              «Recetas», que es donde se entra cuando no se te ocurre qué
+              cocinar. Dentro del día eran una tarjeta más que saltar para
+              llegar a la comida, que es a lo que se entra.
             */}
 
             {/* Las comidas del día, que se van llenando */}
@@ -2119,16 +2222,16 @@ export function ClientView() {
           ve pasar por debajo en vez de quedar cortado en seco.
         */}
         <nav className="flex w-full max-w-sm items-stretch gap-1 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-lg shadow-slate-900/10 backdrop-blur">
-          {PESTANAS.filter(([id]) => id !== "recetas" || hayBiblioteca).map(([id, label, icono]) => (
+          {PESTANAS.filter(([id]) => hayPestana(id)).map(([id, label, icono]) => (
             <button
               key={id}
               onClick={() => {
                 setTab(id);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              aria-current={tab === id}
+              aria-current={laPestana === id}
               className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition ${
-                tab === id
+                laPestana === id
                   ? "bg-brand-50 text-brand-800"
                   : "text-slate-400 hover:text-slate-600"
               }`}

@@ -45,6 +45,19 @@ interface Props {
   recetas: Receta[];
   foods: Alimento[];
   onCambiar: (menu: MenuSemana) => void;
+  /**
+   * UNA TARJETA, DOS PESTAÑAS DE LA APP
+   *
+   * El menú y la compra son dos momentos distintos —el domingo en el sofá y
+   * de pie en el supermercado— y ahora tienen una pestaña cada uno. Pero la
+   * lista de la compra y el cocinado SALEN del menú: duplicar el componente
+   * sería duplicar ese cálculo, y acabarían dando listas distintas.
+   *
+   * Así que es el mismo componente y esto dice qué mitad enseña. Sin esto,
+   * sigue siendo la tarjeta plegable de siempre (que es como la usa la
+   * nutricionista al mirar el plan).
+   */
+  solo?: 'menu' | 'compra';
 }
 
 const INICIALES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -77,6 +90,7 @@ export function OrganizaTuSemana({
   recetas,
   foods,
   onCambiar,
+  solo,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   /** Donde se escribe. Sin propuesta de por medio son el mismo menú. */
@@ -89,6 +103,16 @@ export function OrganizaTuSemana({
    * para encontrar lo que se necesita en ese momento.
    */
   const [pestana, setPestana] = useState<'menu' | 'compra' | 'cocina'>('menu');
+  /*
+   * Con `solo`, la tarjeta ocupa la pestaña entera: ni se pliega ni se cierra,
+   * y el estado interno se ignora en lo que no le toca. En «compra» la de
+   * cocina sigue siendo suya —son el mismo momento, el de preparar— así que
+   * `menu` se traduce a `compra` y la de cocina se respeta.
+   */
+  const suelta = !!solo;
+  const visible = suelta ? true : abierto;
+  const laQueToca =
+    solo === 'menu' ? 'menu' : suelta && pestana === 'menu' ? 'compra' : pestana;
   const dias = diasDeLaSemana(menu.inicio);
   const puestas = porVeces ? comidasDecididas(menu) : comidasPuestas(menu);
 
@@ -131,21 +155,23 @@ export function OrganizaTuSemana({
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4">
-      <button
-        onClick={() => setAbierto((v) => !v)}
-        aria-expanded={abierto}
-        className="flex w-full items-center gap-2 text-left"
-      >
-        <span className="text-sm font-semibold text-slate-800">Organiza tu semana</span>
-        {puestas > 0 && (
-          <span className="tnum rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-            {puestas}
-          </span>
-        )}
-        <span className="ml-auto text-xs text-slate-400">{abierto ? 'Cerrar' : 'Abrir'}</span>
-      </button>
+      {!suelta && (
+        <button
+          onClick={() => setAbierto((v) => !v)}
+          aria-expanded={abierto}
+          className="flex w-full items-center gap-2 text-left"
+        >
+          <span className="text-sm font-semibold text-slate-800">Organiza tu semana</span>
+          {puestas > 0 && (
+            <span className="tnum rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+              {puestas}
+            </span>
+          )}
+          <span className="ml-auto text-xs text-slate-400">{abierto ? 'Cerrar' : 'Abrir'}</span>
+        </button>
+      )}
 
-      {abierto && (
+      {visible && (
         <>
           {/*
             Si se la repartió su nutricionista se dice, y en la misma frase se
@@ -153,7 +179,17 @@ export function OrganizaTuSemana({
             dónde sale es lo que hace pensar que no se toca.
           */}
           <p className="mt-1 text-xs leading-snug text-slate-500">
-            {porVeces ? (
+            {/*
+              En su propia pestaña la frase tiene que hablar de la compra: la
+              del menú («elige qué comes cada día») aquí sobra, porque eso ya
+              se eligió en Reajustes y esto se abre en el supermercado.
+            */}
+            {solo === 'compra' ? (
+              <>
+                Tu lista sale de lo que dejaste puesto en Reajustes. Ve tachando lo que
+                echas al carro: se queda guardado y lo ves igual desde el móvil.
+              </>
+            ) : porVeces ? (
               <>
                 Di cuántas veces comes cada cosa esta semana y te hacemos la lista de la
                 compra. Sigues eligiendo cada día lo que te apetezca: esto es para
@@ -173,10 +209,17 @@ export function OrganizaTuSemana({
             )}
           </p>
 
-          <div className="mt-3 flex gap-1.5">
+          {/*
+            Con `solo="menu"` no hay nada entre lo que elegir: la fila sería
+            una pestaña sola. Con `solo="compra"` quedan compra y cocina, que
+            sí son dos cosas distintas.
+          */}
+          <div className={`mt-3 flex gap-1.5 ${solo === 'menu' ? 'hidden' : ''}`}>
             {(
               [
-                ['menu', porVeces ? 'Qué comes' : 'Menú'],
+                ...(solo === 'compra'
+                  ? []
+                  : ([['menu', porVeces ? 'Qué comes' : 'Menú']] as const)),
                 ['compra', `Compra${pendientes ? ` (${pendientes})` : ''}`],
                 /*
                  * En fase 2 no hay recetas que cocinar en tanda —son alimentos
@@ -193,9 +236,9 @@ export function OrganizaTuSemana({
               <button
                 key={id}
                 onClick={() => setPestana(id)}
-                aria-pressed={pestana === id}
+                aria-pressed={laQueToca === id}
                 className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                  pestana === id
+                  laQueToca === id
                     ? 'border-brand-500 bg-brand-600 text-white'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300'
                 }`}
@@ -206,12 +249,12 @@ export function OrganizaTuSemana({
           </div>
 
           {/* ── Fase 2: cuántas veces comes cada opción ─── */}
-          {pestana === 'menu' && porVeces && (
+          {laQueToca === 'menu' && porVeces && (
             <CuantasVeces menu={mio} comidas={porVeces} onCambiar={onCambiar} />
           )}
 
           {/* ── Qué día es cada día ─────────────────────── */}
-          {pestana === 'menu' && !porVeces && tipos.length > 1 && (
+          {laQueToca === 'menu' && !porVeces && tipos.length > 1 && (
             <div className="mt-3">
               <p className="mb-1.5 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
                 Tus días
@@ -251,7 +294,7 @@ export function OrganizaTuSemana({
           )}
 
           {/* ── Qué comes, receta a receta (fase 1) ─────── */}
-          {pestana === 'menu' &&
+          {laQueToca === 'menu' &&
             !porVeces &&
             comidas.map(({ meal, opciones }) => (
             <div key={meal.id} className="mt-4">
@@ -317,12 +360,12 @@ export function OrganizaTuSemana({
             ))}
 
           {/* ── Lo que hay que comprar ──────────────────── */}
-          {pestana === 'compra' && lista.lineas.length === 0 && (
+          {laQueToca === 'compra' && lista.lineas.length === 0 && (
             <p className="mt-4 text-xs text-slate-500">
               Organiza algún día en «Menú» y aquí te sale la lista.
             </p>
           )}
-          {pestana === 'compra' && lista.lineas.length > 0 && (
+          {laQueToca === 'compra' && lista.lineas.length > 0 && (
             <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50/40 p-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-semibold text-brand-900">Tu lista de la compra</p>
@@ -419,13 +462,13 @@ export function OrganizaTuSemana({
           )}
 
           {/* ── Lo que puedes cocinar de una vez ─────────── */}
-          {pestana === 'cocina' && cocinar.length === 0 && (
+          {laQueToca === 'cocina' && cocinar.length === 0 && (
             <p className="mt-4 text-xs leading-snug text-slate-500">
               Nada que adelantar por ahora. Aquí sale lo que se cocina y se guarda —arroz, pollo,
               legumbre, verduras al horno— cuando se repite en la semana.
             </p>
           )}
-          {pestana === 'cocina' && cocinar.length > 0 && (
+          {laQueToca === 'cocina' && cocinar.length > 0 && (
             <div className="mt-3 rounded-xl bg-slate-50 p-3">
               <p className="text-sm font-semibold text-slate-800">Cocina de una vez</p>
               <p className="mt-0.5 text-[11px] leading-snug text-slate-500">

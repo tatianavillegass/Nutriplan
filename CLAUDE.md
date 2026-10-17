@@ -312,7 +312,9 @@ si es una de estas decisiones:
   es justo lo que esta fase deja atrás. Se entra cuando no se te ocurre nada,
   que es cuando hace falta — y por eso la pestaña **sólo aparece si tiene
   recetas puestas** (`hayBiblioteca`): una pestaña vacía es una pestaña que
-  enseña que le falta algo. **«Me lo he comido» la apunta de un toque**: en
+  enseña que le falta algo. (Desde el cambio a cinco pestañas la biblioteca
+  comparte pestaña con los postres y los recursos, pero sigue apareciendo sólo
+  si tiene recetas puestas.) **«Me lo he comido» la apunta de un toque**: en
   fase 3 le fija las porciones de esa comida (`aportesDeLaReceta` + el mismo
   atajo de siempre) y en fase 4 le mete el bocado con sus gramos; después
   retoca lo que quiera, que es la regla de todos los atajos. **`RecetasDeConsulta`
@@ -924,14 +926,42 @@ si es una de estas decisiones:
   ya funcionaba y no se toca—; si no, se cuenta lo que hay en el plato: sus
   gramos entre los que hacen una porción de su alimento. Sin alimento del
   catálogo detrás no hay porción que calcular, y ahí no sale botón.
-- **El perfil de la clienta tiene tres pestañas: Hoy, Resumen y Recursos.**
-  «Hoy» es la app y es la que se abre. En «Resumen» van peso y % de grasa con
-  su cambio, la racha y las comidas fuera del mes en círculos. **No hay
-  porcentaje de adherencia ni nota del día**: un número que resume «qué tal lo
-  haces» invita a puntuarse y eso no enseña a comer mejor. «Recursos» es lo que
-  la nutricionista escribe en `/recursos` —guía de raciones, productos— y lo
-  ven todas sus clientas; vive en `useAppStore.recursos` y en la columna
-  `recursos` de `nutricionistas`.
+- **El perfil de la clienta tiene cinco pestañas: Reajustes, Compra, Plan,
+  Resumen y Recetas.** Antes eran tres y se usaba una. El feedback de las
+  clientas fue el mismo tres veces: en «Plan» había demasiado —organiza tu
+  semana, la compra, los postres, la pausa, la encuesta, los extras— y las
+  otras dos no se abrían, «Resumen» porque se miraba poco y «Recursos» porque
+  casi siempre estaba vacía. Así que **lo que se hace una vez a la semana sale
+  del día**: «Reajustes» es dejar puesto qué come cada día y qué días entrena,
+  y «Compra» es el carrito y el cocinado de una vez. **«Plan» va en el centro**:
+  en el móvil es donde cae el pulgar y es la que se pulsa diez veces por cada
+  una de las otras. En «Resumen» van peso y % de grasa con su cambio, la
+  racha, las comidas fuera del mes en círculos y **la encuesta semanal**, que
+  pregunta por la semana que acaba y por eso no es del día. **No hay porcentaje
+  de adherencia ni nota del día**: un número que resume «qué tal lo haces»
+  invita a puntuarse y eso no enseña a comer mejor. En «Recetas» va todo lo que
+  puede cocinar —la biblioteca, los postres (`AlgoDulce`) y sus propias recetas
+  de fase 4— y **dentro, los recursos**: lo que la nutricionista escribe en
+  `/recursos` (guía de raciones, productos) y ven todas sus clientas, que vive
+  en `useAppStore.recursos` y en la columna `recursos` de `nutricionistas`. Se
+  entra aquí cuando no se te ocurre qué hacer de comer, y lo que se lee («cómo
+  cocino las legumbres») es de la misma familia que lo que se cocina. **La
+  pausa se queda en «Plan»**: el impulso no tiene hora, y si hay que cambiar de
+  pestaña para encontrarla, cuando se encuentre ya se ha comido.
+- **Una pestaña vacía enseña a no pulsarla.** Es lo que pasó con «Recursos»: se
+  entró dos veces, no había nada, y se dejó de entrar — también cuando luego
+  hubo algo. Así que cada pestaña aparece sólo donde tiene algo que enseñar
+  (`hayPestana` en `ClientView`): «Reajustes» y «Compra» sólo en fases 1 y 2
+  —en 3 y 4 elige alimentos sueltos y la lista de la compra sería un invento— y
+  «Recetas» sólo si hay biblioteca, postres, recursos o es fase 4. Si la que
+  tenía abierta deja de existir se cae a «Plan» (`laPestana`), que nunca falta.
+- **«Organiza tu semana» es un componente y dos pestañas.** La lista de la
+  compra y el cocinado SALEN del menú, así que duplicar el componente sería
+  duplicar ese cálculo y acabarían dando listas distintas. La prop `solo`
+  (`'menu' | 'compra'`) dice qué mitad enseña: sin ella sigue siendo la tarjeta
+  plegable de siempre, que es como la ve la nutricionista al mirar el plan. En
+  «Compra» la sub-pestaña de cocina sigue dentro, porque comprar y cocinar son
+  el mismo momento —el de preparar— y el menú ya se eligió en «Reajustes».
 - **Los recursos se abren de uno en uno.** Se escriben una vez para toda la
   consulta (`/recursos`) pero cada clienta ve sólo los de `Client.recursos`.
   Sin lista, ninguno: el error de dar de más no se puede deshacer, porque ya lo

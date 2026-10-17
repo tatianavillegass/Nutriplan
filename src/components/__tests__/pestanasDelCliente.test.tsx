@@ -4,6 +4,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ClientView } from '../../pages/ClientView';
 import { useAppStore } from '../../store/useAppStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { DEMO_CLIENT, DEMO_PLAN } from '../../data/demoSeed';
 import { FOOD_CATALOG } from '../../data/foodCatalog';
 
@@ -12,6 +13,7 @@ afterEach(cleanup);
 beforeEach(() => {
   // jsdom no trae ni scrollIntoView ni matchMedia, que usa el impreso.
   Element.prototype.scrollIntoView = vi.fn();
+  useAuthStore.setState({ perfil: null });
   useAppStore.setState({
     clients: [DEMO_CLIENT],
     plans: [DEMO_PLAN],
@@ -29,6 +31,15 @@ beforeEach(() => {
  * pruebas están los dos, así que se busca por posición.
  */
 const pestana = (nombre: string) => screen.getAllByRole('button', { name: nombre })[0];
+/** Si la pestaña no existe en esta fase, no hay botón que pulsar. */
+const hayPestana = (nombre: string) =>
+  screen.queryAllByRole('button', { name: nombre }).length > 0;
+
+/** Entrar como la clienta: hay cosas que sólo se le enseñan a ella. */
+const comoLaClienta = () =>
+  useAuthStore.setState({
+    perfil: { rol: 'cliente', clientId: DEMO_CLIENT.id } as never,
+  });
 
 const abrir = () =>
   render(
@@ -54,9 +65,9 @@ describe('El día de la clienta se abre', () => {
     expect(screen.getByText(/Hola,/)).toBeTruthy();
   });
 
-  it('y empieza en «Hoy»', () => {
+  it('y empieza en el plan, que es lo que se abre todos los días', () => {
     abrir();
-    expect(pestana('Hoy').getAttribute('aria-current')).toBe('true');
+    expect(pestana('Plan').getAttribute('aria-current')).toBe('true');
   });
 });
 
@@ -124,7 +135,15 @@ describe('El mensaje de la nutricionista', () => {
   });
 });
 
-describe('Las tres pestañas', () => {
+/**
+ * LAS CINCO PESTAÑAS
+ * ==================
+ * Antes eran tres y se usaba una: lo de la semana —el menú, la compra, los
+ * postres, la encuesta— estaba apilado dentro del día. Lo que se comprueba
+ * aquí es que cada cosa está donde se dijo, que el plan sigue en el centro y
+ * que ninguna pestaña aparece vacía.
+ */
+describe('Las cinco pestañas', () => {
   it('el resumen enseña constancia y comidas fuera', () => {
     abrir();
     fireEvent.click(pestana('Resumen'));
@@ -132,17 +151,65 @@ describe('Las tres pestañas', () => {
     expect(screen.getByText(/Comidas fuera este mes/i)).toBeTruthy();
   });
 
-  it('los recursos dicen que todavía no hay nada', () => {
+  /** La encuesta pregunta por la semana que acaba: va con lo de la semana. */
+  it('y la encuesta semanal vive ahí, no dentro del día', () => {
+    comoLaClienta();
     abrir();
-    fireEvent.click(pestana('Recursos'));
-    expect(screen.getByText(/todavía no ha dejado nada/i)).toBeTruthy();
+    expect(screen.queryByText(/Tu semana/i)).toBeNull();
   });
 
-  it('y se vuelve al día sin perder nada', () => {
+  it('se vuelve al plan sin perder nada', () => {
     abrir();
     fireEvent.click(pestana('Resumen'));
-    fireEvent.click(pestana('Hoy'));
+    fireEvent.click(pestana('Plan'));
     expect(screen.queryByText('Tu constancia')).toBeNull();
     expect(screen.getByText(/Hola,/)).toBeTruthy();
+  });
+
+  /*
+   * Es lo que pasó con «Recursos»: se entró dos veces, no había nada, y se
+   * dejó de entrar — también cuando luego hubo algo.
+   */
+  it('sin nada que enseñar, la pestaña no aparece', () => {
+    abrir();
+    expect(hayPestana('Recetas')).toBe(false);
+    // Y «Recursos» ya no es una pestaña: vive dentro de «Recetas».
+    expect(hayPestana('Recursos')).toBe(false);
+  });
+
+  it('el menú y la compra son dos pestañas, no una tarjeta dentro del día', () => {
+    comoLaClienta();
+    abrir();
+    expect(hayPestana('Reajustes')).toBe(true);
+    expect(hayPestana('Compra')).toBe(true);
+    // Y ya no están dentro del día.
+    expect(screen.queryByText('Organiza tu semana')).toBeNull();
+  });
+
+  it('en reajustes se deja puesta la semana', () => {
+    comoLaClienta();
+    abrir();
+    fireEvent.click(pestana('Reajustes'));
+    expect(screen.getByText(/Di cuántas veces comes/i)).toBeTruthy();
+  });
+
+  it('y en compra se abre la lista, sin pasar por el menú', () => {
+    comoLaClienta();
+    abrir();
+    fireEvent.click(pestana('Compra'));
+    expect(screen.getByText(/Tu lista sale de lo que dejaste puesto/i)).toBeTruthy();
+    expect(screen.queryByText(/Di cuántas veces comes/i)).toBeNull();
+  });
+
+  /*
+   * En fase 3 y 4 elige alimentos sueltos: nadie sabe qué va a comer el
+   * jueves, así que la lista de la compra sería un invento.
+   */
+  it('pero no en las fases en las que no hay nada que dejar puesto', () => {
+    comoLaClienta();
+    useAppStore.setState({ plans: [{ ...DEMO_PLAN, fase: 3 }] });
+    abrir();
+    expect(hayPestana('Reajustes')).toBe(false);
+    expect(hayPestana('Compra')).toBe(false);
   });
 });
