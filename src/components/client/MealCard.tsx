@@ -34,6 +34,12 @@ interface Props {
    * pasa en todas las fases, no sólo cuando se marcan porciones.
    */
   onLibre?: () => void;
+  /**
+   * «Hoy comí otra cosa»: apuntar lo que comió de verdad en esta comida. Va
+   * al lado de «Libre» porque es su pareja —las dos son la excepción del
+   * día— y porque como enlace pequeño debajo de la tarjeta no se encontraba.
+   */
+  onOtra?: () => void;
 }
 
 export function MealCard({
@@ -46,6 +52,7 @@ export function MealCard({
   children,
   siempreAbierta = false,
   onLibre,
+  onOtra,
 }: Props) {
   const [abierta, setAbierta] = useState(false);
   /**
@@ -83,14 +90,27 @@ export function MealCard({
               ✓ hecha
             </span>
           )}
-          {onLibre && !hecha && (
-            <button
-              onClick={onLibre}
-              title={`Marcar ${meal.nombre.toLowerCase()} como comida libre`}
-              className="ml-auto rounded-lg border border-violet-200 px-2.5 py-1 text-[11px] font-medium text-violet-700 transition hover:bg-violet-50 no-print"
-            >
-              Libre
-            </button>
+          {(onLibre || onOtra) && !hecha && (
+            <div className="ml-auto flex items-center gap-1.5 no-print">
+              {onLibre && (
+                <button
+                  onClick={onLibre}
+                  title={`Marcar ${meal.nombre.toLowerCase()} como comida libre`}
+                  className="rounded-lg border border-violet-200 px-2.5 py-1 text-[11px] font-medium text-violet-700 transition hover:bg-violet-50"
+                >
+                  Libre
+                </button>
+              )}
+              {onOtra && (
+                <button
+                  onClick={onOtra}
+                  title={`Apuntar lo que comiste de verdad en ${meal.nombre.toLowerCase()}`}
+                  className="rounded-lg border border-sky-200 px-2.5 py-1 text-[11px] font-medium text-sky-700 transition hover:bg-sky-50"
+                >
+                  Otra cosa
+                </button>
+              )}
+            </div>
           )}
         </div>
 

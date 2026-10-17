@@ -172,7 +172,7 @@ describe('El botón que lo abre está en la fila de la comida', () => {
     );
 
     const libre = screen.getAllByRole('button', { name: 'Libre' })[0];
-    const otro = screen.getAllByRole('button', { name: 'Otro' })[0];
+    const otro = screen.getAllByRole('button', { name: 'Otra cosa' })[0];
     expect(otro).toBeTruthy();
     // La misma fila: comparten padre, que es lo que los pone al lado.
     expect(otro.parentElement).toBe(libre.parentElement);

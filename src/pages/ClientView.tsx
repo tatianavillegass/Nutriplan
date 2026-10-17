@@ -1141,12 +1141,12 @@ export function ClientView() {
         </button>
       )}
       {/*
-        «OTRO», AL LADO DE «LIBRE» Y CON SU MISMA FORMA
+        «OTRA COSA», AL LADO DE «LIBRE» Y CON SU MISMA FORMA
         Empezó siendo un enlace pequeño, pensando que lo discreto evitaría que
         se usara de más. Pero no se usaba de más: no se encontraba. Son los dos
         la misma cosa —la excepción del día— así que son el mismo botón con dos
-        colores, y el nombre es la palabra corta que se lee de un vistazo
-        («Comí otra cosa» no cabía en la fila).
+        colores. Se llama «Otra cosa»: en primera persona («comí») sonaba a
+        confesión, y es un botón, no una declaración.
       */}
       {!libres[mealId] && !sustituidas[mealId] && (
         <button
@@ -1154,7 +1154,7 @@ export function ClientView() {
           className="rounded-lg border border-sky-200 px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:bg-sky-50"
           title={`Apuntar lo que comiste de verdad en ${nombre.toLowerCase()}`}
         >
-          Otro
+          Otra cosa
         </button>
       )}
     </>
@@ -1921,10 +1921,12 @@ export function ClientView() {
                   {fmt(balance.total.hc, 0)} · G {fmt(balance.total.grasa, 0)} g
                 </span>
               </ConNumeros>
-              <span className="text-slate-500">
-                {comidas.filter((m) => cumplida(m.id)).length}/{comidas.length}{" "}
-                comidas hechas
-              </span>
+              {/*
+                El «0/3 comidas hechas» se fue de aquí también: justo encima
+                están las pastillas de «Cómo va tu día», que lo dicen con
+                colores y con palabras. Esta tira es de números —kcal y
+                macros—, y contar comidas no es un número de esos.
+              */}
               {Math.abs(balance.kcalDiferencia) > 20 && (
                 <span
                   className={
@@ -2026,7 +2028,20 @@ export function ClientView() {
                           })
                         }
                         onAlternarHecha={() => alternarCumplida(m.id)}
-                        onLibre={() => setPidiendoLibre(m.id)}
+                        onLibre={
+                          libres[m.id] ? undefined : () => setPidiendoLibre(m.id)
+                        }
+                        /*
+                         * Aquí estaba el agujero: la tarjeta de fase 1 pinta
+                         * sus propios botones y no pasa por `accionesDe`, así
+                         * que «Otra cosa» no salía en ninguna de las comidas
+                         * de la fase donde más falta hacía.
+                         */
+                        onOtra={
+                          libres[m.id] || sustituidas[m.id]
+                            ? undefined
+                            : () => abrirOtraCosa(m.id)
+                        }
                       >
                         <ScaledRecipeView
                           recetas={recipes}

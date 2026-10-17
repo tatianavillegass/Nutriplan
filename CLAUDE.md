@@ -853,14 +853,18 @@ si es una de estas decisiones:
   merienda regalaba la racha con la cena sin contestar; ahora sólo cuentan los
   bocados **sueltos**, los que no pertenecen a una comida sustituida, y en fase
   4 no hay ninguna sustituida, así que ahí se comporta igual que siempre.
-  **Se llama «Otro» y va al lado de «Libre», con su misma forma.** Empezó
+  **Se llama «Otra cosa» y va al lado de «Libre», con su misma forma.** Empezó
   siendo un enlace pequeño debajo de la comida, pensando que lo discreto
   evitaría que se usara de más. No se usaba de más: **no se encontraba**. Son
   los dos la misma cosa —la excepción del día— así que son el mismo botón con
-  dos colores y en la misma fila, y el nombre es la palabra corta que se lee de
-  un vistazo («Comí otra cosa» no cabía). El panel (`ComiOtraCosa`) **no pinta
-  nada cuando está cerrado**: tenía su propio enlace y salían los dos, uno
-  debajo del otro.
+  dos colores y en la misma fila. En primera persona («Comí otra cosa») sonaba
+  a confesión y no cabía en la fila: es un botón, no una declaración. El panel
+  (`ComiOtraCosa`) **no pinta nada cuando está cerrado**: tenía su propio
+  enlace y salían los dos, uno debajo del otro. **Y hay que ponerlo en los dos
+  sitios**: `accionesDe` sirve a las fases 2, 3 y 4, pero la tarjeta de fase 1
+  (`MealCard`) pinta sus propios botones y no pasa por ahí — se quedó sin él en
+  la fase donde más falta hace, la de las recetas cerradas. Ahora `MealCard`
+  tiene `onOtra` al lado de `onLibre`.
   Deshacerlo **borra lo apuntado ahí**: si vuelve a la receta pautada, lo de
   antes ya no es lo que comió. La nutricionista lo ve en «Hoy» con nombres y
   gramos, en azul y aparte de las libres, que es justo lo que se perdía cuando
@@ -960,7 +964,10 @@ si es una de estas decisiones:
   de las pastillas que ya dicen lo mismo con colores y con palabras («✓ hecha»,
   «libre», «otra cosa»), y en una pantalla que se mira de reojo dos formas de
   contar lo mismo es una de más. Cada pastilla sigue diciendo cómo está en su
-  `title`, que es lo que lee un lector de pantalla.
+  `title`, que es lo que lee un lector de pantalla. **Y tampoco en la tira de
+  números de debajo**, que llevaba el mismo recuento con barra («0/3 comidas
+  hechas») a dos centímetros del otro: esa tira es de kcal y macros, y contar
+  comidas no es un número de esos.
 - **«Exportar PDF» no va en la cabecera.** Estaba arriba, al lado de su nombre,
   compitiendo con lo primero que se mira — y es algo que se hace una vez, el
   día que llega el plan, para colgarlo en la nevera. Ahora es una tarjeta al

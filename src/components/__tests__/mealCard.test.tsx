@@ -144,3 +144,29 @@ describe('Elegir entre las opciones', () => {
     expect(screen.queryByText(/2 opciones/)).toBeNull();
   });
 });
+
+/**
+ * «OTRA COSA», AL LADO DE «LIBRE»
+ * ===============================
+ * Aquí estuvo el agujero: esta tarjeta pinta sus propios botones y no pasa
+ * por la fila de acciones de las otras fases, así que «Otra cosa» no salía en
+ * ninguna comida de la fase 1 — la fase donde más falta hacía, porque es la de
+ * las recetas cerradas.
+ */
+describe('Apuntar lo que comió de verdad', () => {
+  it('es un botón en la cabecera, no un enlace perdido', () => {
+    const onOtra = vi.fn();
+    pintar({ onLibre: () => {}, onOtra });
+    const libre = screen.getByRole('button', { name: 'Libre' });
+    const otra = screen.getByRole('button', { name: 'Otra cosa' });
+    expect(otra.parentElement).toBe(libre.parentElement);
+    fireEvent.click(otra);
+    expect(onOtra).toHaveBeenCalled();
+  });
+
+  it('y cuando la comida ya está hecha no se ofrece ninguno de los dos', () => {
+    pintar({ hecha: true, onLibre: () => {}, onOtra: () => {} });
+    expect(screen.queryByRole('button', { name: 'Libre' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Otra cosa' })).toBeNull();
+  });
+});
