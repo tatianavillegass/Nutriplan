@@ -1163,6 +1163,27 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **«24 clientes» no es un dato: lo es «18 activas y 61 € por clienta».** La
+  línea de arriba de `/clientes` contaba la lista entera, y dentro están las de
+  esta semana y las que se fueron en marzo — así que no contestaba ninguna de
+  las dos preguntas que ella se hace: a cuántas personas atiende ahora y cuánto
+  le deja cada una. Ahora las activas van delante y en negro, el total detrás y
+  en gris (sigue haciendo falta: es a quién puedes buscar en la lista) y al lado
+  lo cobrado del mes entre las activas (`utils/clientasActivas.ts`).
+  **Activa es «tiene el acceso vigente»** (`estadoAcceso` ≠ caducado, y sin
+  `accesoHasta` el acceso es abierto): de las tres formas posibles es la única
+  que ella ya mantiene al día —el acceso se alarga al renovar y se deja caducar
+  cuando alguien lo deja— así que el número sale solo y no hay un campo nuevo
+  que acordarse de rellenar. Y tener dos definiciones de «activa» en la misma
+  app sería peor que cualquiera de las dos. Las otras se descartaron por lo que
+  esconden: «con bono abierto» deja fuera a quien paga por sesión, y «con
+  movimiento en los últimos 60 días» se hunde en agosto sin que nadie se haya
+  ido. **Es distinto del ticket medio** del resumen de la consulta: aquél
+  divide por consultas —cuánto deja cada visita— y éste por personas, y con
+  bonos trimestrales las dos cifras se separan mucho. **Sólo sale del mes en
+  curso y sólo si hay cobros apuntados**: de un mes pasado el divisor serían
+  las activas de hoy y el dividendo lo de entonces —un número que miente— y
+  «0 € por clienta» a primeros de mes no es un dato, es un susto.
 - **Los gastos son de dos clases, y los fijos se cuentan solos.** Sueltos
   (`Gasto` sin `cada`) y fijos, que se apuntan una vez con su periodicidad y
   entran todos los meses (`utils/finanzas.ts`). Sin los fijos el flujo de caja

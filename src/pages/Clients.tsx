@@ -26,6 +26,8 @@ import {
   hayFiltro,
   type Filtro,
 } from "../utils/filtrarClientas";
+import { mesDeHoy, porClientaDelMes } from "../utils/clientasActivas";
+import { monedaDeLaConsulta, nombreDelMes } from "../utils/finanzas";
 
 const fechaCorta = (iso?: string) => {
   if (!iso) return "—";
@@ -264,6 +266,19 @@ export function Clients() {
   const pendientes = deConsulta.filter(sinEnviarDe).length;
   const porRenovar = deConsulta.filter((c) => tocaRenovar(c)).length;
 
+  /**
+   * CUÁNTAS ESTÁN ACTIVAS, Y CUÁNTO DEJA CADA UNA
+   *
+   * «24 clientes» no sirve para decidir nada: dentro están las de esta semana
+   * y las que se fueron en marzo. Lo que contesta esta línea es a cuántas
+   * personas está atendiendo ahora y cuánto le deja cada una este mes, que es
+   * la cuenta de la que sale si suben los precios o si caben más clientas.
+   * Ver `utils/clientasActivas.ts`, incluido por qué «activa» es el acceso.
+   */
+  const cuenta = porClientaDelMes(deConsulta, mesDeHoy());
+  const moneda = monedaDeLaConsulta(deConsulta);
+  const dinero = (n: number) => `${fmt(n, n % 1 ? 2 : 0)} ${moneda}`;
+
   /** Borrar arrastra planes, mediciones y registros: por eso se avisa. */
   const borrar = (c: Client) => {
     if (
@@ -297,8 +312,35 @@ export function Clients() {
             Clientes
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {deConsulta.length}{" "}
-            {deConsulta.length === 1 ? "cliente" : "clientes"}
+            {/*
+              Las activas van en negro y delante: es el número que se mira.
+              El total queda detrás y en gris, porque sigue haciendo falta
+              —es a quién puedes buscar en esta lista— pero no es el dato.
+            */}
+            <span className="tnum font-medium text-slate-700">
+              {cuenta.activas}{" "}
+              {cuenta.activas === 1 ? "clienta activa" : "clientas activas"}
+            </span>
+            <span className="text-slate-400">
+              {" · "}
+              {deConsulta.length} en total
+            </span>
+            {/*
+              Y lo que deja cada una. Sólo si hay cobros apuntados este mes:
+              «0 € por clienta» a primeros de mes no es un dato, es un susto.
+            */}
+            {cuenta.cobrado > 0 && cuenta.activas > 0 && (
+              <span
+                className="tnum text-slate-500"
+                title={`${dinero(cuenta.cobrado)} cobrados en ${nombreDelMes(cuenta.mes)}, entre ${cuenta.activas} activas`}
+              >
+                {" · "}
+                <span className="font-medium text-brand-800">
+                  {dinero(cuenta.porClienta)}
+                </span>{" "}
+                por clienta este mes
+              </span>
+            )}
             {delReto > 0 && (
               <span className="text-slate-400">
                 {" · "}
