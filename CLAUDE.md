@@ -1163,6 +1163,19 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **La unidad la dice el catálogo, no lo que se tecleó en la receta.** El
+  chocolate salía en mililitros. En el catálogo son gramos —es un sólido— pero
+  esa línea de la receta llevaba `ml` escrito a mano: el editor copia la unidad
+  del alimento al elegirlo, así que una línea escrita antes de eso, o duplicada
+  de una de leche, se queda con la unidad vieja para siempre. Y pedirle que
+  repase receta a receta las que ya tiene no es una solución. Así que cuando el
+  ingrediente **está enlazado a un alimento** manda el alimento, que es quien
+  sabe si eso se pesa o se mide (`unidadDeIngrediente` en `types/food.ts`).
+  **Sólo se corrige `g` ↔ `ml`**: lo que ella haya escrito con sentido propio
+  —«g en crudo», «uds», «cdta»— se respeta, porque ahí la línea sabe algo que
+  el alimento no. De paso salió que las recetas semilla daban el aceite en
+  gramos y el catálogo en ml: corregida la semilla, que tener los datos
+  peleados es lo que hace falsos los dos.
 - **«24 clientes» no es un dato: lo es «18 activas y 61 € por clienta».** La
   línea de arriba de `/clientes` contaba la lista entera, y dentro están las de
   esta semana y las que se fueron en marzo — así que no contestaba ninguna de

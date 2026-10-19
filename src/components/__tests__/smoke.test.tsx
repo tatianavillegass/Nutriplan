@@ -105,7 +105,9 @@ describe('Receta escalada (Fase 1)', () => {
     );
     expect(screen.getByText('150 g')).toBeTruthy();
     expect(screen.getByText('60 g crudo')).toBeTruthy();
-    expect(screen.getByText('10 g')).toBeTruthy();
+    // El aceite se mide, no se pesa: lo dice el catálogo, y ahora la receta
+    // no puede contradecirlo. Ver `unidadDeIngrediente`.
+    expect(screen.getByText('10 ml')).toBeTruthy();
   });
 
   /**

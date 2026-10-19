@@ -211,6 +211,35 @@ export function losDosGramajes(a: Alimento | undefined, gramos: number): string 
   return undefined;
 }
 
+/**
+ * LA UNIDAD LA DICE EL CATÁLOGO, NO LO QUE SE TECLEÓ
+ * ==================================================
+ * El chocolate salía en mililitros. En el catálogo son gramos —es un sólido—
+ * pero la receta llevaba `ml` escrito a mano en esa línea: el editor copia la
+ * unidad del alimento al elegirlo, y si la línea se escribió antes (o se
+ * duplicó de una de leche) se queda con la unidad vieja para siempre. Pedirle
+ * que repase receta a receta las que ya tiene no es una solución.
+ *
+ * Así que cuando el ingrediente **está enlazado a un alimento del catálogo**,
+ * manda el catálogo: él sabe si eso se pesa o se mide.
+ *
+ * **Sólo se corrige `g` ↔ `ml`**, que son las dos que el catálogo conoce. Lo
+ * que ella haya escrito con sentido propio —«g en crudo», «uds», «cdta», «1
+ * onza»— se respeta tal cual: ahí la línea sabe algo que el alimento no, y
+ * sobrescribirlo sería perder información suya.
+ */
+const UNIDADES_DEL_CATALOGO = new Set(['g', 'gr', 'gramos', 'ml']);
+
+export function unidadDeIngrediente(
+  escrita: string | undefined,
+  alimento: Alimento | undefined,
+): string {
+  const tecleada = (escrita ?? '').trim();
+  if (!alimento) return tecleada || 'g';
+  if (!UNIDADES_DEL_CATALOGO.has(tecleada.toLowerCase())) return tecleada || (alimento.unidad ?? 'g');
+  return alimento.unidad ?? 'g';
+}
+
 /** Texto que se imprime en la lista "escoge X" de Fase 2. */
 export function formatFoodOption(a: Alimento): string {
   const u = a.unidad ?? 'g';

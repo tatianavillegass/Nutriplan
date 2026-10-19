@@ -16,7 +16,7 @@ export const SEED_RECIPES: Receta[] = [
     ingredientes: [
       { id: 'i1', nombre: 'Pechuga de pollo cruda', foodId: 'a-pechuga-de-pollo-cruda', cantidad_base: 30, unidad: 'g', grupo: 'proteicos_magros', escalable: true, opcional: false, sustitutos: ['Pavo pechuga cruda', 'Merluza cruda', 'Tofu firme'] },
       { id: 'i2', nombre: 'Arroz blanco crudo', foodId: 'a-arroz-blanco-crudo', cantidad_base: 20, unidad: 'g crudo', grupo: 'almidones', escalable: true, opcional: false, sustitutos: ['Quinoa cruda', 'Pasta seca', 'Cuscus crudo'] },
-      { id: 'i3', nombre: 'Aceite de oliva virgen extra', foodId: 'a-aceite-de-oliva-virgen-extra', cantidad_base: 5, unidad: 'g', grupo: 'grasas', escalable: true, opcional: false, sustitutos: ['Aguacate', 'Semillas de chia'] },
+      { id: 'i3', nombre: 'Aceite de oliva virgen extra', foodId: 'a-aceite-de-oliva-virgen-extra', cantidad_base: 5, unidad: 'ml', grupo: 'grasas', escalable: true, opcional: false, sustitutos: ['Aguacate', 'Semillas de chia'] },
       { id: 'i4', nombre: 'Brocoli', cantidad_base: null, unidad: 'al gusto', grupo: 'verduras', escalable: false, opcional: true },
       { id: 'i5', nombre: 'Cebolla', cantidad_base: null, unidad: 'al gusto', grupo: 'verduras', escalable: false, opcional: true },
       { id: 'i6', nombre: 'Salsa de soja', cantidad_base: null, unidad: 'al gusto', grupo: 'condimento', escalable: false, opcional: true },
@@ -60,7 +60,7 @@ export const SEED_RECIPES: Receta[] = [
     base: { legumbres: 1, grasas: 1, verduras: 'ilimitado' },
     ingredientes: [
       { id: 'i1', nombre: 'Lentejas crudas', foodId: 'a-lentejas-crudas', cantidad_base: 25, unidad: 'g crudo', grupo: 'legumbres', escalable: true, opcional: false, sustitutos: ['Garbanzos', 'Alubias'] },
-      { id: 'i2', nombre: 'Aceite de oliva virgen extra', foodId: 'a-aceite-de-oliva-virgen-extra', cantidad_base: 5, unidad: 'g', grupo: 'grasas', escalable: true, opcional: false, sustitutos: ['Aguacate'] },
+      { id: 'i2', nombre: 'Aceite de oliva virgen extra', foodId: 'a-aceite-de-oliva-virgen-extra', cantidad_base: 5, unidad: 'ml', grupo: 'grasas', escalable: true, opcional: false, sustitutos: ['Aguacate'] },
       { id: 'i3', nombre: 'Zanahoria', cantidad_base: null, unidad: 'al gusto', grupo: 'verduras', escalable: false, opcional: true },
       { id: 'i4', nombre: 'Puerro', cantidad_base: null, unidad: 'al gusto', grupo: 'verduras', escalable: false, opcional: true },
       { id: 'i5', nombre: 'Pimentón y laurel', cantidad_base: null, unidad: 'al gusto', grupo: 'condimento', escalable: false, opcional: true },
@@ -145,7 +145,7 @@ export const SEED_RECIPES: Receta[] = [
     ingredientes: [
       { id: 'i1', nombre: 'Pechuga de pavo', foodId: 'a-pavo-pechuga-cruda', cantidad_base: 30, unidad: 'g', grupo: 'proteicos_magros', escalable: true, opcional: false, sustitutos: ['Pollo', 'Atún al natural'] },
       { id: 'i2', nombre: 'Pasta integral', cantidad_base: 25, unidad: 'g crudo', grupo: 'almidones', escalable: true, opcional: false, sustitutos: ['Arroz blanco crudo', 'Cuscus crudo'] },
-      { id: 'i3', nombre: 'Aceite de oliva virgen extra', foodId: 'a-aceite-de-oliva-virgen-extra', cantidad_base: 5, unidad: 'g', grupo: 'grasas', escalable: true, opcional: false, sustitutos: ['Queso feta', 'Aguacate'] },
+      { id: 'i3', nombre: 'Aceite de oliva virgen extra', foodId: 'a-aceite-de-oliva-virgen-extra', cantidad_base: 5, unidad: 'ml', grupo: 'grasas', escalable: true, opcional: false, sustitutos: ['Queso feta', 'Aguacate'] },
       { id: 'i4', nombre: 'Tomate triturado', cantidad_base: null, unidad: 'al gusto', grupo: 'verduras', escalable: false, opcional: true },
       { id: 'i5', nombre: 'Calabacín', cantidad_base: null, unidad: 'al gusto', grupo: 'verduras', escalable: false, opcional: true },
       { id: 'i6', nombre: 'Albahaca', cantidad_base: null, unidad: 'al gusto', grupo: 'condimento', escalable: false, opcional: true },

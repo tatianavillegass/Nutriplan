@@ -1,7 +1,7 @@
 import type { ExchangeGroupId, MacroBucket } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS, bucketsDeGrupo } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
-import type { Alimento } from '../types/food';
+import { unidadDeIngrediente, type Alimento } from '../types/food';
 import type { Acompanamiento, IngredienteAnadido } from '../types/plan';
 import { exchangesToMacros, aporteDeAlimento, type ExchangeCounts } from './exchanges';
 import { kcalFromMacros, roundPortion } from './macros';
@@ -367,6 +367,14 @@ export function scaleRecipe(
     .filter((ing) => !fuera.has(ing.id))
     .map((ing) => {
     const esVerdura = ing.grupo === 'verduras';
+    /*
+     * La unidad la dice el catálogo cuando hay alimento detrás: el chocolate
+     * salía en mililitros porque la línea llevaba «ml» escrito a mano, y
+     * pedirle que repase receta a receta las que ya tiene no es una solución.
+     * Ver `unidadDeIngrediente`.
+     */
+    const suyo = ing.foodId ? porId.get(ing.foodId) : undefined;
+    const unidad = unidadDeIngrediente(ing.unidad, suyo);
 
     /**
      * Lo que Tats haya escrito a mano gana al cálculo. Se marca como
@@ -379,7 +387,8 @@ export function scaleRecipe(
         ...ing,
         factor: ing.cantidad_base ? aMano / ing.cantidad_base : 1,
         cantidad_final: aMano,
-        display: `${aMano} ${ing.unidad}`,
+        unidad,
+        display: `${aMano} ${unidad}`,
         ajustado: true,
       };
     }
@@ -399,11 +408,12 @@ export function scaleRecipe(
          * regla del esquema, no de cada receta: repetido en cada línea de cada
          * plato acababa siendo ruido y nadie lo leía.
          */
+        unidad,
         display: esVerdura
           ? 'al gusto'
           : ing.cantidad_base == null
             ? ing.unidad || 'al gusto'
-            : `${ing.cantidad_base} ${ing.unidad}`,
+            : `${ing.cantidad_base} ${unidad}`,
       };
     }
 
@@ -414,17 +424,17 @@ export function scaleRecipe(
      * enlazado a un alimento que se cuenta por piezas, el gramaje se ajusta
      * al número entero de piezas más cercano.
      */
-    const alimento = ing.foodId ? porId.get(ing.foodId) : undefined;
-    const pieza = alimento ? gramosPorPieza(alimento) : undefined;
+    const pieza = suyo ? gramosPorPieza(suyo) : undefined;
     const final = pieza ? redondearAPiezas(bruto, pieza) : roundPortion(bruto);
 
     return {
       ...ing,
       factor,
       cantidad_final: final,
+      unidad,
       // Sólo los gramos: la medida casera tiene su propio interruptor y
       // mezclar las dos en la misma línea era justo lo que confundía.
-      display: `${final} ${ing.unidad}`,
+      display: `${final} ${unidad}`,
     };
   });
 
