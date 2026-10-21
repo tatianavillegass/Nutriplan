@@ -76,6 +76,10 @@ $$;
 -- ------------------------------------------------------------
 --  2. Con el acceso pasado, no escribe
 -- ------------------------------------------------------------
+--  Los paréntesis son a propósito aunque `and` ate antes que
+--  `or`: una regla de seguridad que se lee mal se acaba tocando
+--  mal.
+--
 --  La nutricionista sigue pudiendo escribir en el registro de
 --  cualquiera de los suyos —corrige, prepara la vuelta, apunta
 --  lo que le cuenta por teléfono— y por eso su rama no lleva la
@@ -84,10 +88,13 @@ $$;
 drop policy if exists registros_los_escribe_el_cliente on public.registros;
 create policy registros_los_escribe_el_cliente on public.registros
   for insert with check (
-    cliente_id in (
-      select id from public.clientes
-      where lower(email) = public.mi_email()
-    ) and public.tiene_acceso(cliente_id)
+    (
+      cliente_id in (
+        select id from public.clientes
+        where lower(email) = public.mi_email()
+      )
+      and public.tiene_acceso(cliente_id)
+    )
     or cliente_id in (
       select id from public.clientes where nutri_id = auth.uid()
     )
@@ -96,10 +103,13 @@ create policy registros_los_escribe_el_cliente on public.registros
 drop policy if exists registros_los_corrige_el_cliente on public.registros;
 create policy registros_los_corrige_el_cliente on public.registros
   for update using (
-    cliente_id in (
-      select id from public.clientes
-      where lower(email) = public.mi_email()
-    ) and public.tiene_acceso(cliente_id)
+    (
+      cliente_id in (
+        select id from public.clientes
+        where lower(email) = public.mi_email()
+      )
+      and public.tiene_acceso(cliente_id)
+    )
     or cliente_id in (
       select id from public.clientes where nutri_id = auth.uid()
     )
