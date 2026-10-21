@@ -9,11 +9,15 @@ import { Button } from '../common/ui';
  * como si siguiera en consulta — y el recuento de activas decía la verdad de
  * lo apuntado y una mentira de lo que pasaba.
  *
- * CÓMO SE DICE
- * ============
- * Con la fecha y sin regañar. Que se acabe un bono no es un castigo ni un
- * fallo suyo: es que terminó lo que contrató. El mensaje da la fecha —para
- * que no parezca un error de la app— y una salida: escribirle.
+ * CÓMO SE DICE: CON SU VOZ, NO CON LA DE LA APP
+ * =============================================
+ * El texto es suyo, en primera persona y con su «:)» — lo escribió ella así.
+ * Que se acabe un plan no es un castigo ni un fallo de nadie, y una pantalla
+ * de sistema («su acceso ha expirado») convierte un final normal en un portazo.
+ * Quien lee esto es alguien que ha trabajado con ella unos meses.
+ *
+ * La fecha se queda, pequeña y debajo: no es el mensaje, pero sin ella alguna
+ * clienta piensa que la app se ha roto y escribe para preguntarlo.
  *
  * Y se dice que **sus datos siguen ahí**. Es lo primero que se piensa al ver
  * una pantalla así («¿he perdido mis medidas de seis meses?») y es lo único
@@ -47,28 +51,26 @@ const legible = (iso?: string) => {
 
 export function AccesoTerminado({ nombre, termino, emailNutri, nombreNutri }: Props) {
   const fecha = legible(termino);
-  const asunto = encodeURIComponent('Quiero seguir con mi plan');
+  const asunto = encodeURIComponent('Quiero renovar mi plan');
   const cuerpo = encodeURIComponent(
-    `¡Hola${nombreNutri ? ` ${nombreNutri}` : ''}! Soy ${nombre}. Se me ha terminado el acceso a la app y me gustaría seguir.`,
+    `¡Hola${nombreNutri ? ` ${nombreNutri}` : ''}! Soy ${nombre}. Se me ha terminado el plan y me gustaría renovar.`,
   );
 
   return (
     <div className="vista-cliente mx-auto max-w-md space-y-4 py-10 text-center">
       <h1 className="text-2xl leading-tight font-semibold tracking-tight text-brand-900">
-        Hasta aquí por ahora, {nombre.split(' ')[0]}
+        ¡Tu plan ha terminado!
       </h1>
 
-      <p className="text-sm leading-relaxed text-slate-600">
-        {fecha ? (
-          <>
-            Tu acceso a la app terminó el <span className="font-medium">{fecha}</span>.
-          </>
-        ) : (
-          <>Tu acceso a la app ha terminado.</>
-        )}{' '}
-        No es un fallo de la aplicación: es que se acabó lo que tenías
-        contratado.
+      <p className="text-base leading-relaxed text-slate-700">
+        Si quieres renovar, ponte en contacto conmigo y nos ponemos en marcha :)
       </p>
+
+      {/*
+        La fecha no es el mensaje, pero sin ella alguna clienta piensa que la
+        app se ha roto y escribe para preguntarlo.
+      */}
+      {fecha && <p className="text-xs text-slate-400">Terminó el {fecha}</p>}
 
       {/*
         Lo primero que se piensa al ver esta pantalla es «¿he perdido mis
@@ -87,13 +89,13 @@ export function AccesoTerminado({ nombre, termino, emailNutri, nombreNutri }: Pr
               window.location.href = `mailto:${emailNutri}?subject=${asunto}&body=${cuerpo}`;
             }}
           >
-            Escribir para seguir
+            Escríbeme
           </Button>
           <p className="text-[11px] text-slate-400">{emailNutri}</p>
         </div>
       ) : (
         <p className="text-sm text-slate-500">
-          Escribe a tu nutricionista si quieres seguir.
+          Escríbele a tu nutricionista y lo ponéis en marcha.
         </p>
       )}
     </div>

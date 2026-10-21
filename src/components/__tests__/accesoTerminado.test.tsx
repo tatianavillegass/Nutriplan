@@ -54,14 +54,24 @@ describe('A ella se le dice, y se le para', () => {
     comoLaClienta();
     abrir();
     expect(screen.queryByText(/Hola,/)).toBeNull();
-    expect(screen.getByText(/Hasta aquí por ahora/)).toBeTruthy();
+    expect(screen.getByText(/Tu plan ha terminado/)).toBeTruthy();
   });
 
-  /** Con la fecha, para que no parezca una avería de la app. */
-  it('se le dice cuándo terminó', () => {
+  /*
+   * El mensaje es suyo, en primera persona: una pantalla de sistema («su
+   * acceso ha expirado») convierte un final normal en un portazo.
+   */
+  it('con su voz, y con la salida delante', () => {
     comoLaClienta();
     abrir();
-    expect(screen.getByText(/1 de marzo de 2026/)).toBeTruthy();
+    expect(screen.getByText(/ponte en contacto conmigo/i)).toBeTruthy();
+  });
+
+  /** La fecha no es el mensaje, pero sin ella se piensa que la app se rompió. */
+  it('se le dice cuándo terminó, en pequeño', () => {
+    comoLaClienta();
+    abrir();
+    expect(screen.getByText(/Terminó el 1 de marzo de 2026/)).toBeTruthy();
   });
 
   /*
@@ -96,7 +106,7 @@ describe('A la nutricionista no se le cierra', () => {
   it('sigue viendo el plan de una clienta caducada', () => {
     abrir();
     expect(screen.getByText(/Hola,/)).toBeTruthy();
-    expect(screen.queryByText(/Hasta aquí por ahora/)).toBeNull();
+    expect(screen.queryByText(/Tu plan ha terminado/)).toBeNull();
   });
 });
 
@@ -120,8 +130,8 @@ describe('Con el acceso al día no cambia nada', () => {
 describe('La pantalla, por dentro', () => {
   it('sin correo configurado no inventa un botón que escriba a nadie', () => {
     render(<AccesoTerminado nombre="Sofía Murgueitio" termino="2026-03-01" />);
-    expect(screen.queryByText('Escribir para seguir')).toBeNull();
-    expect(screen.getByText(/Escribe a tu nutricionista/)).toBeTruthy();
+    expect(screen.queryByText('Escríbeme')).toBeNull();
+    expect(screen.getByText(/Escríbele a tu nutricionista/)).toBeTruthy();
   });
 
   it('con correo, el botón lleva a escribirle', () => {
@@ -132,13 +142,15 @@ describe('La pantalla, por dentro', () => {
         emailNutri="tats@ejemplo.com"
       />,
     );
-    expect(screen.getByText('Escribir para seguir')).toBeTruthy();
+    expect(screen.getByText('Escríbeme')).toBeTruthy();
     expect(screen.getByText('tats@ejemplo.com')).toBeTruthy();
   });
 
   /** Una fecha que no se entiende no se pinta: mejor sin fecha que con basura. */
   it('con una fecha ilegible, lo dice sin fecha', () => {
     render(<AccesoTerminado nombre="Sofía" termino="no-es-una-fecha" />);
-    expect(screen.getByText(/Tu acceso a la app ha terminado/)).toBeTruthy();
+    // Sin fecha legible, el mensaje se queda sin la línea de abajo y ya.
+    expect(screen.getByText(/Tu plan ha terminado/)).toBeTruthy();
+    expect(screen.queryByText(/Terminó el/)).toBeNull();
   });
 });

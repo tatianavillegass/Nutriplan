@@ -1168,10 +1168,14 @@ si es una de estas decisiones:
   no la comprobaba nadie. `estadoAcceso` sólo se usaba en las pantallas de la
   nutricionista (la columna «Acceso», el filtro «Caducadas», el recuento de
   activas) y la app de la clienta nunca preguntaba. Ahora `ClientView` se para
-  antes de pintar nada (`AccesoTerminado`): su nombre, **la fecha en que
-  terminó** —para que no parezca una avería—, que **lo suyo sigue guardado**
-  —es lo primero que se piensa, y es lo que convierte un final en una pausa— y
-  un botón para escribirle. **A la nutricionista no se le cierra**: entra en
+  antes de pintar nada (`AccesoTerminado`). **El texto es suyo, en primera
+  persona y con su «:)»**: «¡Tu plan ha terminado! Si quieres renovar, ponte en
+  contacto conmigo y nos ponemos en marcha». Quien lo lee ha trabajado con ella
+  unos meses, y una pantalla de sistema («su acceso ha expirado») convierte un
+  final normal en un portazo. Debajo, pequeña, **la fecha en que terminó** —no
+  es el mensaje, pero sin ella se piensa que la app se ha roto— y que **lo suyo
+  sigue guardado**, que es lo primero que se pregunta y lo que convierte un
+  final en una pausa. **A la nutricionista no se le cierra**: entra en
   esa misma pantalla para repasar cómo le fue y preparar la vuelta, y si le
   saltara el cartel no podría ver a quien tiene de baja, que es justo a quien
   va a llamar. **No se enseña el plan en gris**: un plan que se ve y no se
