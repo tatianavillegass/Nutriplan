@@ -20,6 +20,8 @@ import {
   tipoDeDiaPlaneado,
 } from "../utils/menuSemana";
 import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
+import { AccesoTerminado } from "../components/client/AccesoTerminado";
+import { emailDeLaConsulta } from "../utils/supabase";
 import { columnasDeComida } from "../utils/combosGuardados";
 import { alimentosDeComida } from "../utils/pantry";
 import { AvituallamientoDelDia } from "../components/client/AvituallamientoDelDia";
@@ -74,7 +76,12 @@ import {
   recetasDelPlan,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
-import { LABEL_MODO_CITA, metasActivas, seMide } from "../types/client";
+import {
+  LABEL_MODO_CITA,
+  estadoAcceso,
+  metasActivas,
+  seMide,
+} from "../types/client";
 import { citaLegible, citaPasada } from "../utils/agenda";
 import {
   diaDelReto,
@@ -422,6 +429,27 @@ export function ClientView() {
    */
   if (perfil?.rol === "cliente" && perfil.clientId && perfil.clientId !== id)
     return <Navigate to={`/clientes/${perfil.clientId}/vista`} replace />;
+
+  /**
+   * SU ACCESO SE TERMINÓ
+   * ====================
+   * Esto no existía, y ése era el problema: «Acceso hasta» era una nota en la
+   * tabla de la nutricionista y nada más —nadie comprobaba la fecha— así que
+   * una clienta dada de baja en marzo seguía entrando en octubre y marcando
+   * comidas. Aquí se para, antes de pintar nada del plan.
+   *
+   * **Sólo a ella.** La nutricionista entra en esta misma pantalla para
+   * repasar cómo le va y para preparar la vuelta: si le saltara el cartel no
+   * podría ver a quien tiene de baja, que es justo a quien va a llamar.
+   */
+  if (client && soyElCliente && estadoAcceso(client).estado === "caducado")
+    return (
+      <AccesoTerminado
+        nombre={client.nombre}
+        termino={client.accesoHasta}
+        emailNutri={emailDeLaConsulta()}
+      />
+    );
 
   if (!client || !plan || !dayType) {
     if (fallo)

@@ -73,6 +73,16 @@ export function puedeSerNutricionista(email: string): boolean {
   return nutricionistas.includes(email.trim().toLowerCase());
 }
 
+/**
+ * A quién le escribe la clienta. Es la misma lista de arriba: en una consulta
+ * de una sola nutricionista, el correo con el que ella entra es el correo al
+ * que hay que escribirle. Sin la variable puesta no se inventa ninguno — un
+ * «escríbele aquí» a una dirección equivocada es peor que no poner botón.
+ */
+export function emailDeLaConsulta(): string | undefined {
+  return nutricionistas[0];
+}
+
 /** Igual que `supabase` pero sin comprobar el nulo en cada llamada. */
 export function nube(): SupabaseClient {
   if (!supabase) throw new Error('Supabase no está configurado.');

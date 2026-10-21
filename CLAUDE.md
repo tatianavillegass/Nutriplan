@@ -1163,6 +1163,34 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **«Acceso hasta» era una nota, no una puerta — y ahora cierra.** Una clienta
+  dada de baja en marzo seguía entrando en octubre y marcando comidas: la fecha
+  no la comprobaba nadie. `estadoAcceso` sólo se usaba en las pantallas de la
+  nutricionista (la columna «Acceso», el filtro «Caducadas», el recuento de
+  activas) y la app de la clienta nunca preguntaba. Ahora `ClientView` se para
+  antes de pintar nada (`AccesoTerminado`): su nombre, **la fecha en que
+  terminó** —para que no parezca una avería—, que **lo suyo sigue guardado**
+  —es lo primero que se piensa, y es lo que convierte un final en una pausa— y
+  un botón para escribirle. **A la nutricionista no se le cierra**: entra en
+  esa misma pantalla para repasar cómo le fue y preparar la vuelta, y si le
+  saltara el cartel no podría ver a quien tiene de baja, que es justo a quien
+  va a llamar. **No se enseña el plan en gris**: un plan que se ve y no se
+  toca es una tienda con la persiana a medias — se intenta, no funciona, y
+  escribe preguntando si está roto. Y **no se pide pagar ahí**: lo que viene
+  después se habla con ella.
+- **El candado de verdad está en el servidor, y es de escritura.**
+  `supabase/acceso-caducado.sql` añade `tiene_acceso(cliente)` y lo mete en las
+  reglas de `insert`/`update` de `registros`: con la fecha pasada el servidor
+  **no le acepta nada escrito**, ni una comida marcada ni un peso. **No se le
+  esconde la ficha**, que se probó y es peor: sin poder leer su fila la app no
+  sabe quién es y le sale «no encontramos tu ficha» —parece una avería— así
+  que se le deja leer la ficha para poder explicarle lo que pasa. Eso significa
+  que el plan que ya tenía sigue siendo legible para quien sepa mirar por
+  dentro del navegador, **a propósito: ese plan ya lo pagó**. La rama de la
+  nutricionista no lleva la comprobación: el candado es para la clienta, no
+  para ella. Y **sin fecha el acceso es abierto**, la misma regla que en la
+  app: dos definiciones distintas de «activa» en los dos lados serían peores
+  que cualquiera de ellas.
 - **La unidad la dice el catálogo, no lo que se tecleó en la receta.** El
   chocolate salía en mililitros. En el catálogo son gramos —es un sólido— pero
   esa línea de la receta llevaba `ml` escrito a mano: el editor copia la unidad
