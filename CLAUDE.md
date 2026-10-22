@@ -1163,6 +1163,23 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **Sus pliegues son suyos.** A las presenciales las mide ella con el
+  plicómetro y esos números se quedaban en la consulta: en «Resumen» salía el
+  % de grasa —que SALE de los pliegues— pero no los pliegues, así que cuando en
+  consulta se dice «te ha bajado el abdominal», quien lo escucha no tenía dónde
+  mirarlo después. `MisPliegues` los enseña con **cuánto han cambiado desde la
+  anterior y desde la primera**: un pliegue suelto no dice nada —18 mm no es
+  bueno ni malo— y lo que informa es que vaya a algún sitio. Debajo, **el mismo
+  comparativo que ve ella** (`calcularEvolucion`): dos tablas distintas del
+  mismo cuerpo acabarían discrepando, y entonces la pregunta en consulta sería
+  cuál de las dos vale. **Empieza cerrado**: quien entra a ver su racha no
+  tiene por qué encontrarse ocho medidas de su cuerpo de golpe. **Ni semáforos
+  ni valores de referencia**: un rango al lado de un número del propio cuerpo
+  convierte una medida en un aprobado o un suspenso. **El dato decide quién lo
+  ve**, no un interruptor: si hay pliegues medidos se enseñan, y las online
+  —sin plicómetro al otro lado— no tienen tarjeta. Y «+0,0» no se pinta: si la
+  diferencia se redondea a cero con los decimales que se enseñan, no se ha
+  movido nada que se pueda ver.
 - **«Acceso hasta» era una nota, no una puerta — y ahora cierra.** Una clienta
   dada de baja en marzo seguía entrando en octubre y marcando comidas: la fecha
   no la comprobaba nadie. `estadoAcceso` sólo se usaba en las pantallas de la

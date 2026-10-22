@@ -4,6 +4,7 @@ import { edadDe } from "../../types/client";
 import type { DayType } from "../../types/plan";
 import type { RegistroDia } from "../../types/diary";
 import type { Medicion } from "../../types/anthropometry";
+import { MisPliegues } from "./MisPliegues";
 import { calcComposicion, ordenarMediciones } from "../../utils/anthropometry";
 import {
   calcularRacha,
@@ -281,6 +282,18 @@ export function ResumenTab({
           )}
         </section>
       )}
+
+      {/*
+        SUS PLIEGUES, SI SE LOS MIDEN
+        ============================================================
+        A las presenciales las mide ella con el plicómetro y esos números se
+        quedaban en la consulta: aquí salía el % de grasa, que SALE de los
+        pliegues, pero no los pliegues. Cuando en consulta se dice «te ha
+        bajado el abdominal», quien lo escucha no tenía dónde mirarlo después.
+        Va cerrado y debajo de la composición: el dato que explica al de
+        arriba. Ver `MisPliegues`.
+      */}
+      <MisPliegues client={client} mediciones={mediciones} />
 
       {/* ── Racha de comidas ───────────────────────────── */}
       <TarjetaDeRacha
