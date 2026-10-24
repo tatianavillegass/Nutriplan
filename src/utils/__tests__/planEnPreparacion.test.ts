@@ -30,7 +30,7 @@ const enviado = (id: string, fecha: string, extra: Partial<Plan> = {}): Plan =>
     fecha,
     createdAt: fecha,
     envio: { fecha: `${fecha}T09:00:00.000Z` },
-    publicado: { fase: 1, dayTypes: [] },
+    publicado: { fase: 1, dayTypes: [], fecha: `${fecha}T09:00:00.000Z` },
     ...extra,
   } as Partial<Plan>);
 
@@ -103,7 +103,7 @@ describe('Lo que ve mientras le montan el siguiente', () => {
       plan('p2', {
         fecha: '2026-03-01',
         createdAt: '2026-03-01',
-        publicado: { fase: 1, dayTypes: [] },
+        publicado: { fase: 1, dayTypes: [], fecha: '2026-01-10T09:00:00.000Z' },
       } as Partial<Plan>),
     ]);
     expect(visible?.id).toBe('p2');

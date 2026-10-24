@@ -29,6 +29,7 @@ const ENVIADO: Plan = {
   publicado: {
     fase: DEMO_PLAN.fase,
     dayTypes: DEMO_PLAN.dayTypes,
+    fecha: '2026-01-10T09:00:00.000Z',
   },
 } as Plan;
 
