@@ -1,4 +1,12 @@
-import type { Bono, Client, Modalidad, Sesion } from "../types/client";
+import {
+  PESO_LLAMADA,
+  conceptoEsLlamada,
+  type Bono,
+  type Client,
+  type Modalidad,
+  type Sesion,
+  type TipoSesion,
+} from "../types/client";
 import type { CategoriaGasto, Gasto } from "../types/finanzas";
 import { gastosDelMes, ingresosDelMes, mesDe, totalGastosDelMes } from "./finanzas";
 
@@ -18,14 +26,40 @@ import { gastosDelMes, ingresosDelMes, mesDe, totalGastosDelMes } from "./finanz
  * el peor mes de trabajo del año.
  *
  * El devengado se reparte solo: el precio del bono entre las sesiones que
- * incluye. Un bono de 270 € con 3 consultas y 3 llamadas son 45 € por sesión.
- * Así no hay que escribir ningún precio nuevo — sale de lo que ya se apunta.
+ * incluye. Así no hay que escribir ningún precio nuevo — sale de lo que ya se
+ * apunta.
+ *
+ * UNA LLAMADA CUENTA MEDIA
+ * ========================
+ * Antes se repartía a partes iguales y un bono de 270 € con 3 consultas y 3
+ * llamadas daba 45 € a cada una, como si una llamada de cinco minutos fuera lo
+ * mismo que una consulta de una hora. Ahora la llamada pesa `PESO_LLAMADA`, y
+ * ese mismo bono devenga 60 € por consulta y 30 € por llamada. **El bono
+ * entero sigue valiendo lo mismo**: lo que cambia es en qué mes cae cada
+ * trozo, no el total.
  */
 
+/** De qué fue la sesión, mirando lo que hay: lo suyo, o su línea del bono. */
+export function tipoDeSesion(sesion: Sesion, bono?: Bono): TipoSesion {
+  if (sesion.tipo) return sesion.tipo;
+  const concepto = bono?.incluye.find((l) => l.id === sesion.lineaId)?.concepto;
+  return conceptoEsLlamada(concepto) ? "llamada" : "consulta";
+}
+
+/** Cuántas «consultas enteras» incluye un bono, contando media por llamada. */
+export function pesoDelBono(bono: Bono): number {
+  return bono.incluye.reduce(
+    (s, l) =>
+      s + (l.cuantas || 0) * (conceptoEsLlamada(l.concepto) ? PESO_LLAMADA : 1),
+    0,
+  );
+}
+
 /** Lo que vale una sesión de un bono: su precio entre lo que incluye. */
-export function valorDeSesion(bono: Bono): number {
-  const total = bono.incluye.reduce((s, l) => s + (l.cuantas || 0), 0);
-  return total > 0 ? bono.importe / total : 0;
+export function valorDeSesion(bono: Bono, tipo: TipoSesion = "consulta"): number {
+  const peso = pesoDelBono(bono);
+  if (peso <= 0) return 0;
+  return (bono.importe / peso) * (tipo === "llamada" ? PESO_LLAMADA : 1);
 }
 
 /** Lo que se dejó de cobrar en un bono, si llevaba descuento. */
@@ -39,6 +73,8 @@ export interface SesionContada {
   sesion: Sesion;
   /** De qué era: «Consulta», «Llamada»… Sale de la línea del bono. */
   concepto?: string;
+  /** Consulta o llamada: lo que decide si cuenta como visita. */
+  tipo: TipoSesion;
   /** El bono del que cuelga, para poder enseñar de dónde sale el valor. */
   bono?: Bono;
   /** La de la sesión si la tiene; si no, la de la ficha. */
@@ -59,13 +95,15 @@ export function sesionesDelMes(clientes: Client[], mes: string): SesionContada[]
     for (const s of c.sesiones ?? []) {
       if (mesDe(s.fecha) !== mes) continue;
       const bono = (c.bonos ?? []).find((b) => b.id === s.bonoId);
+      const tipo = tipoDeSesion(s, bono);
       out.push({
         client: c,
         sesion: s,
         concepto: bono?.incluye.find((l) => l.id === s.lineaId)?.concepto,
         bono,
+        tipo,
         modalidad: s.modalidad ?? c.modalidad,
-        valor: bono ? valorDeSesion(bono) : (s.importe ?? 0),
+        valor: bono ? valorDeSesion(bono, tipo) : (s.importe ?? 0),
         programa: !!c.programa,
       });
     }
@@ -75,7 +113,13 @@ export function sesionesDelMes(clientes: Client[], mes: string): SesionContada[]
 
 export interface MesDeConsulta {
   mes: string;
+  /**
+   * Sólo las consultas. Las llamadas van aparte: una de cinco minutos no es
+   * una visita, y sumadas aquí el mes parecía tener el doble de trabajo.
+   */
   consultas: number;
+  /** Las llamadas de seguimiento, contadas y no mezcladas. */
+  llamadas: number;
   online: number;
   presencial: number;
   /** Sin decir si fue online o presencial: ni de la sesión ni de la ficha. */
@@ -95,7 +139,11 @@ export interface MesDeConsulta {
   diferencia: number;
   gastos: number;
   neto: number;
-  /** Lo que deja de media cada consulta. Sin consultas, cero. */
+  /**
+   * Lo que deja de media cada consulta. **Se divide sólo entre consultas**:
+   * si una llamada de cinco minutos no es una visita, tampoco puede bajar la
+   * media de lo que deja una. Sin consultas, cero.
+   */
   ticket: number;
 }
 
@@ -109,12 +157,19 @@ export function mesDeConsulta(
   const gasto = totalGastosDelMes(gastos, mes);
   const devengado = sesiones.reduce((s, x) => s + x.valor, 0);
 
+  /*
+   * El reparto online/presencial es de las consultas: una llamada es una
+   * llamada, y decir que «fue online» no informa de nada.
+   */
+  const consultas = sesiones.filter((s) => s.tipo === "consulta");
+
   return {
     mes,
-    consultas: sesiones.length,
-    online: sesiones.filter((s) => s.modalidad === "online").length,
-    presencial: sesiones.filter((s) => s.modalidad === "presencial").length,
-    sinModalidad: sesiones.filter((s) => !s.modalidad).length,
+    consultas: consultas.length,
+    llamadas: sesiones.filter((s) => s.tipo === "llamada").length,
+    online: consultas.filter((s) => s.modalidad === "online").length,
+    presencial: consultas.filter((s) => s.modalidad === "presencial").length,
+    sinModalidad: consultas.filter((s) => !s.modalidad).length,
     programa: sesiones.filter((s) => s.programa).length,
     sinValor: sesiones.filter((s) => s.valor <= 0).length,
     devengado,
@@ -125,9 +180,11 @@ export function mesDeConsulta(
     /*
      * El ticket medio se calcula sobre lo cobrado, como en su hoja. Sobre el
      * devengado saldría un número más estable pero menos útil: lo que ella
-     * mira es cuánto deja de caja cada persona que se sienta delante.
+     * mira es cuánto deja de caja cada persona que se sienta delante. Y se
+     * divide entre las consultas, no entre todas las sesiones: las llamadas no
+     * sientan a nadie delante.
      */
-    ticket: sesiones.length ? cobrado / sesiones.length : 0,
+    ticket: consultas.length ? cobrado / consultas.length : 0,
   };
 }
 
@@ -155,11 +212,12 @@ export function añoDeConsulta(
 /** Suma de varios meses, para la fila de totales. */
 export function sumarMeses(meses: MesDeConsulta[]): Omit<MesDeConsulta, "mes"> {
   const cero = {
-    consultas: 0, online: 0, presencial: 0, sinModalidad: 0, programa: 0,
+    consultas: 0, llamadas: 0, online: 0, presencial: 0, sinModalidad: 0, programa: 0,
     sinValor: 0, devengado: 0, cobrado: 0, diferencia: 0, gastos: 0, neto: 0, ticket: 0,
   };
   const t = meses.reduce((a, m) => ({
     consultas: a.consultas + m.consultas,
+    llamadas: a.llamadas + m.llamadas,
     online: a.online + m.online,
     presencial: a.presencial + m.presencial,
     sinModalidad: a.sinModalidad + m.sinModalidad,

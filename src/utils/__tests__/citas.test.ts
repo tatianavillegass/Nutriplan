@@ -197,6 +197,28 @@ describe('Marcarla como realizada descuenta del bono', () => {
     expect(marcarRealizada(c, 'ci_1', HOY).sesiones![0].lineaId).toBe('ln_l');
   });
 
+  /*
+   * Y la sesión nace sabiendo lo que es: una de seguimiento no pasa de cinco
+   * minutos, y mezclada con las consultas hacía que el mes pareciera tener el
+   * doble de trabajo del que tuvo.
+   */
+  it('y la sesión nace marcada como llamada', () => {
+    const c = clienta({
+      citas: [{ ...cita({ fecha: '2026-09-21', modo: 'llamada' }), id: 'ci_1' }],
+    });
+    expect(marcarRealizada(c, 'ci_1', HOY).sesiones![0].tipo).toBe('llamada');
+  });
+
+  /* Una videollamada SÍ es una consulta: la misma hora, con pantalla de por medio. */
+  it('pero una videollamada sigue siendo una consulta', () => {
+    const c = clienta({
+      citas: [{ ...cita({ fecha: '2026-09-21', modo: 'videollamada' }), id: 'ci_1' }],
+    });
+    const s = marcarRealizada(c, 'ci_1', HOY).sesiones![0];
+    expect(s.tipo).toBe('consulta');
+    expect(s.modalidad).toBe('online');
+  });
+
   it('marcarla dos veces no descuenta dos sesiones', () => {
     const uno = marcarRealizada(conUna, 'ci_1', HOY);
     const despues = { ...conUna, ...uno } as Client;

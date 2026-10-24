@@ -182,14 +182,32 @@ describe('La tarifa', () => {
 describe('El valor de una sesión', () => {
   it('se enseña en la tarjeta del bono', () => {
     render(<BonosPanel client={clienta({ bonos: [BONO] })} onChange={vi.fn()} />);
-    // 270 € entre 3 consultas = 90 € por sesión.
-    expect(document.body.textContent).toContain('90 € por sesión');
+    // 270 € entre 3 consultas = 90 € por consulta.
+    expect(document.body.textContent).toContain('90 € por consulta');
+  });
+
+  /*
+   * Una llamada de seguimiento no pasa de cinco minutos: cuenta media, así que
+   * el mismo bono con llamadas dentro tiene dos precios y se dicen los dos.
+   */
+  it('y con llamadas dentro, lo que vale cada cosa', () => {
+    const conLlamadas: Bono = {
+      ...BONO,
+      incluye: [
+        { id: 'l1', concepto: 'Consultas', cuantas: 3 },
+        { id: 'l2', concepto: 'Llamadas', cuantas: 3 },
+      ],
+    };
+    render(<BonosPanel client={clienta({ bonos: [conLlamadas] })} onChange={vi.fn()} />);
+    // 270 € entre 3 consultas y 3 medias llamadas = 4,5 → 60 y 30.
+    expect(document.body.textContent).toContain('60 € por consulta');
+    expect(document.body.textContent).toContain('30 € por llamada');
   });
 
   it('y no se enseña si el bono no incluye nada que repartir', () => {
     render(
       <BonosPanel client={clienta({ bonos: [{ ...BONO, incluye: [] }] })} onChange={vi.fn()} />,
     );
-    expect(document.body.textContent).not.toContain('por sesión');
+    expect(document.body.textContent).not.toContain('por consulta');
   });
 });

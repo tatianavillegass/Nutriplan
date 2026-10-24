@@ -374,10 +374,47 @@ export const LABEL_MODALIDAD: Record<Modalidad, string> = {
   presencial: 'Presencial',
 };
 
+/**
+ * UNA LLAMADA NO ES UNA CONSULTA
+ *
+ * Una llamada de seguimiento no pasa de cinco minutos y una consulta es una
+ * hora larga con antropometría, así que contarlas juntas estropea los dos
+ * números que ella mira: el mes parece tener el doble de trabajo del que tuvo,
+ * y el ticket medio sale a la mitad de lo que vale una consulta.
+ *
+ * Son dos cosas y se cuentan como dos.
+ */
+export type TipoSesion = 'consulta' | 'llamada';
+
+/**
+ * Lo que vale una llamada frente a una consulta al repartir el precio de un
+ * bono. No es un número redondo porque sí: una llamada de cinco minutos no
+ * vale lo mismo que una consulta de una hora, pero tampoco vale cero —forma
+ * parte de lo que vendió—, y la mitad es lo que ella dijo.
+ */
+export const PESO_LLAMADA = 0.5;
+
+/**
+ * Las líneas de bono que son llamadas. Se mira el nombre porque es lo único
+ * que hay en lo ya apuntado: los bonos viejos no llevan tipo, y repasarlos a
+ * mano uno a uno no es una solución. Donde la línea se llame de otra manera,
+ * la sesión se podrá marcar a mano.
+ */
+export function conceptoEsLlamada(concepto?: string): boolean {
+  return /llamad|telef|seguimiento/i.test(concepto ?? '');
+}
+
 export interface Sesion {
   id: string;
   /** YYYY-MM-DD */
   fecha: string;
+  /**
+   * Consulta o llamada. Sin escribir se deduce de la línea del bono que
+   * consumió (ver `conceptoEsLlamada`), que es lo que arregla el histórico sin
+   * tocarlo; y si de ahí tampoco se sabe, es una consulta, que es lo que era
+   * todo antes de esto.
+   */
+  tipo?: TipoSesion;
   /**
    * Sólo cuando esa consulta fue distinta de lo habitual de la clienta. Casi
    * nadie alterna, así que preguntarlo en cada sesión era un clic de más que

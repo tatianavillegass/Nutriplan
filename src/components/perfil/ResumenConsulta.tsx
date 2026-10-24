@@ -4,6 +4,7 @@ import type { Gasto } from "../../types/finanzas";
 import {
   añoDeConsulta,
   descuentos,
+  pesoDelBono,
   sesionesDelMes,
   sumarMeses,
   type MesDeConsulta,
@@ -89,7 +90,15 @@ export function ResumenConsulta({
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Cifra titulo="Consultas hechas" valor={String(total.consultas)} />
+              <Cifra
+                titulo="Consultas hechas"
+                valor={String(total.consultas)}
+                pie={
+                  total.llamadas
+                    ? `y ${total.llamadas} ${total.llamadas === 1 ? "llamada" : "llamadas"} de seguimiento`
+                    : undefined
+                }
+              />
               <Cifra titulo="Entró en caja" valor={dinero(total.cobrado, moneda)} />
               <Cifra titulo="Trabajo hecho" valor={dinero(total.devengado, moneda)} />
               <Cifra
@@ -105,6 +114,12 @@ export function ResumenConsulta({
                   <tr className="text-[10px] tracking-wide text-slate-400 uppercase">
                     <th className="py-2 pr-3 text-left font-medium">Mes</th>
                     <th className="px-2 py-2 text-right font-medium">Consultas</th>
+                    {/*
+                      Una llamada de seguimiento no pasa de cinco minutos: con
+                      las consultas, el mes parecía tener el doble de trabajo
+                      del que tuvo. Aparte, y se ven las dos.
+                    */}
+                    <th className="px-2 py-2 text-right font-medium">Llamadas</th>
                     <th className="px-2 py-2 text-right font-medium">Online</th>
                     <th className="px-2 py-2 text-right font-medium">Presencial</th>
                     <th className="px-2 py-2 text-right font-medium">Programa</th>
@@ -132,6 +147,7 @@ export function ResumenConsulta({
                   <tr className="border-t-2 border-slate-200 font-semibold">
                     <td className="py-2 pr-3 text-left">Total</td>
                     <td className="tnum px-2 py-2 text-right">{total.consultas}</td>
+                    <td className="tnum px-2 py-2 text-right">{total.llamadas}</td>
                     <td className="tnum px-2 py-2 text-right">{total.online}</td>
                     <td className="tnum px-2 py-2 text-right">{total.presencial}</td>
                     <td className="tnum px-2 py-2 text-right">{total.programa}</td>
@@ -218,22 +234,25 @@ function Fila({
   onAbrir: () => void;
   sesiones: ReturnType<typeof sesionesDelMes>;
 }) {
-  const vacio = !m.consultas && !m.cobrado && !m.gastos;
+  /* Un mes de sólo llamadas tiene trabajo que enseñar aunque no haya visitas. */
+  const hubo = m.consultas + m.llamadas;
+  const vacio = !hubo && !m.cobrado && !m.gastos;
   return (
     <>
     <tr
-      onClick={m.consultas ? onAbrir : undefined}
+      onClick={hubo ? onAbrir : undefined}
       className={`border-t border-slate-100 ${vacio ? "text-slate-300" : ""} ${
-        m.consultas ? "cursor-pointer hover:bg-brand-50/50" : ""
+        hubo ? "cursor-pointer hover:bg-brand-50/50" : ""
       }`}
     >
       <td className="py-1.5 pr-3 text-left capitalize">
-        {m.consultas > 0 && (
+        {hubo > 0 && (
           <span className="mr-1 text-slate-300">{abierta ? "▾" : "▸"}</span>
         )}
         {nombreDelMes(m.mes).replace(` de ${m.mes.slice(0, 4)}`, "")}
       </td>
       <td className="tnum px-2 py-1.5 text-right">{m.consultas || "—"}</td>
+      <td className="tnum px-2 py-1.5 text-right">{m.llamadas || "—"}</td>
       <td className="tnum px-2 py-1.5 text-right">{m.online || "—"}</td>
       <td className="tnum px-2 py-1.5 text-right">{m.presencial || "—"}</td>
       <td className="tnum px-2 py-1.5 text-right">{m.programa || "—"}</td>
@@ -253,7 +272,7 @@ function Fila({
           m.diferencia < 0 ? "text-rose-700" : "text-slate-700"
         }`}
       >
-        {m.consultas || m.cobrado ? dinero(m.diferencia, moneda) : "—"}
+        {hubo || m.cobrado ? dinero(m.diferencia, moneda) : "—"}
       </td>
       <td className="tnum px-2 py-1.5 text-right">
         {m.gastos ? dinero(m.gastos, moneda) : "—"}
@@ -272,9 +291,9 @@ function Fila({
 
     {abierta && (
       <tr className="bg-brand-50/30">
-        <td colSpan={11} className="px-3 py-2">
+        <td colSpan={12} className="px-3 py-2">
           <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
-            Las {sesiones.length} consultas de este mes
+            Lo que diste este mes
           </p>
           <ul className="space-y-0.5">
             {sesiones.map((s) => (
@@ -282,8 +301,8 @@ function Fila({
                 <span className="w-20 shrink-0 text-slate-400">{s.sesion.fecha}</span>
                 <span className="font-medium text-slate-800">{s.client.nombre}</span>
                 <span className="text-slate-500">
-                  {s.concepto ?? "Consulta"}
-                  {s.modalidad ? ` · ${s.modalidad}` : ""}
+                  {s.concepto ?? (s.tipo === "llamada" ? "Llamada" : "Consulta")}
+                  {s.tipo === "llamada" ? "" : s.modalidad ? ` · ${s.modalidad}` : ""}
                 </span>
                 <span className="flex-1" />
                 {s.valor > 0 ? (
@@ -292,7 +311,8 @@ function Fila({
                     <span className="text-slate-400">
                       {" "}
                       ({s.bono?.nombre}: {dinero(s.bono?.importe ?? 0, moneda)} ÷{" "}
-                      {s.bono?.incluye.reduce((a, l) => a + l.cuantas, 0)} sesiones)
+                      {fmt(pesoDelBono(s.bono!), 1)} consultas
+                      {s.tipo === "llamada" ? ", y una llamada cuenta media" : ""})
                     </span>
                   </span>
                 ) : (
@@ -312,10 +332,13 @@ function Cifra({
   titulo,
   valor,
   tono = "bien",
+  pie,
 }: {
   titulo: string;
   valor: string;
   tono?: "bien" | "mal" | "neutro";
+  /** La letra pequeña de debajo: lo que acompaña a la cifra sin ser la cifra. */
+  pie?: string;
 }) {
   const color = {
     bien: "text-brand-900",
@@ -328,6 +351,7 @@ function Cifra({
         {titulo}
       </p>
       <p className={`tnum mt-0.5 text-lg font-semibold ${color}`}>{valor}</p>
+      {pie && <p className="tnum text-[11px] text-slate-500">{pie}</p>}
     </div>
   );
 }

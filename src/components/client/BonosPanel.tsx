@@ -6,11 +6,12 @@ import type {
   Modalidad,
   Pago,
   Sesion,
+  TipoSesion,
 } from "../../types/client";
-import { LABEL_MODALIDAD } from "../../types/client";
+import { LABEL_MODALIDAD, conceptoEsLlamada } from "../../types/client";
 import { uid } from "../../utils/storage";
 import { comoVaElBono, type ComoVaElBono, type Estado } from "../../utils/bonos";
-import { descuentoDelBono, valorDeSesion } from "../../utils/consulta";
+import { descuentoDelBono, tipoDeSesion, valorDeSesion } from "../../utils/consulta";
 import { Badge, Button, Card, Field, Input, Select, fmt } from "../common/ui";
 
 /**
@@ -254,6 +255,7 @@ export function BonosPanel({ client, onChange }: Props) {
             <FilaDeSesion
               key={s.id}
               sesion={s}
+              tipo={tipoDeSesion(s)}
               moneda={moneda}
               modalidadHabitual={client.modalidad}
               conImporte
@@ -329,6 +331,7 @@ function Bloque({
  */
 function FilaDeSesion({
   sesion,
+  tipo,
   moneda,
   modalidadHabitual,
   conImporte,
@@ -336,6 +339,8 @@ function FilaDeSesion({
   onQuitar,
 }: {
   sesion: Sesion;
+  /** De qué fue, ya resuelto por quien la pinta (lo suyo o su línea). */
+  tipo: TipoSesion;
   moneda: string;
   modalidadHabitual?: Modalidad;
   conImporte?: boolean;
@@ -351,6 +356,26 @@ function FilaDeSesion({
         aria-label="Fecha de la consulta"
         className="w-36 shrink-0 py-1 text-xs"
       />
+      {/*
+        UNA LLAMADA NO ES UNA CONSULTA
+        Una de seguimiento no pasa de cinco minutos: contarlas juntas hacía
+        que el mes pareciera tener el doble de trabajo y partía el ticket
+        medio por la mitad. En el resumen van en columnas distintas.
+      */}
+      <Select
+        value={tipo}
+        onChange={(e) => onEditar({ tipo: e.target.value as TipoSesion })}
+        aria-label="De qué fue"
+        className="w-28 shrink-0 py-1 text-xs"
+      >
+        <option value="consulta">Consulta</option>
+        <option value="llamada">Llamada</option>
+      </Select>
+      {/*
+        De una llamada, «online» o «presencial» no informa de nada: siempre es
+        por teléfono.
+      */}
+      {tipo === "llamada" ? null : (
       <Select
         value={sesion.modalidad ?? ""}
         onChange={(e) =>
@@ -365,6 +390,7 @@ function FilaDeSesion({
         <option value="online">Online</option>
         <option value="presencial">Presencial</option>
       </Select>
+      )}
       {/*
         Lo que cobraste por ella. En un bono el precio se reparte solo; aquí hay
         que decirlo, o esta consulta valdría cero y el mes saldría como si no
@@ -493,7 +519,14 @@ function UnBono({
           bono repartido entre las sesiones que incluye.
         */}
         {valorDeSesion(bono) > 0 && (
-          <span className="text-slate-400"> · {dinero(valorDeSesion(bono))} por sesión</span>
+          <span className="text-slate-400">
+            {" · "}
+            {dinero(valorDeSesion(bono))} por consulta
+            {/* Y lo que vale una llamada, que es media. */}
+            {valorDeSesion(bono, "llamada") !== valorDeSesion(bono) &&
+              bono.incluye.some((l) => conceptoEsLlamada(l.concepto)) &&
+              ` · ${dinero(valorDeSesion(bono, "llamada"))} por llamada`}
+          </span>
         )}
         {pendiente > 0 ? (
           /*
@@ -566,6 +599,7 @@ function UnBono({
                   <FilaDeSesion
                     key={s.id}
                     sesion={s}
+                    tipo={tipoDeSesion(s, bono)}
                     moneda={moneda}
                     modalidadHabitual={modalidadHabitual}
                     onEditar={(patch) => onEditarSesion(s.id, patch)}

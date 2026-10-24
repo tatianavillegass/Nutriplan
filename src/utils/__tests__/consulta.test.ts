@@ -52,10 +52,31 @@ const gasto = (id: string, importe: number, extra: Partial<Gasto> = {}): Gasto =
   ...extra,
 });
 
+/**
+ * UNA LLAMADA NO ES UNA CONSULTA
+ *
+ * Una llamada de seguimiento no pasa de cinco minutos y una consulta es una
+ * hora larga. Antes se repartía a partes iguales —45 € a cada una— como si
+ * fueran lo mismo, y el mes parecía tener el doble de trabajo del que tuvo.
+ */
 describe('Lo que vale una sesión', () => {
-  it('es el precio del bono entre lo que incluye', () => {
-    // 270 € entre 3 consultas y 3 llamadas = 45 € cada una.
-    expect(valorDeSesion(BONO)).toBe(45);
+  it('la llamada cuenta media, así que la consulta vale más', () => {
+    // 270 € entre 3 consultas y 3 medias llamadas = 4,5 → 60 € la consulta.
+    expect(valorDeSesion(BONO)).toBe(60);
+    expect(valorDeSesion(BONO, 'llamada')).toBe(30);
+  });
+
+  /** Lo que no cambia: el bono entero sigue valiendo lo que vale. */
+  it('y el bono entero sigue sumando su precio', () => {
+    expect(valorDeSesion(BONO) * 3 + valorDeSesion(BONO, 'llamada') * 3).toBe(270);
+  });
+
+  it('un bono sin llamadas reparte a partes iguales, como siempre', () => {
+    const soloConsultas: Bono = {
+      ...BONO,
+      incluye: [{ id: 'l1', concepto: 'Consultas', cuantas: 3 }],
+    };
+    expect(valorDeSesion(soloConsultas)).toBe(90);
   });
 
   it('y sin nada incluido no vale nada, en vez de dividir entre cero', () => {
@@ -74,15 +95,15 @@ describe('Cobrado y devengado no son lo mismo', () => {
   it('en enero entra todo el dinero pero sólo se trabaja una sesión', () => {
     const enero = mesDeConsulta(clientes, [], '2026-01');
     expect(enero.cobrado).toBe(270);
-    expect(enero.devengado).toBe(45);
-    expect(enero.diferencia).toBe(225);
+    expect(enero.devengado).toBe(60);
+    expect(enero.diferencia).toBe(210);
   });
 
   it('y en marzo se trabaja sin que entre nada', () => {
     const marzo = mesDeConsulta(clientes, [], '2026-03');
     expect(marzo.cobrado).toBe(0);
-    expect(marzo.devengado).toBe(45);
-    expect(marzo.diferencia).toBe(-45);
+    expect(marzo.devengado).toBe(60);
+    expect(marzo.diferencia).toBe(-60);
   });
 });
 
@@ -151,6 +172,67 @@ describe('Las consultas del mes', () => {
   });
 });
 
+/**
+ * Lo que ella pidió: «las llamadas no me toman más de 5 min, entonces no es
+ * una consulta como tal».
+ */
+describe('Las llamadas se cuentan aparte', () => {
+  const clientes = [
+    clienta('ana', {
+      pagos: [{ id: 'p1', fecha: '2026-01-10', importe: 200 }],
+      sesiones: [
+        sesion('2026-01-05'),
+        sesion('2026-01-20'),
+        // Las dos llamadas: una por su línea del bono, otra marcada a mano.
+        sesion('2026-01-21', { lineaId: 'l2' }),
+        sesion('2026-01-22', { bonoId: undefined, tipo: 'llamada', importe: 20 }),
+      ],
+    }),
+  ];
+  const enero = mesDeConsulta(clientes, [], '2026-01');
+
+  it('las consultas son consultas y las llamadas, llamadas', () => {
+    expect(enero.consultas).toBe(2);
+    expect(enero.llamadas).toBe(2);
+  });
+
+  /*
+   * El histórico se arregla solo: la línea del bono que consumió ya decía
+   * «Llamadas», y repasar a mano los bonos viejos no era una solución.
+   */
+  it('una sesión vieja se reconoce por la línea del bono que gastó', () => {
+    const porLaLinea = sesionesDelMes(clientes, '2026-01').find(
+      (x) => x.sesion.fecha === '2026-01-21',
+    )!;
+    expect(porLaLinea.tipo).toBe('llamada');
+  });
+
+  it('y lo que diga la sesión manda sobre la línea', () => {
+    const aMano = sesionesDelMes(clientes, '2026-01').find(
+      (x) => x.sesion.fecha === '2026-01-22',
+    )!;
+    expect(aMano.tipo).toBe('llamada');
+  });
+
+  /** Si no cuenta como visita, tampoco puede bajar lo que deja una visita. */
+  it('el ticket se divide sólo entre las consultas', () => {
+    expect(enero.ticket).toBe(100);
+  });
+
+  /*
+   * «Online» o «presencial» de una llamada no informa de nada: el reparto es
+   * de las consultas.
+   */
+  it('la modalidad es cosa de las consultas', () => {
+    expect(enero.online + enero.presencial + enero.sinModalidad).toBe(2);
+  });
+
+  /** Lo que sí suman es trabajo hecho: media consulta cada una. */
+  it('pero devengan: 60 + 60 + 30 de la del bono, y 20 de la suelta', () => {
+    expect(enero.devengado).toBe(170);
+  });
+});
+
 describe('El ticket medio', () => {
   it('es lo cobrado entre las consultas', () => {
     const clientes = [
@@ -185,7 +267,7 @@ describe('El año', () => {
     const t = sumarMeses(añoDeConsulta(clientes, [], 2026, HOY));
     expect(t.consultas).toBe(2);
     expect(t.cobrado).toBe(270);
-    expect(t.devengado).toBe(90);
+    expect(t.devengado).toBe(120);
     expect(t.ticket).toBe(135);
   });
 });

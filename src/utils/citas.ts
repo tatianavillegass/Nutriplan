@@ -352,6 +352,14 @@ export function marcarRealizada(client: Client, citaId: string, hoy = new Date()
     importe:
       !bonoId && client.tarifa?.periodicidad === 'sesion' ? client.tarifa.importe : undefined,
     modalidad: cita.modo === 'consulta' ? undefined : 'online',
+    /*
+     * Una llamada de seguimiento no es una consulta: la cita ya lo sabía
+     * (`modo`) y hasta ahora se perdía al convertirse en sesión, así que el
+     * mes contaba las dos cosas juntas. Una videollamada SÍ es una consulta
+     * —es la misma hora de trabajo, con la pantalla de por medio—, así que
+     * sólo `llamada` cambia de tipo.
+     */
+    tipo: cita.modo === 'llamada' ? 'llamada' : 'consulta',
   };
 
   const puesta: Cita = { ...cita, estado: 'realizada', bonoId, lineaId, sesionId: sesion.id };

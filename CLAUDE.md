@@ -1163,6 +1163,25 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **Una llamada no es una consulta.** Una de seguimiento no pasa de cinco
+  minutos y una consulta es una hora larga con antropometría, así que contarlas
+  juntas estropeaba los dos números que ella mira: el mes parecía tener el
+  doble de trabajo del que tuvo y el ticket medio salía a la mitad de lo que
+  vale una consulta. `Sesion.tipo` las separa, el resumen del mes las pone en
+  **columnas distintas** y el **ticket se divide sólo entre consultas** — si
+  una llamada no sienta a nadie delante, tampoco puede bajar la media de lo que
+  deja una visita. El reparto online/presencial también es sólo de las
+  consultas: de una llamada, «fue online» no informa de nada.
+- **Y en el bono, una llamada cuenta media** (`PESO_LLAMADA`). Antes el precio
+  se repartía a partes iguales y un bono de 270 € con 3 consultas y 3 llamadas
+  daba 45 € a cada una; ahora da 60 € y 30 €. **El bono entero sigue valiendo
+  lo mismo**: lo que cambia es en qué mes cae cada trozo. El tipo se deduce de
+  **la línea del bono que consumió** (`conceptoEsLlamada`, por el nombre: es lo
+  único que hay en lo ya apuntado, y repasar los bonos viejos a mano no era una
+  solución), lo que diga la sesión manda sobre eso, y cada fila de sesión lleva
+  su selector para arreglarlo. Al marcar una cita como realizada el tipo sale
+  de su `modo`: **una videollamada sigue siendo una consulta** —es la misma
+  hora de trabajo con la pantalla de por medio— y sólo `llamada` cambia.
 - **Sus pliegues son suyos.** A las presenciales las mide ella con el
   plicómetro y esos números se quedaban en la consulta: en «Resumen» salía el
   % de grasa —que SALE de los pliegues— pero no los pliegues, así que cuando en
