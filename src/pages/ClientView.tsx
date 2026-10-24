@@ -21,6 +21,7 @@ import {
 } from "../utils/menuSemana";
 import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
 import { AccesoTerminado } from "../components/client/AccesoTerminado";
+import { PlanEnPreparacion } from "../components/client/PlanEnPreparacion";
 import { emailDeLaConsulta } from "../utils/supabase";
 import { columnasDeComida } from "../utils/combosGuardados";
 import { alimentosDeComida } from "../utils/pantry";
@@ -72,7 +73,7 @@ import {
   acompanamientosDeReceta,
   quitadosDeReceta,
   anadidosDeReceta,
-  planParaCliente,
+  planVisibleParaCliente,
   recetasDelPlan,
 } from "../types/plan";
 import { claveFecha, fechaLegible } from "../types/diary";
@@ -207,12 +208,15 @@ export function ClientView() {
    * ÚLTIMO ENVIADO: así no le cambia el plan mientras cena, ni llega a ver un
    * plan a medio montar.
    */
-  const borrador = useAppStore((s) =>
-    s.plans.find((p) => p.clientId === id && !p.archivado),
-  );
-  const plan = useMemo(
-    () => (borrador ? planParaCliente(borrador) : undefined),
-    [borrador],
+  const susPlanes = useAppStore((s) => s.plans);
+  /*
+   * Si la planificación en uso todavía no tiene nada que enseñar —se está
+   * montando— se cae al último plan que sí se le mandó, en vez de dejarla sin
+   * nada. Ver `planVisibleParaCliente`.
+   */
+  const { plan, preparando } = useMemo(
+    () => planVisibleParaCliente(susPlanes.filter((p) => p.clientId === id)),
+    [susPlanes, id],
   );
   const catalogo = useAppStore((s) => s.foods);
   const recipes = useAppStore((s) => s.recipes);
@@ -1218,6 +1222,13 @@ export function ClientView() {
    */
   const sinNumeros = !!client.sinNumeros && plan.fase !== 4;
 
+  /*
+   * Cerrado una vez, cerrado para siempre con ESA planificación: se busca en
+   * todos sus días, no sólo en el de hoy, o mañana volvería a salir.
+   */
+  const cerroElAviso =
+    !!preparando && mios.some((r) => r.avisoPlanNuevo === preparando.id);
+
   return (
     <>
       {/*
@@ -1260,6 +1271,19 @@ export function ClientView() {
             )}
           </div>
         </div>
+
+        {/*
+          «TU SIGUIENTE PLAN ESTÁ SIENDO ELABORADO»
+          ==========================================================
+          Mientras se le monta el siguiente sigue viendo éste, que es el último
+          que se le mandó, y esto le explica por qué le va a cambiar de un
+          momento a otro. Se cierra, y cerrado se queda: se guarda el id de la
+          planificación que se está montando, así que el aviso del plan que
+          venga después sí volverá a salir.
+        */}
+        {preparando && !cerroElAviso && (
+          <PlanEnPreparacion onCerrar={() => guardar({ avisoPlanNuevo: preparando.id })} />
+        )}
 
         {/*
           EL MENSAJE SE LEE Y SE CIERRA

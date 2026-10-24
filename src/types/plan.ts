@@ -619,6 +619,47 @@ export function planParaCliente(plan: Plan): Plan | undefined {
   return plan.envio ? plan : undefined;
 }
 
+/**
+ * MIENTRAS SE LE MONTA EL SIGUIENTE, SIGUE COMIENDO EL DE AHORA
+ * ============================================================
+ * Empezar una planificación nueva archivaba la de antes, y hasta que se
+ * enviara la nueva la clienta se quedaba **sin plan**: «tu plan todavía se
+ * está preparando» durante las horas —a veces el día entero— que ella tarda en
+ * montarlo. Justo el día en que más mira la app.
+ *
+ * Al clonar, la foto (`publicado`) se copia y eso ya lo tapaba. Pero una
+ * planificación hecha desde cero, desde una plantilla o basada en otra nace
+ * sin foto, y ahí el agujero seguía abierto.
+ *
+ * Así que si la planificación en uso todavía no tiene nada que enseñar, se
+ * busca hacia atrás: **la última que sí se le mandó**. No es un plan viejo que
+ * se cuela, es literalmente lo último que ella le dijo que comiera.
+ */
+export function planVisibleParaCliente(planes: Plan[]): {
+  /** Lo que se le enseña: el de ahora, o el último que se le mandó. */
+  plan?: Plan;
+  /** Si lo que ve es el anterior porque el nuevo está a medio montar. */
+  preparando?: Plan;
+} {
+  const suyos = [...planes].sort((a, b) =>
+    (b.fecha ?? b.createdAt).localeCompare(a.fecha ?? a.createdAt),
+  );
+  const enUso = suyos.find((p) => !p.archivado);
+  const deEnUso = enUso ? planParaCliente(enUso) : undefined;
+  if (deEnUso) return { plan: deEnUso };
+
+  /*
+   * El anterior: el más reciente de los archivados que llegó a enviarse. Los
+   * que nunca se mandaron no cuentan — nunca fueron su plan.
+   */
+  const anterior = suyos
+    .filter((p) => p.id !== enUso?.id)
+    .map((p) => planParaCliente(p))
+    .find(Boolean);
+
+  return anterior ? { plan: anterior, preparando: enUso } : {};
+}
+
 /** La foto que se guarda al enviar. */
 export function fotoDelPlan(plan: Plan): PlanPublicado {
   return {

@@ -1163,6 +1163,26 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **Montarle el plan nuevo no la deja sin plan.** Empezar una planificación
+  archivaba la de antes, y hasta que se enviara la nueva la clienta veía «tu
+  plan todavía se está preparando» durante las horas —a veces el día entero—
+  que se tarda en montarlo: justo el día en que más mira la app. Al **clonar**
+  la foto (`publicado`) se copiaba y eso ya lo tapaba, pero una planificación
+  **desde cero, desde plantilla o basada en otra** nace sin foto y ahí el
+  agujero seguía abierto. `planVisibleParaCliente` cae hacia atrás: si la que
+  está en uso no tiene nada que enseñar, se busca **la última que sí se le
+  mandó**. No es un plan viejo que se cuela — es literalmente lo último que
+  ella le dijo que comiera. Un borrador que nunca se envió no vale como
+  respaldo: nunca fue su plan.
+- **Y se le dice, con un aviso que se puede quitar.** «Tu siguiente plan está
+  siendo elaborado», y debajo lo que de verdad hace falta: **que mientras tanto
+  siga con éste**, porque sin esa línea el aviso sólo crea la duda de si lo que
+  tiene delante sigue valiendo. Se cierra —uno que no se cierra acaba siendo
+  decorado y estorba cada vez que se abre la app para mirar la cena— y se
+  guarda **por planificación** (`RegistroDia.avisoPlanNuevo`, buscado en todos
+  sus días y no sólo en el de hoy): cerrarlo vale para siempre con ésa, y el
+  aviso del plan siguiente vuelve a salir. **No dice cuándo estará**: una fecha
+  que se incumple hace más daño que la espera, y aquí no hay forma de saberla.
 - **Una llamada no es una consulta.** Una de seguimiento no pasa de cinco
   minutos y una consulta es una hora larga con antropometría, así que contarlas
   juntas estropeaba los dos números que ella mira: el mes parecía tener el

@@ -554,6 +554,12 @@ export interface RegistroDia {
    * puede cerrar deja de ser un aviso y pasa a ser un cartel.
    */
   avisoLeido?: string;
+  /**
+   * La planificación cuyo «se está elaborando» ya cerró. Se guarda el id y no
+   * un sí/no, para que el aviso del plan siguiente vuelva a salir: cerrarlo
+   * una vez no puede callar todos los que vengan.
+   */
+  avisoPlanNuevo?: string;
   /** Reto: entrenos que ha dado por hechos. */
   entrenos?: string[];
   /**
