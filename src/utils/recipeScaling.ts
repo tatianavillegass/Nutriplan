@@ -1,7 +1,7 @@
 import type { ExchangeGroupId, MacroBucket } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS, bucketsDeGrupo } from '../data/exchangeGroups';
 import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
-import { unidadDeIngrediente, type Alimento } from '../types/food';
+import { esUnidadMedible, unidadDeIngrediente, type Alimento } from '../types/food';
 import type { Acompanamiento, IngredienteAnadido } from '../types/plan';
 import { exchangesToMacros, aporteDeAlimento, type ExchangeCounts } from './exchanges';
 import { kcalFromMacros, roundPortion } from './macros';
@@ -383,12 +383,18 @@ export function scaleRecipe(
      */
     const aMano = ajustes[ing.id];
     if (aMano != null && aMano >= 0) {
+      /*
+       * La verdura lleva «al gusto» escrito en la unidad, que está bien
+       * mientras no haya cantidad: con una puesta, «150 al gusto» no se puede
+       * leer. Ahí la unidad sale del alimento, o son gramos.
+       */
+      const suUnidad = esUnidadMedible(unidad) ? unidad : (suyo?.unidad ?? 'g');
       return {
         ...ing,
         factor: ing.cantidad_base ? aMano / ing.cantidad_base : 1,
         cantidad_final: aMano,
-        unidad,
-        display: `${aMano} ${unidad}`,
+        unidad: suUnidad,
+        display: `${aMano} ${suUnidad}`,
         ajustado: true,
       };
     }

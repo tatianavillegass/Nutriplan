@@ -249,3 +249,93 @@ describe('Poner algo al lado de la receta', () => {
     expect(onGuardar).toHaveBeenCalledWith({}, [], [], []);
   });
 });
+
+/**
+ * LA VERDURA TAMBIÉN LLEVA CANTIDAD, SI SE LE QUIERE PONER
+ * ========================================================
+ * Iba como texto fijo —«al gusto»— y no había dónde escribir. Pero hay
+ * clientas que quieren saber exactamente cuánto brócoli echar, y «al gusto» a
+ * quien cocina por primera vez no le dice nada.
+ */
+describe('La verdura', () => {
+  const brocoli = FOOD_CATALOG.find((f) => f.nombre.toLowerCase().includes('brócoli'));
+
+  const CON_VERDURA: Receta = {
+    ...RECETA,
+    ingredientes: [
+      ...RECETA.ingredientes,
+      {
+        id: 'i-brocoli',
+        nombre: 'Brócoli',
+        foodId: brocoli?.id,
+        cantidad_base: null,
+        unidad: 'al gusto',
+        grupo: 'verduras',
+        escalable: false,
+        opcional: false,
+      },
+    ],
+  };
+
+  const conVerdura = (ajustes: Record<string, number> = {}) => {
+    const onGuardar = vi.fn();
+    render(
+      <AjustarCantidades
+        receta={CON_VERDURA}
+        requeridos={PAUTA}
+        foods={FOOD_CATALOG}
+        ajustes={ajustes}
+        onGuardar={onGuardar}
+        onCerrar={() => {}}
+      />,
+    );
+    return onGuardar;
+  };
+
+  it('tiene su campo, vacío y diciendo que va al gusto', () => {
+    conVerdura();
+    const campo = screen.getByLabelText('Cantidad de Brócoli') as HTMLInputElement;
+    expect(campo.value).toBe('');
+    expect(campo.placeholder).toBe('al gusto');
+  });
+
+  it('se le puede poner una cantidad', () => {
+    const onGuardar = conVerdura();
+    fireEvent.change(screen.getByLabelText('Cantidad de Brócoli'), {
+      target: { value: '150' },
+    });
+    fireEvent.click(screen.getByText('Guardar cantidades'));
+    expect(onGuardar.mock.calls[0][0]['i-brocoli']).toBe(150);
+  });
+
+  /* Lo que ella pidió: borrarlo lo devuelve a como está ahora. */
+  it('y borrarla la devuelve a «al gusto»', () => {
+    const onGuardar = conVerdura({ 'i-brocoli': 150 });
+    fireEvent.change(screen.getByLabelText('Cantidad de Brócoli'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByText('Guardar cantidades'));
+    expect(onGuardar.mock.calls[0][0]['i-brocoli']).toBeUndefined();
+  });
+
+  /*
+   * La sal no se pesa, y un hueco en blanco al lado invita a rellenarlo.
+   */
+  it('pero el condimento sigue sin campo: eso no se pesa', () => {
+    conVerdura();
+    expect(screen.queryByLabelText('Cantidad de Sal')).toBeNull();
+  });
+
+  /** «150 al gusto» no se puede leer: la unidad sale del alimento. */
+  it('con cantidad puesta, la receta la enseña en gramos', () => {
+    const escalada = scaleRecipe(CON_VERDURA, PAUTA, FOOD_CATALOG, { 'i-brocoli': 150 });
+    const linea = escalada.ingredientes.find((i) => i.id === 'i-brocoli')!;
+    expect(linea.display).toBe('150 g');
+  });
+
+  it('y sin cantidad sigue siendo «al gusto»', () => {
+    const escalada = scaleRecipe(CON_VERDURA, PAUTA, FOOD_CATALOG);
+    const linea = escalada.ingredientes.find((i) => i.id === 'i-brocoli')!;
+    expect(linea.display).toBe('al gusto');
+  });
+});

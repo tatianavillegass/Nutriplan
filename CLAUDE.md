@@ -1163,6 +1163,20 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **La verdura también lleva cantidad, si se le quiere poner.** En «Ajustar
+  cantidades» iba como texto fijo —«al gusto»— y no había dónde escribir,
+  porque la fila se pintaba sin campo cuando el ingrediente no era escalable.
+  Pero hay clientas que quieren saber exactamente cuánto brócoli echar, y «al
+  gusto» a quien cocina por primera vez no le dice nada. Ahora es un campo como
+  los demás, **vacío de entrada y con «al gusto» de marca de agua**: escribir
+  una cantidad la fija y **borrarla la devuelve a «al gusto»**, que sigue
+  siendo lo normal. El escalado ya lo soportaba —el gramaje a mano gana al
+  cálculo antes de mirar si es verdura—, así que lo que faltaba era el hueco
+  donde escribirlo. **El condimento sin gramaje sigue sin campo** (la sal, el
+  eneldo): eso no se pesa, y un hueco en blanco al lado invita a rellenarlo. Y
+  como la verdura lleva «al gusto» escrito en la unidad, con cantidad puesta la
+  unidad sale del alimento o son gramos (`esUnidadMedible`): «150 al gusto» no
+  se puede leer.
 - **Montarle el plan nuevo no la deja sin plan.** Empezar una planificación
   archivaba la de antes, y hasta que se enviara la nueva la clienta veía «tu
   plan todavía se está preparando» durante las horas —a veces el día entero—

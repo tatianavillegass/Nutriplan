@@ -18,6 +18,7 @@ import {
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 import { FoodPicker } from '../food/FoodPicker';
 import { uid } from '../../utils/storage';
+import { esUnidadMedible } from '../../types/food';
 import { Button, Input, fmt } from '../common/ui';
 
 interface Props {
@@ -281,7 +282,26 @@ export function AjustarCantidades({
           .filter((ing) => !ing.acompanamiento)
           .map((ing) => {
           const sugerido = propuesta.ingredientes.find((p) => p.id === ing.id);
-          const libre = ing.cantidad_base == null || !ing.escalable;
+          /*
+           * LA VERDURA TAMBIÉN LLEVA CANTIDAD, SI SE LE QUIERE PONER
+           * ========================================================
+           * Iba como texto fijo —«al gusto»— y no había dónde escribir. Pero
+           * hay clientas que quieren saber exactamente cuánto brócoli echar, y
+           * «al gusto» a quien cocina por primera vez no le dice nada.
+           *
+           * Ahora es un campo como los demás, vacío de entrada: **escribir una
+           * cantidad la fija y borrarla la devuelve a «al gusto»**, que sigue
+           * siendo lo normal y lo que se enseña si no se toca.
+           *
+           * El que NO lleva campo es el condimento sin gramaje —la sal, el
+           * eneldo—: eso no se pesa, y un hueco en blanco al lado invita a
+           * rellenarlo.
+           */
+          const aOjo = ing.cantidad_base == null || !ing.escalable;
+          const sePuedePesar = aOjo && ing.grupo !== 'condimento';
+          const libre = aOjo && !sePuedePesar;
+          /* «150 al gusto» no se puede leer: ahí son gramos. */
+          const unidadVisible = esUnidadMedible(ing.unidad) ? ing.unidad : 'g';
 
           return (
             <li key={ing.id} className="flex flex-wrap items-center gap-2">
@@ -308,6 +328,22 @@ export function AjustarCantidades({
                 </>
               ) : libre ? (
                 <span className="text-xs text-emerald-700">{ing.display}</span>
+              ) : sePuedePesar ? (
+                <>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={valores[ing.id] ?? ''}
+                    placeholder="al gusto"
+                    onChange={(e) => poner(ing.id, e.target.value)}
+                    className="w-20 text-sm"
+                    aria-label={`Cantidad de ${ing.nombre}`}
+                  />
+                  <span className="w-8 text-[11px] text-slate-400">
+                    {valores[ing.id] == null ? '' : unidadVisible}
+                  </span>
+                </>
               ) : (
                 <>
                   <Input

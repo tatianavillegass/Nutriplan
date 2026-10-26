@@ -230,6 +230,20 @@ export function losDosGramajes(a: Alimento | undefined, gramos: number): string 
  */
 const UNIDADES_DEL_CATALOGO = new Set(['g', 'gr', 'gramos', 'ml']);
 
+/**
+ * «AL GUSTO» NO ES UNA UNIDAD
+ *
+ * Es lo que lleva escrito la verdura en las recetas, y está bien mientras no
+ * haya cantidad. En cuanto se le pone una —hay clientas que quieren saber
+ * exactamente cuánto brócoli— «150 al gusto» no se puede leer: ahí la unidad
+ * tiene que salir del alimento, o ser gramos.
+ */
+export function esUnidadMedible(u?: string): boolean {
+  const x = (u ?? '').trim();
+  if (!x) return false;
+  return !/^(al gusto|a ojo|c\/n|libre|opcional)$/i.test(x);
+}
+
 export function unidadDeIngrediente(
   escrita: string | undefined,
   alimento: Alimento | undefined,
