@@ -3,6 +3,7 @@ import type { Meal, MenuPropuesto, Plan, SemanaPropuesta } from '../../types/pla
 import { comidasDeLaSemana, recetasDelPlan } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import { lunesDe } from '../../utils/menuSemana';
+import { fuentesDeLaReceta } from '../../utils/fuentesDeLaReceta';
 import { Button, Card } from '../common/ui';
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -54,6 +55,11 @@ const VACIA: SemanaPropuesta = { dias: {} };
  */
 export function RepartirLaSemana({ plan, recetas, onChange }: Props) {
   const [semana, setSemana] = useState(0);
+  /*
+   * Las fuentes se ven de entrada: es para lo que se mira esta tabla. Se
+   * apagan cuando lo que se quiere es el golpe de vista de los huecos.
+   */
+  const [fuentes, setFuentes] = useState(true);
 
   const menu = plan.menuPropuesto;
   const semanas = menu?.semanas ?? [];
@@ -258,9 +264,34 @@ export function RepartirLaSemana({ plan, recetas, onChange }: Props) {
       {/* Cómo va quedando: es lo que hace que se vea si la semana repite mucho. */}
       {comidas.length > 0 && (
         <div className="mt-4 border-t border-slate-200 pt-3">
-          <p className="mb-1.5 text-[10px] font-medium tracking-wide text-slate-500 uppercase">
-            Cómo va quedando
-          </p>
+          <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+              Cómo va quedando
+            </p>
+            {/*
+              DE DÓNDE SALE LA PROTEÍNA Y DE DÓNDE EL HIDRATO
+              ===============================================
+              Lo que se decide aquí no es qué plato toca el martes: es no
+              ponerle pollo cuatro días seguidos y que el hidrato no sea
+              siempre arroz. Para eso hay que ver la fuente, no el título —
+              «Bowl mediterráneo» no dice si lleva pollo o atún.
+
+              Se puede apagar: con las fuentes la tabla crece al triple de
+              alto, y para mirar de un vistazo si la semana está completa
+              estorban. Ver `fuentesDeLaReceta`.
+            */}
+            <button
+              onClick={() => setFuentes((v) => !v)}
+              aria-pressed={fuentes}
+              className={`rounded-lg border px-2 py-0.5 text-[10px] transition ${
+                fuentes
+                  ? 'border-brand-400 bg-brand-50 text-brand-800'
+                  : 'border-slate-200 text-slate-500 hover:border-brand-300'
+              }`}
+            >
+              Ver proteína e hidrato
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[11px] whitespace-nowrap">
               <thead>
@@ -280,8 +311,9 @@ export function RepartirLaSemana({ plan, recetas, onChange }: Props) {
                     {DIAS.map((_, i) => {
                       const id = actual.dias[i]?.comidas?.[m.id];
                       const r = id ? porId.get(id) : undefined;
+                      const f = r && fuentes ? fuentesDeLaReceta(r) : undefined;
                       return (
-                        <td key={i} className="px-0.5 py-0.5">
+                        <td key={i} className="px-0.5 py-0.5 align-top">
                           <span
                             title={r?.nombre}
                             className={`block truncate rounded px-1 py-1 text-center ${
@@ -291,6 +323,28 @@ export function RepartirLaSemana({ plan, recetas, onChange }: Props) {
                             }`}
                           >
                             {r ? r.nombre.split(' ')[0] : '·'}
+                            {/*
+                              Con letra de etiqueta y no con iconos: «P» y «C»
+                              se aprenden en una fila y no hay que volver a la
+                              leyenda. Si una receta no trae una de las dos, se
+                              deja el hueco en vez de inventar.
+                            */}
+                            {f && (f.proteina.length > 0 || f.carbohidrato.length > 0) && (
+                              <span className="mt-0.5 block space-y-px text-[9px] leading-tight font-normal">
+                                {f.proteina.length > 0 && (
+                                  <span className="block truncate text-slate-600">
+                                    <span className="text-slate-400">P </span>
+                                    {f.proteina.join(', ')}
+                                  </span>
+                                )}
+                                {f.carbohidrato.length > 0 && (
+                                  <span className="block truncate text-slate-600">
+                                    <span className="text-slate-400">C </span>
+                                    {f.carbohidrato.join(', ')}
+                                  </span>
+                                )}
+                              </span>
+                            )}
                           </span>
                         </td>
                       );

@@ -1163,6 +1163,20 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **Al repartir la semana se ve de dónde sale la proteína y de dónde el
+  hidrato.** La tabla de «cómo va quedando» decía el nombre del plato y poco
+  más, pero lo que se decide ahí no es qué plato toca el martes: es **no
+  ponerle pollo cuatro días seguidos** y que el hidrato no sea siempre arroz.
+  Con el título no se ve — «Bowl mediterráneo» no dice si lleva pollo o atún.
+  Ahora cada celda lleva debajo su `P` y su `C` (`fuentesDeLaReceta`). **Manda
+  el ingrediente que más pesa** de su familia, que es el que define el plato:
+  el huevo de un salteado de arroz con huevo no hace «el plato de huevo». **La
+  verdura no es una fuente** —es ilimitada y está en todos los platos, así que
+  escribirla siete veces taparía lo que sí cambia— y el condimento tampoco.
+  **Las legumbres salen en las dos columnas** (`bucketExtra`): el día de
+  lentejas no hace falta otra proteína, y decir sólo una de las dos cosas
+  escondería media verdad. Se puede apagar: con las fuentes la tabla crece al
+  triple de alto y para el golpe de vista de los huecos estorban.
 - **La verdura también lleva cantidad, si se le quiere poner.** En «Ajustar
   cantidades» iba como texto fijo —«al gusto»— y no había dónde escribir,
   porque la fila se pintaba sin campo cuando el ingrediente no era escalable.
