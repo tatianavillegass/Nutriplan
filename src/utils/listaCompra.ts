@@ -11,6 +11,7 @@ import {
 import type { Receta } from '../types/recipe';
 import { scaleRecipe } from './recipeScaling';
 import { diasDeLaSemana } from './menuSemana';
+import { fijosDeComida } from './fijos';
 import { gramosPorPieza } from './measures';
 import type { OpcionEscalada } from './mealOptions';
 import type { ExchangeGroupId } from '../data/exchangeGroups';
@@ -169,7 +170,7 @@ export function listaDeLaCompra(
   >();
   let comidas = 0;
 
-  for (const fecha of diasDeLaSemana(menu.inicio)) {
+  for (const [indiceDelDia, fecha] of diasDeLaSemana(menu.inicio).entries()) {
     const dia = menu.dias?.[fecha];
     if (!dia) continue;
 
@@ -180,6 +181,34 @@ export function listaDeLaCompra(
     const dayType: DayType | undefined =
       plan.dayTypes.find((d) => d.id === dia.dayTypeId) ?? plan.dayTypes[0];
     if (!dayType) continue;
+
+    /**
+     * LO QUE VA SIEMPRE TAMBIÉN SE COMPRA
+     *
+     * Un café con leche todos los días es un litro y medio de leche a la
+     * semana. No sale en ninguna receta —va en la comida, no en el plato— así
+     * que sin esto la lista se quedaría corta justo en lo que se toma a
+     * diario. El postre igual, pero sólo los días que toca.
+     */
+    /* Un tipo de día sin comidas no debería existir, pero la lista no es
+       sitio para descubrirlo: se salta y sigue. */
+    for (const meal of dayType.meals ?? []) {
+      for (const f of fijosDeComida(dayType, meal.id, indiceDelDia)) {
+        const food = f.foodId ? porId.get(f.foodId) : undefined;
+        if (!(f.gramos > 0)) continue;
+        const clave = food ? `f:${food.id}` : `n:${f.nombre.trim().toLowerCase()}`;
+        const ya = acumulado.get(clave);
+        acumulado.set(clave, {
+          nombre: food?.nombre ?? f.nombre,
+          foodId: food?.id,
+          grupo: food?.grupo,
+          gramos: (ya?.gramos ?? 0) + gramosEnCrudo(f.gramos, food),
+          veces: (ya?.veces ?? 0) + 1,
+          unidad: f.unidad || food?.unidad || 'g',
+          sinEnlazar: !food,
+        });
+      }
+    }
 
     /**
      * EL AVITUALLAMIENTO TAMBIÉN SE COMPRA

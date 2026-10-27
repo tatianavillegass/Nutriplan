@@ -246,6 +246,42 @@ export interface DayType {
    * mealId → recetaId → lista.
    */
   ingredientesAnadidos?: Record<string, Record<string, IngredienteAnadido[]>>;
+  /**
+   * LO QUE VA SIEMPRE CON ESA COMIDA
+   *
+   * El café con leche del desayuno, el cuadrito de chocolate de después de
+   * cenar. Antes había que meterlo **opción por opción** —cinco desayunos,
+   * cinco cafés— y cambiar la leche era volver a entrar cinco veces.
+   *
+   * Va en la comida, no en la receta: con todas sus opciones, elija la que
+   * elija. Y **gasta de lo pautado de esa comida**, como el aceite de cocción:
+   * si el desayuno lleva 1 lácteo y el café se lleva medio, a las opciones les
+   * queda medio y se escalan con eso. Ver `utils/fijos.ts`.
+   *
+   * mealId → lista.
+   */
+  fijos?: Record<string, Fijo[]>;
+}
+
+/**
+ * ALGO QUE ACOMPAÑA SIEMPRE A UNA COMIDA
+ *
+ * Sin `dias` va todos los días, que es el caso del café. Con días es el
+ * postre: «chocolate los martes y los viernes». Es el mismo concepto y la
+ * misma cuenta, y por eso no son dos cosas distintas.
+ */
+export interface Fijo {
+  id: string;
+  /** Sin alimento del catálogo no gasta intercambios: es una nota. */
+  foodId?: string;
+  nombre: string;
+  gramos: number;
+  unidad?: string;
+  /** 0 = lunes … 6 = domingo. Vacío o sin poner: todos los días. */
+  dias?: number[];
+  /** Cómo se lee: con la comida, o después de ella. */
+  tipo?: 'con' | 'postre';
+  nota?: string;
 }
 
 /**

@@ -21,6 +21,8 @@ import {
 } from "../utils/menuSemana";
 import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
 import { AccesoTerminado } from "../components/client/AccesoTerminado";
+import { fijosDeComida, pautaDeComida } from "../utils/fijos";
+import { LoFijoDeLaComida } from "../components/client/LoFijoDeLaComida";
 import { PlanEnPreparacion } from "../components/client/PlanEnPreparacion";
 import { emailDeLaConsulta } from "../utils/supabase";
 import { columnasDeComida } from "../utils/combosGuardados";
@@ -384,6 +386,12 @@ export function ClientView() {
     return out;
   }, [donde, mios, tipoDelDia]);
 
+  /** 0 = lunes … 6 = domingo, que es como se marcan los días de un fijo. */
+  const diaDeLaSemana = useMemo(() => {
+    const d = new Date(`${fecha}T12:00:00`);
+    return Number.isNaN(d.getTime()) ? undefined : (d.getDay() + 6) % 7;
+  }, [fecha]);
+
   const dayType = useMemo(() => {
     if (!plan) return undefined;
     /*
@@ -394,12 +402,32 @@ export function ClientView() {
      * Y si hoy lo cambia, sólo cambian las cantidades: la receta que tenía
      * puesta ese día se queda, escalada a lo que toque.
      */
-    return (
+    const suyo =
       plan.dayTypes.find((d) => d.id === registro?.dayTypeId) ??
       plan.dayTypes.find((d) => d.id === tipoDeDiaPlaneado(menu, fecha)) ??
-      plan.dayTypes[0]
-    );
-  }, [plan, registro?.dayTypeId, menu, fecha]);
+      plan.dayTypes[0];
+
+    /*
+     * LO QUE VA SIEMPRE YA ESTÁ DESCONTADO
+     * ====================================
+     * El café con leche del desayuno se lleva su medio lácteo antes de que
+     * nadie reparta nada, así que a las opciones les queda el otro medio y se
+     * escalan con eso. Se descuenta **aquí y una sola vez**, en el tipo de día
+     * que ve la clienta: de ahí para abajo —recetas, combinaciones, porciones,
+     * presupuesto del día, barra de progreso— todos leen la misma pauta y
+     * ninguno tiene que acordarse de restar. Ver `utils/fijos.ts`.
+     *
+     * Los fijos siguen colgando del tipo de día para poder enseñarlos; lo que
+     * cambia es la casilla, no la lista.
+     */
+    if (!suyo?.fijos || !Object.keys(suyo.fijos).length) return suyo;
+
+    const grid = { ...suyo.grid };
+    for (const m of suyo.meals) {
+      grid[m.id] = pautaDeComida(suyo, m.id, catalogo, diaDeLaSemana).pauta;
+    }
+    return { ...suyo, grid };
+  }, [plan, registro?.dayTypeId, menu, fecha, catalogo, diaDeLaSemana]);
 
   const balance = useMemo(
     () =>
@@ -1091,6 +1119,18 @@ export function ClientView() {
 
   const quitarBocado = (id: string) =>
     guardar({ bocados: (registro?.bocados ?? []).filter((b) => b.id !== id) });
+
+  /**
+   * Lo que su nutricionista le puso fijo en esa comida: va con cualquiera de
+   * las opciones y sus intercambios ya están descontados de la pauta (ver el
+   * `dayType` de arriba), así que aquí sólo se enseña.
+   */
+  const fijosDe = (mealId: string, nombre: string) => (
+    <LoFijoDeLaComida
+      fijos={fijosDeComida(dayType, mealId, diaDeLaSemana)}
+      mealNombre={nombre}
+    />
+  );
 
   const otraCosaDe = (mealId: string, nombre: string) => (
     <ComiOtraCosa
@@ -2026,6 +2066,7 @@ export function ClientView() {
                           }
                           acciones={accionesDe(m.id, m.nombre)}
                         />
+                        {fijosDe(m.id, m.nombre)}
                         {libreDe(m.id, m.nombre)}
                         {otraCosaDe(m.id, m.nombre)}
                       </div>
@@ -2125,6 +2166,7 @@ export function ClientView() {
                           }}
                         />
                       </MealCard>
+                      {fijosDe(m.id, m.nombre)}
                       {extrasDe(m.id, m.nombre)}
                       {libreDe(m.id, m.nombre)}
                       {otraCosaDe(m.id, m.nombre)}
@@ -2173,6 +2215,7 @@ export function ClientView() {
                       porciones={porciones}
                       onUsar={usarReceta}
                     />
+                    {fijosDe(m.id, m.nombre)}
                     {extrasDe(m.id, m.nombre)}
                     {libreDe(m.id, m.nombre)}
                     {otraCosaDe(m.id, m.nombre)}
@@ -2211,6 +2254,7 @@ export function ClientView() {
                         porciones={porciones}
                         onUsar={usarReceta}
                       />
+                      {fijosDe(m.id, m.nombre)}
                       {extrasDe(m.id, m.nombre)}
                       {libreDe(m.id, m.nombre)}
                       {otraCosaDe(m.id, m.nombre)}

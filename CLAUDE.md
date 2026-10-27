@@ -1163,6 +1163,29 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **Lo que va siempre con una comida se pone una vez, no opción por opción.**
+  El café con leche del desayuno, el matcha con bebida de coco, el cuadrito de
+  chocolate de después de cenar. Antes había que meterlo en **cada** opción:
+  cinco desayunos, cinco cafés — y cambiar la leche era volver a entrar cinco
+  veces. `DayType.fijos` (mealId → lista) lo pone en la comida, y va con
+  cualquiera de sus opciones. **Gasta de lo pautado de esa comida**, no se suma
+  encima: el café se lleva su medio lácteo y a las opciones les queda el otro
+  medio, que es la misma regla del aceite de cocción. Si se sumara, el día
+  acabaría teniendo más de lo pautado y las kcal del plan dejarían de ser las
+  del plan. **El postre es el mismo fijo con días marcados** («chocolate los
+  martes y los viernes»): un concepto y una cuenta, y sin días va siempre.
+  **Lo que no estaba pautado se avisa, no se arregla solo**: un café con leche
+  en un desayuno sin lácteo sale en ámbar en la ficha —«aquí no tienes pautado
+  ½ lácteo»— y ella decide si sube la pauta o se lo quita a otra comida;
+  descontarlo de otro sitio sería mover su pauta sin que lo vea.
+- **El descuento se hace una sola vez, en el tipo de día que ve la clienta.**
+  `ClientView` reduce la casilla de cada comida con `pautaDeComida` al elegir
+  el `dayType`, así que de ahí para abajo —recetas, combinaciones, porciones,
+  presupuesto del día, barra de progreso— todos leen la misma pauta y ninguno
+  tiene que acordarse de restar. Los fijos siguen colgando del tipo de día para
+  poder enseñarlos: lo que cambia es la casilla, no la lista. **Y entran en la
+  lista de la compra**, porque un café con leche diario es litro y medio de
+  leche a la semana que no sale en ninguna receta.
 - **Al repartir la semana se ve de dónde sale la proteína y de dónde el
   hidrato.** La tabla de «cómo va quedando» decía el nombre del plato y poco
   más, pero lo que se decide ahí no es qué plato toca el martes: es **no

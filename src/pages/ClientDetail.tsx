@@ -42,6 +42,7 @@ import { SinNumerosDeCliente } from "../components/planning/SinNumerosDeCliente"
 import { SusEntrenos } from "../components/client/SusEntrenos";
 import { RepartirLaSemana } from "../components/planning/RepartirLaSemana";
 import { AvituallamientoDeComida } from "../components/planning/AvituallamientoDeComida";
+import { LoQueVaSiempre } from "../components/planning/LoQueVaSiempre";
 import { DiaEnVivo } from "../components/client/DiaEnVivo";
 import {
   NewPlanWizard,
@@ -673,6 +674,19 @@ export function ClientDetail() {
               onRemoveMeal={(mealId) => removeMeal(plan.id, dayType.id, mealId)}
             />
           </Card>
+
+          {/*
+            LO QUE VA SIEMPRE, PEGADO AL REPARTO
+            Gasta de lo que se acaba de repartir arriba —el café se lleva su
+            medio lácteo— así que es donde se entiende lo que hace. Y el aviso
+            de «aquí no tienes pautado lácteo» cae al lado de la casilla que
+            hay que subir.
+          */}
+          <LoQueVaSiempre
+            dayType={dayType}
+            foods={foods}
+            onChange={(fijos) => updateDayType(plan.id, dayType.id, { fijos })}
+          />
 
           {/*
             EL AVITUALLAMIENTO NO ES UNA COMIDA
