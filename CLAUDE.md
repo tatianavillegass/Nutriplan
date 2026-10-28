@@ -1199,6 +1199,20 @@ si es una de estas decisiones:
   estaba puesto. Las dos pantallas tienen que pedir la misma pauta
   (`pautaDeComida`) o una de las dos miente; también la biblioteca de la
   clienta y la hoja de recetas del PDF.
+- **En un día base no hay pre-entreno: la semana se reparte por tipo de día.**
+  `comidasDeLaSemana` devuelve la **unión** de las comidas de todos los tipos
+  de día —si hay un día de tirada larga, en la semana hay pre-entreno e
+  intra-entreno— y eso está bien para saber qué filas pintar. Lo que estaba mal
+  es que cada fila se ofrecía **los siete días**: el pre-entreno se podía poner
+  en un día base, donde esa comida no existe. De ahí salían los cruces que
+  parecían de recetas —poner la tostada en el pre-entreno de un día base y
+  verla luego donde no tocaba— y por eso arreglar sólo las ids no bastó.
+  `comidaEsDeEseDia` mira el tipo de día que ella marcó arriba y los días que
+  no tienen esa comida salen apagados, no cuentan como hueco y no se pueden
+  pulsar. Lo mismo en la pantalla de la clienta, que reparte igual. **Y el
+  botón dice en qué comida va**: la misma receta puede estar en el pre-entreno
+  y en el desayuno, y dos botones con el mismo nombre no se distinguen ni a
+  mano ni con un lector de pantalla.
 - **Una comida renombrada en un tipo de día es otra comida.** Todos los tipos
   de día nacen con **las mismas ids de comida** (`DEFAULT_MEALS`: `desayuno`,
   `comida`, `merienda`…) y eso es a propósito: así los platos del desayuno son

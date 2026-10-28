@@ -599,6 +599,30 @@ export function comidasConPauta(dayType: DayType): Meal[] {
  * existe los días de entreno y hoy es domingo, sin esto no había forma de
  * dejar puesta la merienda del martes.
  */
+/**
+ * QUÉ COMIDAS TIENE ESE DÍA DE VERDAD
+ * ===================================
+ * La semana se reparte con la unión de las comidas de todos los tipos de día
+ * —si hay un día de tirada larga, en la semana hay pre-entreno— pero **no
+ * todas valen todos los días**: en un día base no hay pre-entreno ni
+ * intra-entreno, y ofrecérselos ahí es invitar a poner la tostada en una
+ * comida que ese día no existe. De ahí salían los cruces: una receta puesta
+ * en el pre-entreno de un día base acababa apareciendo donde no tocaba.
+ *
+ * El tipo de día de cada día lo decide ella misma arriba, así que basta con
+ * mirarlo.
+ */
+export function comidaEsDeEseDia(
+  plan: { dayTypes: DayType[] },
+  dayTypeId: string | undefined,
+  mealId: string,
+): boolean {
+  const suyo =
+    plan.dayTypes.find((d) => d.id === dayTypeId) ?? plan.dayTypes[0];
+  if (!suyo) return true;
+  return suyo.meals.some((m) => m.id === mealId);
+}
+
 export function comidasDeLaSemana(plan: {
   dayTypes: DayType[];
 }): Meal[] {

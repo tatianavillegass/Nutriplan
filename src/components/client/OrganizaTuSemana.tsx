@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { MenuSemana } from '../../types/diary';
 import type { Alimento } from '../../types/food';
 import type { DayType, Plan } from '../../types/plan';
+import { comidaEsDeEseDia } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import {
   comidasPuestas,
@@ -333,10 +334,22 @@ export function OrganizaTuSemana({
                           const puesto = puestos.includes(fecha);
                           const ocupada = menu.dias?.[fecha]?.comidas?.[meal.id];
                           const porOtra = !!ocupada && ocupada !== receta.id;
+                          /*
+                           * EN UN DÍA DE DESCANSO NO HAY PRE-ENTRENO
+                           * Las comidas de la semana son la unión de todos sus
+                           * tipos de día, pero no todas valen todos los días.
+                           */
+                          const suyo = comidaEsDeEseDia(
+                            plan,
+                            menu.dias?.[fecha]?.dayTypeId ?? tipos[0]?.id,
+                            meal.id,
+                          );
                           return (
                             <button
                               key={fecha}
+                              disabled={!suyo}
                               onClick={() =>
+                                suyo &&
                                 onCambiar(
                                   ponerEnDias(
                                     mio,
@@ -351,16 +364,20 @@ export function OrganizaTuSemana({
                               }
                               aria-label={`${receta.nombre} el ${nombreDelDia(fecha).toLowerCase()}`}
                               title={
-                                porOtra
-                                  ? 'Ese día ya tienes otra: al marcarlo, la cambias'
-                                  : nombreDelDia(fecha)
+                                !suyo
+                                  ? `Ese día no tienes ${meal.nombre.toLowerCase()}`
+                                  : porOtra
+                                    ? 'Ese día ya tienes otra: al marcarlo, la cambias'
+                                    : nombreDelDia(fecha)
                               }
                               className={`h-7 w-7 rounded-lg border text-[11px] transition ${
-                                puesto
-                                  ? 'border-brand-500 bg-brand-600 text-white'
-                                  : porOtra
-                                    ? 'border-slate-200 bg-white text-slate-300'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-brand-400'
+                                !suyo
+                                  ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-300'
+                                  : puesto
+                                    ? 'border-brand-500 bg-brand-600 text-white'
+                                    : porOtra
+                                      ? 'border-slate-200 bg-white text-slate-300'
+                                      : 'border-slate-200 bg-white text-slate-600 hover:border-brand-400'
                               }`}
                             >
                               {INICIALES[i]}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Meal, MenuPropuesto, Plan, SemanaPropuesta } from '../../types/plan';
-import { comidasDeLaSemana, recetasDelPlan } from '../../types/plan';
+import { comidaEsDeEseDia, comidasDeLaSemana, recetasDelPlan } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import { lunesDe } from '../../utils/menuSemana';
 import { fuentesDeLaReceta } from '../../utils/fuentesDeLaReceta';
@@ -117,8 +117,19 @@ export function RepartirLaSemana({ plan, recetas, onChange }: Props) {
     });
   };
 
+  /**
+   * EL TIPO DE DÍA DE CADA DÍA
+   * Lo decide ella arriba; sin decir nada manda el primero, que es el día
+   * normal. De aquí sale qué comidas tiene cada día de verdad.
+   */
+  const tipoDe = (dia: number) =>
+    actual.dias[dia]?.dayTypeId ?? plan.dayTypes[0]?.id;
+  const toca = (dia: number, mealId: string) =>
+    comidaEsDeEseDia(plan, tipoDe(dia), mealId);
+
   const huecos = comidas.reduce(
-    (s, m) => s + DIAS.filter((_, i) => !actual.dias[i]?.comidas?.[m.id]).length,
+    (s, m) =>
+      s + DIAS.filter((_, i) => toca(i, m.id) && !actual.dias[i]?.comidas?.[m.id]).length,
     0,
   );
 
@@ -235,16 +246,36 @@ export function RepartirLaSemana({ plan, recetas, onChange }: Props) {
                       <span className="flex gap-1">
                         {DIAS.map((d, i) => {
                           const on = dias.includes(i);
+                          /*
+                           * EN UN DÍA BASE NO HAY PRE-ENTRENO
+                           * Ofrecerlo ahí es invitar a poner la tostada en
+                           * una comida que ese día no existe, y de ahí salían
+                           * los cruces entre comidas.
+                           */
+                          const suyo = toca(i, m.id);
                           return (
                             <button
                               key={i}
-                              onClick={() => poner(i, m.id, r.id)}
+                              onClick={() => suyo && poner(i, m.id, r.id)}
+                              disabled={!suyo}
                               aria-pressed={on}
-                              aria-label={`${r.nombre} el ${DIAS_LARGO[i]}`}
+              /*
+                Con el nombre de la comida: la misma receta puede estar en el
+                pre-entreno y en el desayuno, y dos botones que se llaman
+                igual no se distinguen ni a mano ni con un lector de pantalla.
+              */
+                              aria-label={`${r.nombre} en ${m.nombre.toLowerCase()} el ${DIAS_LARGO[i]}`}
+                              title={
+                                suyo
+                                  ? DIAS_LARGO[i]
+                                  : `El ${DIAS_LARGO[i]} no tiene ${m.nombre.toLowerCase()}`
+                              }
                               className={`h-7 w-7 rounded-md border text-[11px] transition ${
-                                on
-                                  ? 'border-brand-500 bg-brand-600 text-white'
-                                  : 'border-slate-200 bg-white text-slate-400 hover:border-brand-400'
+                                !suyo
+                                  ? 'cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-300'
+                                  : on
+                                    ? 'border-brand-500 bg-brand-600 text-white'
+                                    : 'border-slate-200 bg-white text-slate-400 hover:border-brand-400'
                               }`}
                             >
                               {d}
@@ -309,20 +340,27 @@ export function RepartirLaSemana({ plan, recetas, onChange }: Props) {
                   <tr key={m.id}>
                     <td className="py-0.5 pr-2 text-slate-500">{m.nombre}</td>
                     {DIAS.map((_, i) => {
-                      const id = actual.dias[i]?.comidas?.[m.id];
+                      const suyo = toca(i, m.id);
+                      const id = suyo ? actual.dias[i]?.comidas?.[m.id] : undefined;
                       const r = id ? porId.get(id) : undefined;
                       const f = r && fuentes ? fuentesDeLaReceta(r) : undefined;
                       return (
                         <td key={i} className="px-0.5 py-0.5 align-top">
                           <span
-                            title={r?.nombre}
+                            title={
+                              suyo
+                                ? r?.nombre
+                                : `Ese día no tiene ${m.nombre.toLowerCase()}`
+                            }
                             className={`block truncate rounded px-1 py-1 text-center ${
-                              r
-                                ? 'bg-brand-50 text-brand-800'
-                                : 'bg-slate-50 text-slate-300'
+                              !suyo
+                                ? 'bg-transparent text-slate-200'
+                                : r
+                                  ? 'bg-brand-50 text-brand-800'
+                                  : 'bg-slate-50 text-slate-300'
                             }`}
                           >
-                            {r ? r.nombre.split(' ')[0] : '·'}
+                            {!suyo ? '' : r ? r.nombre.split(' ')[0] : '·'}
                             {/*
                               Con letra de etiqueta y no con iconos: «P» y «C»
                               se aprenden en una fila y no hay que volver a la
