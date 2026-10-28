@@ -1,6 +1,11 @@
 import type { ExchangeGroupId, MacroBucket } from '../data/exchangeGroups';
 import { EXCHANGE_GROUPS, bucketsDeGrupo } from '../data/exchangeGroups';
-import type { Receta, IngredienteEscalado, RecetaEscalada } from '../types/recipe';
+import type {
+  Ingrediente,
+  Receta,
+  IngredienteEscalado,
+  RecetaEscalada,
+} from '../types/recipe';
 import { esUnidadMedible, unidadDeIngrediente, type Alimento } from '../types/food';
 import type { Acompanamiento, IngredienteAnadido } from '../types/plan';
 import { exchangesToMacros, aporteDeAlimento, type ExchangeCounts } from './exchanges';
@@ -171,6 +176,25 @@ function factorQueCabe(
  * línea sin resolver manda lo guardado, que es lo que ella escribió sabiendo
  * lo que hay en el plato.
  */
+/**
+ * EN QUÉ SUBGRUPO CAE UN INGREDIENTE: EL DEL ALIMENTO
+ * ===================================================
+ * Cada línea de una receta lleva un subgrupo escrito, y el alimento del
+ * catálogo trae el suyo. Cuando no coinciden —se elige el subgrupo a mano al
+ * escribir la receta y luego se enlaza el alimento— había dos verdades, y cada
+ * parte del cálculo usaba una: la composición contaba por el del alimento y el
+ * escalado aplicaba el factor por el escrito. Resultado: el factor de ese
+ * subgrupo no existía, se caía al 1 por defecto y **el ingrediente no
+ * escalaba** — 30 g de pollo en una comida de 7 proteínas.
+ *
+ * Manda el alimento: es el que sabe lo que aporta. Lo escrito sirve cuando no
+ * hay alimento detrás, que es lo único que hay entonces.
+ */
+function grupoDe(ing: Ingrediente, porId: Map<string, Alimento>): ExchangeGroupId {
+  const food = ing.foodId ? porId.get(ing.foodId) : undefined;
+  return (food?.grupo ?? ing.grupo) as ExchangeGroupId;
+}
+
 function baseNumerica(receta: Receta, foods: Alimento[] = []): ExchangeCounts {
   if (foods.length && receta.ingredientes.some((i) => i.foodId)) {
     const comp = composicionDesdeIngredientes(receta, foods);
@@ -248,7 +272,7 @@ export function scaleRecipe(
   for (const ing of receta.ingredientes) {
     const f = ing.foodId ? porId.get(ing.foodId) : undefined;
     if (!f?.remate) continue;
-    const g = ing.grupo as ExchangeGroupId;
+    const g = (f.grupo ?? ing.grupo) as ExchangeGroupId;
     gruposRemate.add(g);
     /*
      * El rango viene en gramos y el escalado trabaja en factores: lo que
@@ -525,7 +549,7 @@ export function scaleRecipe(
 
     const factor =
       ing.escalable && ing.grupo !== 'condimento' && !esVerdura
-        ? factores[ing.grupo as ExchangeGroupId] ?? 1
+        ? factores[grupoDe(ing, porId)] ?? 1
         : 1;
 
     if (ing.cantidad_base == null || !ing.escalable) {
@@ -603,7 +627,7 @@ export function scaleRecipe(
    */
   for (const ing of receta.ingredientes) {
     if (!fuera.has(ing.id)) continue;
-    const gid = ing.grupo as ExchangeGroupId;
+    const gid = grupoDe(ing, porId);
     if (!gid || gid === 'verduras' || (ing.grupo as string) === 'condimento') continue;
     if (!ing.cantidad_base) continue;
     aMano.add(gid);
@@ -613,7 +637,7 @@ export function scaleRecipe(
   }
 
   for (const ing of ingredientes) {
-    const gid = ing.grupo as ExchangeGroupId;
+    const gid = grupoDe(ing, porId);
     if (!gid || gid === 'verduras' || (ing.grupo as string) === 'condimento') continue;
     if (!ing.cantidad_base || ing.cantidad_final == null) continue;
     if (ing.ajustado) aMano.add(gid);

@@ -1189,6 +1189,19 @@ si es una de estas decisiones:
   estaba puesto. Las dos pantallas tienen que pedir la misma pauta
   (`pautaDeComida`) o una de las dos miente; también la biblioteca de la
   clienta y la hoja de recetas del PDF.
+- **El subgrupo de un ingrediente lo dice el alimento, no lo que se escribió en
+  la receta.** Cada línea lleva un subgrupo escrito y el alimento del catálogo
+  trae el suyo; cuando no coinciden —se elige a mano al escribir la receta y
+  luego se enlaza el alimento— había **dos verdades**, y cada parte del cálculo
+  usaba una: la composición contaba por el del alimento (`aporteDeIngrediente`
+  devuelve `food.grupo`) y el escalado aplicaba el factor por el escrito. El
+  factor de ese subgrupo no existía, se caía al 1 por defecto y **el
+  ingrediente no escalaba**: 30 g de pollo en una comida de 7 proteínas. Ahora
+  hay un solo sitio que lo decide (`grupoDe`) y manda el alimento, que es el
+  que sabe lo que aporta; lo escrito sirve cuando no hay alimento detrás, que
+  es lo único que hay entonces. **Salió al calcular la base desde los
+  ingredientes**: antes las dos verdades coincidían por casualidad, porque la
+  base guardada se había escrito con los mismos subgrupos que las líneas.
 - **La receta son sus ingredientes, no la base guardada.** El caso que lo
   destapó: un desayuno con 2 hidratos pautados y un plato de 30 g de avena con
   65 g de plátano que decía cubrir **1 sola porción**. La `base` de una receta

@@ -156,3 +156,54 @@ describe('Sin catálogo', () => {
     expect(e.ingredientes.find((i) => i.nombre === 'Avena')!.cantidad_final).toBeGreaterThan(30);
   });
 });
+
+/**
+ * EL SUBGRUPO LO DICE EL ALIMENTO, NO LO QUE SE ESCRIBIÓ EN LA RECETA
+ *
+ * Cada línea de una receta lleva un subgrupo escrito, y el alimento del
+ * catálogo trae el suyo. Cuando no coinciden —se elige el subgrupo a mano y
+ * luego se enlaza el alimento— había dos verdades: la composición contaba por
+ * el del alimento y el escalado aplicaba el factor por el escrito. El factor
+ * de ese subgrupo no existía, se caía al 1 y **el ingrediente no escalaba**:
+ * 30 g de pollo en una comida de 7 proteínas.
+ */
+describe('Cuando el subgrupo escrito no es el del alimento', () => {
+  const POLLO: Alimento = {
+    ...AVENA,
+    id: 'pollo',
+    nombre: 'Pechuga de pollo',
+    grupo: 'proteicos_magros',
+    medida_casera: '30 g',
+    gramos: 30,
+    nutrientes: { kcal: 165, hc: 0, proteina: 23, grasa: 2 },
+  };
+
+  const malEscrita = {
+    id: 'r2',
+    nombre: 'Pollo con lo que sea',
+    categorias: ['comida'],
+    tags: [],
+    base: {},
+    /* El pollo, escrito en un subgrupo que no es el suyo. */
+    ingredientes: [ing('Pollo', POLLO.id, 'proteicos_semigrasos', 30)],
+    preparacion: '',
+    notas: '',
+    createdAt: '',
+    updatedAt: '',
+  } as unknown as Receta;
+
+  it('el ingrediente escala igual', () => {
+    const e = scaleRecipe(malEscrita, { proteicos_magros: 7 }, [...FOODS, POLLO]);
+    expect(e.ingredientes[0].cantidad_final).toBeGreaterThan(150);
+  });
+
+  it('y con el subgrupo bien escrito sale lo mismo', () => {
+    const bien = {
+      ...malEscrita,
+      ingredientes: [ing('Pollo', POLLO.id, 'proteicos_magros', 30)],
+    } as Receta;
+    const a = scaleRecipe(malEscrita, { proteicos_magros: 7 }, [...FOODS, POLLO]);
+    const b = scaleRecipe(bien, { proteicos_magros: 7 }, [...FOODS, POLLO]);
+    expect(a.ingredientes[0].cantidad_final).toBe(b.ingredientes[0].cantidad_final);
+  });
+});
