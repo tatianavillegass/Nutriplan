@@ -29,7 +29,7 @@ const DIA = (extra: Partial<DayType> = {}): DayType =>
     meals: [SALIDA],
     grid: { [SALIDA.id]: { azucares: 4 } },
     notas: {},
-    avituallamientos: { [SALIDA.id]: { gramosHora: 60, horas: 2 } },
+    avituallamientos: { [SALIDA.id]: { modo: 'hora', porHora: 60, horas: 2 } },
     ...extra,
   }) as unknown as DayType;
 
@@ -84,7 +84,8 @@ describe('Quitar la pauta entera', () => {
     render(
       <PautaDelAvituallamiento
         avituallamiento={{
-          gramosHora: 60,
+          modo: 'hora',
+          porHora: 60,
           horas: 2,
           pauta: [
             { minuto: 20, foodId: isotonica.id, unidades: 1 },
@@ -107,7 +108,7 @@ describe('Quitar la pauta entera', () => {
   it('y sin pauta no se ofrece quitar nada', () => {
     render(
       <PautaDelAvituallamiento
-        avituallamiento={{ gramosHora: 60, horas: 2 }}
+        avituallamiento={{ modo: 'hora', porHora: 60, horas: 2 }}
         fuentes={[isotonica]}
         onChange={vi.fn()}
       />,
