@@ -116,3 +116,28 @@ describe('Quitar la pauta entera', () => {
     expect(screen.queryByText('Quitar la pauta')).toBeNull();
   });
 });
+
+/**
+ * EMPEZAR DE CERO ES MÁS RÁPIDO QUE IR QUITANDO
+ *
+ * Si el catálogo trae quince cosas marcadas «se lleva encima» —basta con que
+ * se importaran así— dejar la lista en cuatro geles son doce clics en la ×.
+ */
+describe('Vaciar la lista', () => {
+  it('la deja vacía para elegir de nuevo', () => {
+    const onChange = pintar();
+    fireEvent.click(screen.getByText('Vaciar y elegir yo'));
+    expect(onChange.mock.calls[0][0].despensa[SALIDA.id].seleccion).toEqual([]);
+  });
+
+  /* Y entonces la lista es suya: ya no la rellena el catálogo. */
+  it('y con la lista vacía no se ofrece vaciar otra vez', () => {
+    pintar(DIA({ despensa: { [SALIDA.id]: { seleccion: [] } } }));
+    expect(screen.queryByText('Vaciar y elegir yo')).toBeNull();
+  });
+
+  it('se dice de dónde salen cuando no se ha tocado', () => {
+    pintar();
+    expect(screen.getByText(/se lleva encima para comer durante el entreno/i)).toBeTruthy();
+  });
+});

@@ -39,6 +39,8 @@ interface Props {
 export function AvituallamientoDeComida({ dayType, meal, foods = [], onChange }: Props) {
   /* De lo que podrá echar mano durante la sesión. */
   const fuentes = alimentosDeComida(dayType, meal, foods);
+  /** Sin lista propia, la de arriba sale sola del catálogo. */
+  const sinTocar = dayType.despensa?.[meal.id]?.seleccion === undefined;
   const actual = dayType.avituallamientos?.[meal.id];
 
   /** Se escribe el avituallamiento y, con él, las porciones que le tocan. */
@@ -213,10 +215,34 @@ export function AvituallamientoDeComida({ dayType, meal, foods = [], onChange }:
         elegir.
       */}
       <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2.5">
-        <p className="text-xs font-medium text-slate-700">De qué puede echar mano</p>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-xs font-medium text-slate-700">De qué puede echar mano</p>
+          {/*
+            EMPEZAR DE CERO ES MÁS RÁPIDO QUE IR QUITANDO
+            Si el catálogo trae quince cosas marcadas «se lleva encima» —y
+            basta con que se importaran así— dejar la lista en cuatro geles
+            son doce clics en la ×. Vaciar y buscar los suyos son cuatro.
+          */}
+          {fuentes.length > 0 && (
+            <button
+              onClick={() =>
+                onChange({
+                  despensa: {
+                    ...(dayType.despensa ?? {}),
+                    [meal.id]: { ...(dayType.despensa?.[meal.id] ?? {}), seleccion: [] },
+                  },
+                })
+              }
+              className="text-[11px] text-slate-500 underline hover:text-rose-700"
+            >
+              Vaciar y elegir yo
+            </button>
+          )}
+        </div>
         <p className="mt-0.5 mb-1.5 text-[11px] leading-snug text-slate-500">
-          Geles, isotónica, dátiles, barritas… Es lo que él podrá elegir durante la sesión, y
-          de aquí salen también las tomas de abajo.
+          Es lo que él podrá elegir durante la salida, y de aquí salen también las tomas de
+          abajo. <strong className="font-medium">En bici con esto basta</strong>: va sumando
+          lo que le apetezca hasta llegar a los gramos.
         </p>
 
         {fuentes.length > 0 ? (
@@ -248,6 +274,21 @@ export function AvituallamientoDeComida({ dayType, meal, foods = [], onChange }:
           limpiarTrasElegir
           onSelect={(f) => onChange({ despensa: anadirAlimento(dayType, meal.id, f.id) })}
         />
+
+        {/*
+          DE DÓNDE SALE LA LISTA
+          Sin tocarla, salen los alimentos marcados «se lleva encima» en el
+          catálogo. Si ahí hay cosas raras —un queso batido, pan— es que esa
+          marca está puesta de más, y conviene saberlo: si no, reaparecen en
+          cada avituallamiento nuevo y se quitan una y otra vez.
+        */}
+        {sinTocar && (
+          <p className="mt-1 text-[10px] leading-snug text-slate-400">
+            Salen solos los alimentos marcados «se lleva encima para comer durante el
+            entreno» en tu catálogo. Si ves alguno que no se lleva en el bolsillo, quítale esa
+            marca en su ficha y dejará de salir en todos los avituallamientos.
+          </p>
+        )}
       </div>
 
       {/*

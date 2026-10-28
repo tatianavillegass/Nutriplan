@@ -1163,6 +1163,16 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **La lista del avituallamiento se puede vaciar y rehacer.** Sin tocarla sale
+  sola del catálogo: los alimentos marcados `avituallamiento` («se lleva encima
+  para comer durante el entreno»). Si esa marca está puesta de más —un catálogo
+  importado puede traerla en quince cosas, queso batido y pan incluidos— dejar
+  la lista en cuatro geles eran doce clics en la ×, y las mismas quince
+  reaparecían en cada avituallamiento nuevo. Ahora **«Vaciar y elegir yo»**
+  deja la lista en cero (una `seleccion` vacía, que es una lista propia y no
+  «usa el catálogo») y se añaden los suyos con el buscador. Y se dice de dónde
+  salía la lista, para que la marca del catálogo se pueda arreglar en origen en
+  vez de ir quitándola cada vez.
 - **Las fuentes del avituallamiento se eligen en su propia tarjeta.** Salían
   de la despensa de esa comida, y el editor de despensa **sólo aparece en fase
   1 y 2**: a un corredor en fase 3 no había forma de decirle de qué geles

@@ -96,8 +96,10 @@ export function PautaDelAvituallamiento({ avituallamiento, fuentes, onChange }: 
         )}
       </div>
       <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-        Déjalo vacío en bici: ahí elige ella sobre la marcha. Rellénalo corriendo, que es donde
-        importa el reloj.
+        <strong className="font-medium">En bici, déjalo vacío</strong>: él va eligiendo de la
+        lista de arriba sobre la marcha, que es como se come encima de la bici. Rellénalo
+        corriendo, que es donde importa el reloj: sin el cuándo pautado, o se toman los tres
+        geles en la última media hora o no se toma ninguno.
       </p>
 
       {!minutos && (
