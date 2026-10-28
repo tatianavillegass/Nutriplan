@@ -1,4 +1,5 @@
 import type { Client } from '../../types/client';
+import { pautaDeComida } from '../../utils/fijos';
 import type { Plan } from '../../types/plan';
 import {
   recetasDeLaComida,
@@ -80,7 +81,7 @@ export function RecipeSheetPDF({
                           recetas={recipes}
                           key={receta.id}
                           receta={receta}
-                          requeridos={d.grid[m.id] ?? {}}
+                          requeridos={pautaDeComida(d, m.id, foods).pauta}
                           foods={foods}
                           ajustes={ajustesDeReceta(d, m.id, receta.id)}
                           acompanamientos={acompanamientosDeReceta(d, m.id, receta.id)}

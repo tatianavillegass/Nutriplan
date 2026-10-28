@@ -1163,6 +1163,21 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **Un alimento prohibido no se cuela por estar sin enlazar.** A una clienta
+  que no puede comer pimiento le salían limpias en el recomendador todas las
+  recetas que lo llevaban: se le podían pautar sin un solo aviso. El motivo era
+  que el ingrediente estaba escrito a mano y `evaluarReceta` sólo miraba los
+  enlazados al catálogo (`if (!food) continue`) — y hay muchos sueltos, porque
+  enlazarlos todos es trabajo. Ahora, sin enlace, **se busca por nombre**
+  (`findFood`). No es tan exacto como el enlace, pero **equivocarse avisando de
+  más es mucho mejor que callar un alimento prohibido**: un aviso se lee y se
+  descarta en un segundo, y lo otro acaba en el plato.
+- **Lo que va siempre se descuenta también en las pantallas de ella.** Estaba
+  descontado en la app de la clienta y no en el recomendador, así que con media
+  fruta fija en el desayuno cualquier receta salía «no llega» por algo que ya
+  estaba puesto. Las dos pantallas tienen que pedir la misma pauta
+  (`pautaDeComida`) o una de las dos miente; también la biblioteca de la
+  clienta y la hoja de recetas del PDF.
 - **La receta son sus ingredientes, no la base guardada.** El caso que lo
   destapó: un desayuno con 2 hidratos pautados y un plato de 30 g de avena con
   65 g de plátano que decía cubrir **1 sola porción**. La `base` de una receta

@@ -8,6 +8,7 @@ import {
 import type { Receta } from '../types/recipe';
 import type { Client } from '../types/client';
 import { PATOLOGIAS_POR_ID, PATOLOGIA_EXIGE_APTO } from '../data/patologias';
+import { findFood } from './substitutions';
 
 /**
  * RESTRICCIONES DEL CLIENTE
@@ -185,7 +186,19 @@ export function evaluarReceta(
   };
 
   for (const ing of receta.ingredientes) {
-    const food = ing.foodId ? porId.get(ing.foodId) : undefined;
+    /**
+     * SI NO ESTÁ ENLAZADO, SE BUSCA POR NOMBRE
+     * ========================================
+     * Una receta con «Pimiento rojo» escrito a mano —sin enlazar al catálogo—
+     * era invisible para esto: salía limpia en el recomendador y se le podía
+     * pautar a quien no puede comer pimiento. Y hay muchos ingredientes
+     * sueltos, porque enlazarlos todos es trabajo.
+     *
+     * Buscar por nombre no es tan exacto como el enlace, pero equivocarse
+     * avisando de más es mucho mejor que callar un alimento prohibido: un
+     * aviso se lee y se descarta en un segundo, y lo otro acaba en el plato.
+     */
+    const food = ing.foodId ? porId.get(ing.foodId) : findFood(ing.nombre, foods, ing.grupo);
     if (!food) continue;
     const ev = evaluarAlimento(food, client);
     // Lo que se quita no carga: por eso los avisos sólo cuentan si se queda.

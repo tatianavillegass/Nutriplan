@@ -13,6 +13,7 @@ import {
 import type { Client } from '../../types/client';
 import type { Alimento, MealSlot } from '../../types/food';
 import { matchRecipes } from '../../utils/recipeMatcher';
+import { pautaDeComida } from '../../utils/fijos';
 import { porQueCoincide, recetaCoincide } from '../../utils/buscarRecetas';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { ScaledRecipeView } from './ScaledRecipeView';
@@ -155,7 +156,19 @@ export function RecipeRecommender({
    * cualquier tienda: bajas y sigue habiendo.
    */
   const [cuantas, setCuantas] = useState(PASO);
-  const reparto = dayType.grid[meal.id] ?? {};
+  /*
+   * LO QUE VA SIEMPRE YA ESTÁ DESCONTADO
+   * ====================================
+   * Si el desayuno lleva media fruta fija, lo que tienen que cubrir las
+   * recetas son los 2 almidones y nada más: pidiéndoles también esa media
+   * fruta, cualquier plato salía «no llega» por algo que ya está puesto. Es
+   * la misma cuenta que ve la clienta (ver `ClientView`), y tienen que ser la
+   * misma o una de las dos miente.
+   */
+  const reparto = useMemo(
+    () => pautaDeComida(dayType, meal.id, foods).pauta,
+    [dayType, meal.id, foods],
+  );
 
   const todosLosTags = useMemo(() => tagsDisponibles(recetas), [recetas]);
 
