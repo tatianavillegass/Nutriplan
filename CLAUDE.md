@@ -1163,6 +1163,26 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **El queso remata el plato, no es la fuente.** En un plato de pollo con
+  queso feta la proteína la pone el pollo, pero para la tabla de intercambios
+  un queso graso es una fuente como cualquier otra: al escalar al día de más
+  calorías crecían los dos por igual y salían 120 g de feta. **Y es peor de lo
+  que parece**: el queso se comía la grasa del plato, así que el tope obligaba
+  a recortar el pollo — con cuatro proteínas pautadas se quedaba en 70 g.
+  `Alimento.remate` marca quesos y yogures de acompañar, y entonces **en un
+  plato que ya tiene otra fuente de proteína el remate se queda en lo suyo y la
+  otra cuadra el resto**. Es la regla que ya existía para el yogur (ver
+  `scaleRecipe`), que se quedaba fuera para los quesos porque en la tabla no
+  son lácteos sino proteicos grasos. Se marca **una vez por alimento** y vale
+  para todas las recetas y los dos tipos de día: eso es lo que evita repasarlas
+  una por una. **Si es la única fuente del plato, escala normal** — una
+  ensalada de feta no puede quedarse corta de proteína porque el feta remate.
+  **El rango (`remateMin`/`remateMax`) acota después**: el máximo siempre, y el
+  mínimo sólo si cabe en lo pautado —forzarlo sería romper la pauta para
+  cumplir una preferencia— y cuando no cabe **se dice en las notas**, porque
+  una cantidad ridícula callada es justo lo que hay que ir a buscar receta por
+  receta. De serie vienen marcados el parmesano, el feta, el havarti y los
+  yogures griegos.
 - **Lo que va siempre con una comida se pone una vez, no opción por opción.**
   El café con leche del desayuno, el matcha con bebida de coco, el cuadrito de
   chocolate de después de cenar. Antes había que meterlo en **cada** opción:

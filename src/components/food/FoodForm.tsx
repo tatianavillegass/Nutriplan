@@ -11,6 +11,7 @@ import { calcularPorcion, sugerirSubgrupo, subgruposDeBucket, hcNeto } from '../
 import { exchangesToMacros } from '../../utils/exchanges';
 import { kcalFromMacros } from '../../utils/macros';
 import { Button, Field, Input, Select, fmt } from '../common/ui';
+import { aNumero } from '../common/NumeroConComa';
 import { NumeroConComa } from '../common/NumeroConComa';
 import { seCocinaEnTanda } from '../../utils/batchCooking';
 import { mismoNombre } from '../../utils/sinRepetidos';
@@ -66,6 +67,10 @@ export interface FoodFormValue {
   equivalencia_cruda?: number;
   /** Si sale en la guía de cocinar de una vez. */
   batch?: boolean;
+  /** Remata el plato en vez de ser la fuente. Ver `Alimento.remate`. */
+  remate?: boolean;
+  remateMin?: number;
+  remateMax?: number;
   /** Lleva glucosa y fructosa: sólo importa en el avituallamiento. */
   conFructosa?: boolean;
   /** Se lleva encima para comer durante el entreno: gel, isotónica, dátil. */
@@ -119,6 +124,13 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
   /** Si sale en la guía de cocinar de una vez. Sin tocar, lo decide la app. */
   const [conFructosa, setConFructosa] = useState<boolean>(!!inicial?.conFructosa);
   const [avituallamiento, setAvituallamiento] = useState<boolean>(!!inicial?.avituallamiento);
+  const [remate, setRemate] = useState<boolean>(!!inicial?.remate);
+  const [remateMin, setRemateMin] = useState<string>(
+    inicial?.remateMin != null ? String(inicial.remateMin) : '',
+  );
+  const [remateMax, setRemateMax] = useState<string>(
+    inicial?.remateMax != null ? String(inicial.remateMax) : '',
+  );
   const [batch, setBatch] = useState<boolean>(
     inicial?.batch ?? seCocinaEnTanda({ nombre: inicial?.nombre ?? '', grupo: inicial?.grupo }),
   );
@@ -491,6 +503,63 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
       </label>
 
       {/*
+        REMATA EL PLATO, NO ES LA FUENTE
+        =================================
+        El queso feta, el parmesano, el havarti, el yogur griego. En un plato
+        que ya lleva pollo, el queso no es de donde tiene que venir la
+        proteína — pero para la tabla de intercambios un queso graso es una
+        fuente como otra cualquiera, así que al escalar a un día de más
+        calorías crecían los dos por igual: 120 g de feta, y encima el pollo
+        recortado para no pasarse de grasa.
+
+        Marcado aquí, se arregla **en todas las recetas y en los dos tipos de
+        día a la vez**, que es lo que evita repasarlas una por una.
+      */}
+      <label className="mt-2 flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={remate}
+          onChange={(e) => setRemate(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span className="text-xs leading-snug text-slate-600">
+          Remata el plato, no es la fuente
+          <span className="block text-[11px] text-slate-500">
+            Quesos y yogures que acompañan: en un plato que ya lleva pollo o carne, éste se queda
+            en lo suyo y la proteína la cuadra el otro. Si es la única fuente del plato, escala
+            como siempre.
+          </span>
+        </span>
+      </label>
+
+      {remate && (
+        <div className="mt-2 ml-6 flex flex-wrap items-end gap-2">
+          <Field label="Mínimo (g)" className="w-28">
+            <Input
+              value={remateMin}
+              onChange={(e) => setRemateMin(e.target.value)}
+              inputMode="decimal"
+              placeholder="—"
+              className="tnum text-sm"
+            />
+          </Field>
+          <Field label="Máximo (g)" className="w-28">
+            <Input
+              value={remateMax}
+              onChange={(e) => setRemateMax(e.target.value)}
+              inputMode="decimal"
+              placeholder="—"
+              className="tnum text-sm"
+            />
+          </Field>
+          <p className="max-w-xs flex-1 pb-2 text-[11px] leading-snug text-slate-500">
+            Entre qué gramos puede moverse. Sin poner nada se queda en lo que traiga cada receta.
+            El mínimo sólo se respeta si cabe en lo pautado — si no, te lo dice en la receta.
+          </p>
+        </div>
+      )}
+
+      {/*
         LA MARCA DE AVITUALLAMIENTO, EN VEZ DE UN GRUPO NUEVO
         Un grupo «geles» tendría que traer su porción, su equivalencia y su
         columna en el reparto — y esa columna estaría vacía todos los días menos
@@ -766,6 +835,9 @@ export function FoodForm({ inicial, existentes = [], onGuardar, onCancelar }: Pr
               equivalencia_cocido: cocido,
               equivalencia_cruda: crudo,
               batch,
+              remate: remate || undefined,
+              remateMin: remate ? (aNumero(remateMin) ?? undefined) : undefined,
+              remateMax: remate ? (aNumero(remateMax) ?? undefined) : undefined,
               conFructosa: conFructosa || undefined,
               avituallamiento: avituallamiento || undefined,
               comidas_sugeridas: slots,

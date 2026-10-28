@@ -77,6 +77,13 @@ export function FoodCatalogPage() {
       equivalencia_cruda: v.equivalencia_cruda,
       batch: v.batch,
       /*
+        Y lo mismo con el remate: recogerlo en el formulario y perderlo aquí
+        haría que marcar el feta no sirviera de nada. Ver `Alimento.remate`.
+      */
+      remate: v.remate,
+      remateMin: v.remateMin,
+      remateMax: v.remateMax,
+      /*
         Estas dos se recogían en el formulario y se perdían aquí: marcar «aporta
         fructosa» en un gel no llegaba a guardarse nunca, así que el aviso de
         mezclar saltaba igual con los geles bien elegidos.

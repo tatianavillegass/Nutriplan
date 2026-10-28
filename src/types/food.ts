@@ -107,6 +107,32 @@ export interface Alimento {
    * porque lo que se cocina o no depende de cada cocina y de cada producto.
    */
   batch?: boolean;
+  /**
+   * ESTE ALIMENTO REMATA EL PLATO, NO ES LA FUENTE
+   *
+   * El queso feta, el parmesano, el havarti, el yogur griego. En un plato que
+   * ya lleva pollo, el queso no es de donde tiene que venir la proteína: es lo
+   * que lo remata. Pero para la tabla de intercambios un queso graso es una
+   * fuente de proteína como cualquier otra, así que al escalar a un día de más
+   * calorías crecían los dos por igual y salían 120 g de feta.
+   *
+   * Con esto marcado, **en un plato donde hay otra fuente de proteína el
+   * remate se queda donde está y el pollo cuadra el resto**. Es la regla que
+   * ya existía para el yogur (ver `scaleRecipe`), extendida a los quesos —
+   * que en la tabla no son lácteos, sino proteicos grasos, y por eso se
+   * quedaban fuera.
+   *
+   * **Si es la única fuente del plato, escala normal**: una ensalada de feta
+   * sin más no puede quedarse corta de proteína porque el feta «remate».
+   */
+  remate?: boolean;
+  /**
+   * Entre qué gramos puede moverse cuando remata. Sin esto se queda en la
+   * cantidad que traiga la receta, que es lo más predecible; con esto se le
+   * deja estirarse un poco —«feta, entre 20 y 40»— sin llegar al absurdo.
+   */
+  remateMin?: number;
+  remateMax?: number;
   /** Cuántos intercambios de su grupo aporta esa medida. */
   intercambios: number;
   /**

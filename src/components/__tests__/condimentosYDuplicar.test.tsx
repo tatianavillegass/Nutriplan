@@ -50,7 +50,12 @@ describe('Un alimento libre', () => {
       ['Proteína', '4'],
       ['Grasa', '1'],
     ] as const) {
-      const campo = screen.queryByLabelText(new RegExp(etiqueta, 'i'));
+      /*
+       * Por el principio de la etiqueta: «Proteína» suelto también cazaba la
+       * explicación del remate («la proteína la cuadra el otro»), que no es
+       * un campo de nutrientes.
+       */
+      const campo = screen.queryAllByLabelText(new RegExp(`^${etiqueta}`, 'i'))[0];
       if (campo) fireEvent.change(campo, { target: { value: valor } });
     }
 

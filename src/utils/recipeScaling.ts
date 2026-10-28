@@ -200,6 +200,39 @@ export function scaleRecipe(
   const notas: string[] = [];
   const porId = new Map(foods.map((f) => [f.id, f]));
 
+  /**
+   * LOS QUE REMATAN EL PLATO
+   *
+   * El queso feta, el parmesano, el yogur griego: marcados en el catálogo
+   * (`Alimento.remate`). Se guarda su SUBGRUPO porque el escalado reparte por
+   * subgrupo, no ingrediente a ingrediente — en la práctica el queso y el
+   * pollo caen en subgrupos distintos, que es lo que hace que funcione.
+   */
+  const gruposRemate = new Set<ExchangeGroupId>();
+  /** El factor en el que puede moverse cada remate, según su rango en gramos. */
+  const rangoDelGrupo = new Map<ExchangeGroupId, { min?: number; max?: number }>();
+  for (const ing of receta.ingredientes) {
+    const f = ing.foodId ? porId.get(ing.foodId) : undefined;
+    if (!f?.remate) continue;
+    const g = ing.grupo as ExchangeGroupId;
+    gruposRemate.add(g);
+    /*
+     * El rango viene en gramos y el escalado trabaja en factores: lo que
+     * multiplica la cantidad de la receta. Sin cantidad base no hay factor que
+     * acotar, y entonces manda el rango del catálogo tal cual no se puede
+     * aplicar — se deja pasar.
+     */
+    const b = ing.cantidad_base;
+    if (!b || b <= 0) continue;
+    const ya = rangoDelGrupo.get(g) ?? {};
+    const min = f.remateMin != null ? f.remateMin / b : undefined;
+    const max = f.remateMax != null ? f.remateMax / b : undefined;
+    rangoDelGrupo.set(g, {
+      min: min != null ? Math.max(ya.min ?? min, min) : ya.min,
+      max: max != null ? Math.min(ya.max ?? max, max) : ya.max,
+    });
+  }
+
   const base = baseNumerica(receta);
   const deLaReceta = porBucket(base);
   const delPlan = porBucket(requeridos);
@@ -229,8 +262,14 @@ export function scaleRecipe(
      */
     if (bucket === 'proteina') {
       const esLacteo = (g: ExchangeGroupId) => g.startsWith('lacteos_');
-      const lacteos = filtrar(enReceta, esLacteo);
-      const proteicos = filtrar(enReceta, (g) => !esLacteo(g));
+      /*
+       * Rematan los marcados en el catálogo y los lácteos de siempre: el yogur
+       * ya se comportaba así antes de que esto existiera y no hay motivo para
+       * obligar a marcarlo uno por uno.
+       */
+      const esRemate = (g: ExchangeGroupId) => gruposRemate.has(g) || esLacteo(g);
+      const lacteos = filtrar(enReceta, esRemate);
+      const proteicos = filtrar(enReceta, (g) => !esRemate(g));
 
       /**
        * SÓLO SI HAY LÁCTEO PAUTADO
@@ -245,8 +284,21 @@ export function scaleRecipe(
        * proteína donde había 4 pautadas.
        */
       const hayLacteoPautado = Object.keys(filtrar(pautado, esLacteo)).length > 0;
+      /*
+       * Un remate marcado a mano no necesita estar pautado para portarse como
+       * remate: ése es justo el caso del feta en un plato de pollo, donde no
+       * hay ningún proteico graso pautado y aun así el feta no puede crecer.
+       * Para los lácteos sin marcar se mantiene la condición de antes.
+       */
+      const hayMarcado = Object.keys(lacteos).some((g) =>
+        gruposRemate.has(g as ExchangeGroupId),
+      );
 
-      if (hayLacteoPautado && Object.keys(lacteos).length && Object.keys(proteicos).length) {
+      if (
+        (hayLacteoPautado || hayMarcado) &&
+        Object.keys(lacteos).length &&
+        Object.keys(proteicos).length
+      ) {
         const mLacteos = exchangesToMacros(lacteos);
         const mProteicos = exchangesToMacros(proteicos);
 
@@ -255,7 +307,7 @@ export function scaleRecipe(
          * pautado, entra de complemento con el sitio que sobre — pero nunca
          * quita proteína al proteico, que es de donde tiene que venir.
          */
-        const lacteoPautado = exchangesToMacros(filtrar(pautado, esLacteo)).proteina;
+        const lacteoPautado = exchangesToMacros(filtrar(pautado, esRemate)).proteina;
         const paraElProteico = Math.max(0, mReq.proteina - lacteoPautado);
 
         let fProteico = mProteicos.proteina > 0 ? paraElProteico / mProteicos.proteina : 0;
@@ -283,7 +335,45 @@ export function scaleRecipe(
           notas.push(`Se ha recortado ${nombres(proteicos)} para no pasarse de lo pautado.`);
         }
 
-        for (const g of Object.keys(lacteos) as ExchangeGroupId[]) factores[g] = fLacteo;
+        for (const g of Object.keys(lacteos) as ExchangeGroupId[]) {
+          /*
+           * EL RANGO, LO ÚLTIMO
+           * Primero se calcula lo que le tocaría y después se le pone el
+           * techo: así el rango acota, que es lo que se le pide. El mínimo
+           * sólo se respeta si cabe —`sitio` es lo que queda de kcal y de
+           * grasa— porque forzarlo pasándose sería romper la pauta para
+           * cumplir una preferencia.
+           */
+          const rango = rangoDelGrupo.get(g);
+          const comoQuien = nombres({ [g]: 1 } as ExchangeCounts);
+          let f = fLacteo;
+
+          if (rango?.max != null && f > rango.max + 0.001) {
+            f = rango.max;
+            notas.push(`${comoQuien} se ha dejado en su máximo.`);
+          }
+
+          if (rango?.min != null && f < rango.min - 0.001) {
+            /*
+             * El mínimo sólo se respeta si cabe: forzarlo pasándose sería
+             * romper la pauta para cumplir una preferencia. Y cuando NO cabe
+             * se dice, porque una cantidad ridícula callada es justo lo que
+             * hay que ir a buscar receta por receta.
+             */
+            const cabe = Math.max(0, sitio);
+            if (cabe >= rango.min - 0.001) {
+              f = rango.min;
+              notas.push(`${comoQuien} se ha subido a su mínimo.`);
+            } else {
+              f = Math.max(f, Math.min(rango.min, cabe));
+              notas.push(
+                `${comoQuien} se queda por debajo de su mínimo: con lo pautado aquí no cabe más.`,
+              );
+            }
+          }
+
+          factores[g] = f;
+        }
         for (const g of Object.keys(proteicos) as ExchangeGroupId[]) factores[g] = fProteico;
         continue;
       }
