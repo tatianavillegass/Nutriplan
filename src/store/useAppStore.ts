@@ -10,6 +10,7 @@ import type { Recurso } from "../types/recursos";
 import type { Reto } from "../types/reto";
 import type { Gasto } from "../types/finanzas";
 import { registroVacio } from "../types/diary";
+import { separarComida, separarComidasRenombradas } from "../utils/separarComida";
 import { EXCHANGE_GROUPS, type ExchangeGroupId } from "../data/exchangeGroups";
 import { FOOD_CATALOG } from "../data/foodCatalog";
 import { SEED_RECIPES } from "../data/seedRecipes";
@@ -215,7 +216,15 @@ function migrarCatalogo(guardados: Alimento[] | null): Alimento[] {
  * Los planes guardados también pueden llevar subgrupos viejos en la grilla
  * ("lacteos"). Sin traducirlos, las kcal de ese día no se podían calcular.
  */
+/**
+ * Lo de los subgrupos viejos, y de paso las comidas que dos tipos de día
+ * llaman distinto compartiendo id. Ver `separarComidasRenombradas`.
+ */
 function migrarGruposPlanes(plans: Plan[]): Plan[] {
+  return migrarSubgrupos(plans).map(separarComidasRenombradas);
+}
+
+function migrarSubgrupos(plans: Plan[]): Plan[] {
   let cambiado = false;
   // Antes había un plan por cliente sin fecha ni nombre propio. Al pasar al
   // historial, el que ya existía es la primera planificación y queda en uso.
@@ -616,11 +625,35 @@ export const useAppStore = create<AppState>((set, get) => {
         ),
       })),
 
+    /**
+     * RENOMBRAR UNA COMIDA LA SEPARA DE LOS DEMÁS DÍAS
+     *
+     * Todos los tipos de día nacen con las mismas ids de comida, y eso hace
+     * que el desayuno del día base y el del día de tirada compartan platos —
+     * que es justo lo que se quiere mientras sean la misma comida.
+     *
+     * Pero al montar un día largo se renombra una comida que ya estaba
+     * («Merienda» pasa a «Pre-entreno») y la id no cambiaba: el pre-entreno
+     * se quedaba con las recetas de la merienda del otro día, y al repartir
+     * la semana salía rotulado con el nombre del otro. Si le cambias el
+     * nombre, es otra comida. Ver `separarComida`.
+     */
     renameMeal: (planId, dayTypeId, mealId, nombre) =>
-      mutateDayType(planId, dayTypeId, (d) => ({
-        ...d,
-        meals: d.meals.map((m) => (m.id === mealId ? { ...m, nombre } : m)),
-      })),
+      mutatePlan(planId, (p) => {
+        /* Tras separarla la id es otra, así que se renombra la que toca. */
+        const { plan: separado, mealId: suId } = separarComida(p, dayTypeId, mealId);
+        return {
+          ...separado,
+          dayTypes: separado.dayTypes.map((d) =>
+            d.id !== dayTypeId
+              ? d
+              : {
+                  ...d,
+                  meals: d.meals.map((m) => (m.id === suId ? { ...m, nombre } : m)),
+                },
+          ),
+        };
+      }),
 
     removeMeal: (planId, dayTypeId, mealId) =>
       mutateDayType(planId, dayTypeId, (d) => {

@@ -1199,6 +1199,30 @@ si es una de estas decisiones:
   estaba puesto. Las dos pantallas tienen que pedir la misma pauta
   (`pautaDeComida`) o una de las dos miente; también la biblioteca de la
   clienta y la hoja de recetas del PDF.
+- **Una comida renombrada en un tipo de día es otra comida.** Todos los tipos
+  de día nacen con **las mismas ids de comida** (`DEFAULT_MEALS`: `desayuno`,
+  `comida`, `merienda`…) y eso es a propósito: así los platos del desayuno son
+  los mismos coma lo que coma ese día, y lo único que cambia son las
+  cantidades. Funciona mientras los dos días tengan las mismas comidas, y deja
+  de funcionar en cuanto no las tienen. Montando un día de tirada larga se
+  renombra una comida que ya estaba —«Merienda» pasa a «Pre-entreno»— y **la id
+  no cambiaba**: el pre-entreno se quedaba con las recetas de la merienda del
+  día base, y al repartir la semana —que junta las comidas de todos los días
+  por id y se queda con el primer nombre que encuentra— el pre-entreno salía
+  rotulado «Merienda», con la tostada con mermelada de otro sitio. Ahora
+  renombrar **separa** esa comida (`separarComida`): id propia, y se lleva lo
+  suyo —reparto, despensa, nota, ajustes y una **copia** de sus recetas—
+  porque renombrar no es empezar de cero. **No se separa si no hace falta**:
+  con un solo tipo de día, o si esa id no está en ningún otro, renombrar es
+  sólo cambiar el nombre, y separarla rompería los registros que la clienta ya
+  tiene apuntados contra esa id.
+- **Y los planes que ya estaban mal se arreglan solos al cargar**
+  (`separarComidasRenombradas`, dentro de `migrarGruposPlanes`). **La señal es
+  el nombre**: dos días que llaman igual a la misma id son la misma comida y
+  siguen compartiendo; si la llaman distinto son dos cosas y se separan,
+  quedándose con la id el primer tipo de día, que es el que manda en el
+  reparto de la semana. Pedirle que entre a renombrarlas una por una sería
+  pedirle que arregle a mano algo que no rompió ella.
 - **El subgrupo de un ingrediente lo dice el alimento, no lo que se escribió en
   la receta.** Cada línea lleva un subgrupo escrito y el alimento del catálogo
   trae el suyo; cuando no coinciden —se elige a mano al escribir la receta y
