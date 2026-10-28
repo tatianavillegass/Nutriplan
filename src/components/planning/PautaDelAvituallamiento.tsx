@@ -41,7 +41,14 @@ interface Props {
  */
 export function PautaDelAvituallamiento({ avituallamiento, fuentes, onChange }: Props) {
   const pauta = avituallamiento.pauta ?? [];
-  const [conQue, setConQue] = useState(fuentes[0]?.id ?? '');
+  /*
+   * Lo que haya elegido, mientras siga estando: si se le quita de la lista de
+   * fuentes, el desplegable se queda apuntando a algo que ya no existe y la
+   * toma sale en blanco.
+   */
+  const [elegido, setElegido] = useState(fuentes[0]?.id ?? '');
+  const conQue = fuentes.some((f) => f.id === elegido) ? elegido : (fuentes[0]?.id ?? '');
+  const setConQue = setElegido;
   const [porToma, setPorToma] = useState('1');
 
   const minutos = minutosDeLaSesion(avituallamiento);
@@ -71,7 +78,23 @@ export function PautaDelAvituallamiento({ avituallamiento, fuentes, onChange }: 
 
   return (
     <div className="mt-3 rounded-lg border border-slate-200 bg-white p-2.5">
-      <p className="text-xs font-medium text-slate-700">Qué y cuándo (opcional)</p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-medium text-slate-700">Qué y cuándo (opcional)</p>
+        {/*
+          QUITARLA ENTERA, DE UN CLIC
+          Se rellena por error —se pulsa «Repartir» y salen seis tomas— y
+          deshacerlo era borrarlas una a una con la × de cada fila. Un cambio
+          que cuesta deshacer da miedo de hacer.
+        */}
+        {pauta.length > 0 && (
+          <button
+            onClick={() => guardar([])}
+            className="text-[11px] text-slate-500 underline hover:text-rose-700"
+          >
+            Quitar la pauta
+          </button>
+        )}
+      </div>
       <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
         Déjalo vacío en bici: ahí elige ella sobre la marcha. Rellénalo corriendo, que es donde
         importa el reloj.

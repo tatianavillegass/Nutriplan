@@ -9,7 +9,8 @@ import {
 } from '../../utils/avituallamiento';
 import { Field, Input, fmt } from '../common/ui';
 import { PautaDelAvituallamiento } from './PautaDelAvituallamiento';
-import { alimentosDeComida } from '../../utils/pantry';
+import { alimentosDeComida, alternarExclusion, anadirAlimento } from '../../utils/pantry';
+import { FoodPicker } from '../food/FoodPicker';
 import type { Alimento } from '../../types/food';
 
 interface Props {
@@ -36,6 +37,8 @@ interface Props {
  * retocar a mano y esto no se lo vuelve a pisar.
  */
 export function AvituallamientoDeComida({ dayType, meal, foods = [], onChange }: Props) {
+  /* De lo que podrá echar mano durante la sesión. */
+  const fuentes = alimentosDeComida(dayType, meal, foods);
   const actual = dayType.avituallamientos?.[meal.id];
 
   /** Se escribe el avituallamiento y, con él, las porciones que le tocan. */
@@ -192,9 +195,60 @@ export function AvituallamientoDeComida({ dayType, meal, foods = [], onChange }:
         <strong className="font-medium">
           {fmt(repartoDelAvituallamiento(actual).azucares ?? 0, 1)} porciones de azúcares
         </strong>{' '}
-        y ya están puestas en el reparto de esta comida, así que cuentan en su día. Las
-        fuentes salen de la despensa: geles, isotónica, dátiles, plátano.
+        y ya están puestas en el reparto de esta comida, así que cuentan en su día.
       </p>
+
+      {/*
+        DE QUÉ PUEDE ECHAR MANO, AQUÍ MISMO
+        ===================================
+        Esto se elegía en el editor de despensa, que **sólo sale en fase 1 y
+        2**: a un corredor en fase 3 no había forma de decirle de qué geles
+        tirar, y el desplegable de «qué y cuándo» se llenaba con lo primero que
+        el catálogo tuviera marcado como avituallamiento — de ahí el queso
+        fresco batido que no se podía quitar.
+
+        Un avituallamiento es justo la comida en la que las fuentes NO salen de
+        lo que toque esa hora: salen de lo que se lleva encima. Así que la
+        lista se monta aquí, en cualquier fase, y es la misma que verá él para
+        elegir.
+      */}
+      <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2.5">
+        <p className="text-xs font-medium text-slate-700">De qué puede echar mano</p>
+        <p className="mt-0.5 mb-1.5 text-[11px] leading-snug text-slate-500">
+          Geles, isotónica, dátiles, barritas… Es lo que él podrá elegir durante la sesión, y
+          de aquí salen también las tomas de abajo.
+        </p>
+
+        {fuentes.length > 0 ? (
+          <ul className="mb-1.5 flex flex-wrap gap-1.5">
+            {fuentes.map((f) => (
+              <li key={f.id}>
+                <button
+                  onClick={() => onChange({ despensa: alternarExclusion(dayType, meal.id, f.id) })}
+                  title="Quitárselo"
+                  className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-700 transition hover:border-rose-300 hover:text-rose-700"
+                >
+                  {f.nombre}
+                  <span aria-hidden className="text-slate-300">
+                    ×
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mb-1.5 text-[11px] text-amber-700">
+            Todavía no le has puesto ninguna. Búscalas aquí abajo.
+          </p>
+        )}
+
+        <FoodPicker
+          foods={foods}
+          placeholder="Buscar un gel, una bebida, un dátil…"
+          limpiarTrasElegir
+          onSelect={(f) => onChange({ despensa: anadirAlimento(dayType, meal.id, f.id) })}
+        />
+      </div>
 
       {/*
         EL RELOJ, SÓLO SI ELLA LO QUIERE
@@ -203,7 +257,7 @@ export function AvituallamientoDeComida({ dayType, meal, foods = [], onChange }:
       */}
       <PautaDelAvituallamiento
         avituallamiento={actual}
-        fuentes={alimentosDeComida(dayType, meal, foods)}
+        fuentes={fuentes}
         onChange={guardar}
       />
 

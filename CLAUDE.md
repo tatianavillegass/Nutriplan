@@ -1163,6 +1163,17 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **Las fuentes del avituallamiento se eligen en su propia tarjeta.** Salían
+  de la despensa de esa comida, y el editor de despensa **sólo aparece en fase
+  1 y 2**: a un corredor en fase 3 no había forma de decirle de qué geles
+  tirar. El desplegable de «qué y cuándo» se llenaba entonces con lo primero
+  que hubiera marcado como avituallamiento —un queso fresco batido— y no había
+  dónde quitarlo. Un avituallamiento es justo la comida en la que las fuentes
+  NO salen de lo que toca a esa hora: salen de lo que se lleva encima, así que
+  la lista se monta ahí mismo, en cualquier fase, y es la que verá él para
+  elegir. **Y la pauta del reloj se quita entera de un clic**: se rellena por
+  error —se pulsa «Repartir» y salen seis tomas— y deshacerlo era borrarlas una
+  a una. Un cambio que cuesta deshacer da miedo de hacer.
 - **Un alimento prohibido no se cuela por estar sin enlazar.** A una clienta
   que no puede comer pimiento le salían limpias en el recomendador todas las
   recetas que lo llevaban: se le podían pautar sin un solo aviso. El motivo era
