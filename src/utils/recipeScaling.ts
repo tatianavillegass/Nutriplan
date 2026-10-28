@@ -6,7 +6,7 @@ import type { Acompanamiento, IngredienteAnadido } from '../types/plan';
 import { exchangesToMacros, aporteDeAlimento, type ExchangeCounts } from './exchanges';
 import { kcalFromMacros, roundPortion } from './macros';
 import { gramosPorPieza, redondearAPiezas } from './measures';
-import { gramosPorIntercambio } from './recipeComposition';
+import { composicionDesdeIngredientes, gramosPorIntercambio } from './recipeComposition';
 
 /**
  * ESCALADO POR MACRO (§5)
@@ -144,7 +144,41 @@ function factorQueCabe(
 }
 
 /** Solo la parte numérica de la base de la receta. */
-function baseNumerica(receta: Receta): ExchangeCounts {
+/**
+ * DE QUÉ SE PARTE: DE LOS INGREDIENTES, NO DE LO GUARDADO
+ * ======================================================
+ * La `base` de una receta se guarda **redondeada a medias porciones**
+ * (`snapHalf`), que es como se habla: «2 almidones y medio». Pero esa base
+ * redondeada era también de donde partía el escalado, y ahí el redondeo deja
+ * de ser una forma de hablar y pasa a ser un error que se arrastra.
+ *
+ * Un desayuno con 30 g de avena (0,75) y 65 g de plátano (0,5) se guardaba
+ * como 1 + 0,5 = 1,5, y con 2 hidratos pautados salía avena 40 / plátano 85
+ * cubriendo 1,5 de 2 — media porción perdida, y encima avisando de que la
+ * receta no cuadra. Con dos ingredientes que redondean hacia abajo se pierde
+ * una porción entera.
+ *
+ * **Los ingredientes son la receta.** Si están enlazados al catálogo, de ahí
+ * sale la composición exacta y el redondeo se queda donde debe estar: en lo
+ * que se lee, no en lo que se calcula. Y así se arreglan de golpe las recetas
+ * ya guardadas, sin que haya que volver a entrar en ninguna.
+ *
+ * SÓLO SI SE PUEDE CONTAR LA RECETA ENTERA
+ * ========================================
+ * Y eso es media receta: si un ingrediente no está enlazado al catálogo
+ * —el yogur que se escribió a mano— lo que aporta no se sabe, así que calcular
+ * desde los ingredientes lo dejaría fuera y la receta encogería. Con una sola
+ * línea sin resolver manda lo guardado, que es lo que ella escribió sabiendo
+ * lo que hay en el plato.
+ */
+function baseNumerica(receta: Receta, foods: Alimento[] = []): ExchangeCounts {
+  if (foods.length && receta.ingredientes.some((i) => i.foodId)) {
+    const comp = composicionDesdeIngredientes(receta, foods);
+    if (!comp.sinResolver.length && Object.keys(comp.exacto).length) {
+      return { ...comp.exacto } as ExchangeCounts;
+    }
+  }
+
   const out: ExchangeCounts = {};
   for (const [gid, v] of Object.entries(receta.base) as [ExchangeGroupId, number | 'ilimitado'][]) {
     if (v !== 'ilimitado' && v) out[gid] = v;
@@ -233,7 +267,7 @@ export function scaleRecipe(
     });
   }
 
-  const base = baseNumerica(receta);
+  const base = baseNumerica(receta, foods);
   const deLaReceta = porBucket(base);
   const delPlan = porBucket(requeridos);
 

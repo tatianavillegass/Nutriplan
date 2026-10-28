@@ -104,7 +104,13 @@ describe('Receta escalada (Fase 1)', () => {
       />,
     );
     expect(screen.getByText('150 g')).toBeTruthy();
-    expect(screen.getByText('60 g crudo')).toBeTruthy();
+    /*
+     * 55 y no 60: la receta declaraba «1 almidón» pero sus 20 g de arroz son
+     * 1,11 porciones con la porción del catálogo (18 g). Ahora el escalado
+     * parte de los ingredientes, así que 3 almidones pautados son 3 × 18 = 54
+     * → 55 g. Antes servía 3,33. Ver `baseNumerica`.
+     */
+    expect(screen.getByText('55 g crudo')).toBeTruthy();
     // El aceite se mide, no se pesa: lo dice el catálogo, y ahora la receta
     // no puede contradecirlo. Ver `unidadDeIngrediente`.
     expect(screen.getByText('10 ml')).toBeTruthy();

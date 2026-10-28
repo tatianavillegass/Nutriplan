@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
 import type { Receta } from '../../types/recipe';
+import { FOOD_CATALOG } from '../../data/foodCatalog';
 
 afterEach(cleanup);
 
@@ -79,5 +80,60 @@ describe('Por qué han salido esas cantidades', () => {
       />,
     );
     expect(document.body.textContent).not.toMatch(/lo cubre con/i);
+  });
+});
+
+/**
+ * «ESTA RECETA NO CUBRE…» ES COSA DE QUIEN PAUTA
+ *
+ * A quien se va a comer el plato no le dice qué hacer: le dice que su plan
+ * está mal, y la confunde. Completar lo que falte es trabajo de la
+ * nutricionista, y lo hace antes de enviarlo.
+ */
+describe('Lo que no cubre la receta', () => {
+  const pollo = FOOD_CATALOG.find((f) => f.nombre === 'Pechuga de pollo cruda')!;
+
+  const SOLO_PROTE: Receta = {
+    id: 'rp',
+    nombre: 'Pollo a la plancha',
+    categorias: ['comida'],
+    tags: [],
+    base: { proteicos_magros: 1 },
+    ingredientes: [
+      {
+        id: 'i1',
+        nombre: 'Pollo',
+        foodId: pollo.id,
+        cantidad_base: 30,
+        unidad: 'g',
+        grupo: 'proteicos_magros',
+        escalable: true,
+        opcional: false,
+      },
+    ],
+    preparacion: '',
+    notas: '',
+    createdAt: '',
+    updatedAt: '',
+  };
+
+  /* Un plato de pollo en una comida con almidón pautado. */
+  const PAUTA = { proteicos_magros: 3, almidones: 2 };
+
+  it('se le dice a la nutricionista', () => {
+    render(
+      <ScaledRecipeView
+        receta={SOLO_PROTE}
+        requeridos={PAUTA}
+        foods={FOOD_CATALOG}
+        paraNutricionista
+      />,
+    );
+    expect(screen.getByText(/no cubre/i)).toBeTruthy();
+  });
+
+  it('y a la clienta no', () => {
+    render(<ScaledRecipeView receta={SOLO_PROTE} requeridos={PAUTA} foods={FOOD_CATALOG} />);
+    expect(screen.queryByText(/no cubre/i)).toBeNull();
   });
 });

@@ -15,11 +15,17 @@ import type { Alimento } from '../../types/food';
  * siete días.
  */
 
+/*
+ * La porción cuadra con lo que lleva la receta: 60 g son 3 almidones, que es
+ * la base que declara. Con 18 g por porción eran 3,33 y la receta decía otra
+ * cosa de lo que tenía dentro — ahora el escalado parte de los ingredientes
+ * (ver `baseNumerica`), así que una receta que se contradice se nota.
+ */
 const ARROZ = {
   id: 'f_arroz',
   nombre: 'Arroz blanco crudo',
   grupo: 'almidones',
-  gramos: 18,
+  gramos: 20,
   intercambios: 1,
   nutrientes: { proteina: 7, hc: 78, grasa: 0.6 },
 } as unknown as Alimento;

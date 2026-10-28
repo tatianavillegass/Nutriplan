@@ -169,7 +169,11 @@ export function AjustarCantidades({
       ...i,
       cantidad_base: i.cantidad_final,
     }));
-    return composicionDesdeIngredientes({ ingredientes }, foods).base as ExchangeCounts;
+    /*
+     * Exacto, no redondeado: aquí se decide si la comida cuadra, y media
+     * porción perdida por ingrediente es justo lo que hacía dudar del número.
+     */
+    return composicionDesdeIngredientes({ ingredientes }, foods).exacto as ExchangeCounts;
   }, [actual.ingredientes, foods]);
 
   const resumen = useMemo(() => estadoComida(requeridos, enPlato), [requeridos, enPlato]);

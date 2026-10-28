@@ -1163,6 +1163,29 @@ si es una de estas decisiones:
   una derivación y renueva al precio de siempre; así se sabe **cuánto has
   dejado de cobrar** y no sólo cuántas son. Lo que no se puede calcular se dice
   en vez de esconderlo: consultas sin modalidad y sesiones sin bono.
+- **La receta son sus ingredientes, no la base guardada.** El caso que lo
+  destapó: un desayuno con 2 hidratos pautados y un plato de 30 g de avena con
+  65 g de plátano que decía cubrir **1 sola porción**. La `base` de una receta
+  se guarda redondeada a medias porciones —que es como se habla, «2 almidones
+  y medio»— pero el escalado **partía de esa base redondeada**, y ahí el
+  redondeo deja de ser una forma de hablar: 0,75 + 0,5 se guardaba como 1 +
+  0,5, los gramos salían de ahí y el recuento también. Con dos ingredientes
+  que redondean a la baja se pierde una porción entera, y encima la receta
+  avisa de que no cuadra. Ahora `baseNumerica` calcula la composición **desde
+  los ingredientes** cuando están enlazados al catálogo, así que se arreglan de
+  golpe las recetas ya guardadas sin volver a entrar en ninguna. **Sólo si se
+  puede contar la receta entera**: con un ingrediente sin enlazar no se sabe lo
+  que aporta, calcular lo dejaría fuera y la receta encogería — ahí manda lo
+  guardado, que es lo que ella escribió sabiendo lo que hay en el plato. Al
+  guardar en el banco se escribe la composición exacta, y la de los platos
+  también se mide exacta (`exacto`, no `base`). **Esto mueve gramos en recetas
+  que ya estaban**: la del wok servía 60 g de arroz para «1 almidón» cuando sus
+  20 g de base eran 1,11 porciones; ahora sirve 55, que es lo que pautó.
+- **«Esta receta no cubre…» es cosa de quien pauta.** A quien se va a comer el
+  plato no le dice qué hacer: le dice que su plan está mal, y la confunde.
+  Completar lo que falte es trabajo de la nutricionista y lo hace antes de
+  enviarlo, así que el aviso va detrás de `paraNutricionista` como el de la
+  grasa y las notas del escalado.
 - **El queso remata el plato, no es la fuente.** En un plato de pollo con
   queso feta la proteína la pone el pollo, pero para la tabla de intercambios
   un queso graso es una fuente como cualquier otra: al escalar al día de más

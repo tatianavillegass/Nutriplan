@@ -108,7 +108,21 @@ export function RecipeBankPage() {
   const enlazada = draft.ingredientes.some((i) => i.foodId);
 
   const guardar = () => {
-    const aGuardar = enlazada ? { ...draft, base: composicion.base } : draft;
+    /*
+     * La composición EXACTA, no la redondeada a medias porciones: el redondeo
+     * es para leerla («2 almidones y medio»), y usarlo como punto de partida
+     * del escalado perdía media porción por ingrediente. Ver `baseNumerica`.
+     * La marca de verdura ilimitada vive en la redondeada y se conserva.
+     */
+    const aGuardar = enlazada
+      ? {
+          ...draft,
+          base: {
+            ...(composicion.exacto as typeof draft.base),
+            ...(composicion.base.verduras ? { verduras: composicion.base.verduras } : {}),
+          },
+        }
+      : draft;
     if (editandoId === 'nuevo') addRecipe(aGuardar);
     else if (editandoId) updateRecipe(editandoId, aGuardar);
     setEditandoId(null);

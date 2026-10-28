@@ -220,7 +220,13 @@ export function ScaledRecipeView({
             la receta cubriera el hidrato con pan en vez de con fruta, y eso no
             era ningún problema.
           */}
-          {escalada.gruposSinCubrir.length > 0 && (
+          {/*
+            Y SÓLO A QUIEN PAUTA
+            «Esta receta no cubre almidones» a quien se va a comer el plato no
+            le dice qué hacer: le dice que su plan está mal. Completar lo que
+            falte es trabajo de la nutricionista, y lo hace antes de enviarlo.
+          */}
+          {paraNutricionista && escalada.gruposSinCubrir.length > 0 && (
             <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
               Esta receta no cubre:{' '}
               {escalada.gruposSinCubrir.map((g) => EXCHANGE_GROUPS[g].nombre).join(', ')}. Habrá que
