@@ -13,7 +13,7 @@ import {
 import type { Client } from '../../types/client';
 import type { Alimento, MealSlot } from '../../types/food';
 import { matchRecipes } from '../../utils/recipeMatcher';
-import { pautaDeComida } from '../../utils/fijos';
+import { fijosDeComida, pautaDeComida } from '../../utils/fijos';
 import { porQueCoincide, recetaCoincide } from '../../utils/buscarRecetas';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { ScaledRecipeView } from './ScaledRecipeView';
@@ -657,6 +657,7 @@ export function RecipeRecommender({
                   ) : (
                     <ScaledRecipeView
                           recetas={recetas}
+                      fijos={fijosDeComida(dayType, meal.id)}
                       receta={r}
                       requeridos={reparto}
                       foods={foods}

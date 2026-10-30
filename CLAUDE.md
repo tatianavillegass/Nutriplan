@@ -1335,6 +1335,17 @@ si es una de estas decisiones:
   en un desayuno sin lácteo sale en ámbar en la ficha —«aquí no tienes pautado
   ½ lácteo»— y ella decide si sube la pauta o se lo quita a otra comida;
   descontarlo de otro sitio sería mover su pauta sin que lo vea.
+- **Y se ve dentro de la receta, que es donde se leen los gramos.** El
+  descuento ya funcionaba —con un cuadrito de chocolate pautado, un plato de 3
+  porciones de grasa pasa de 15 g de aceite a 10 g— pero el fijo no aparecía
+  por ninguna parte de la entrega, así que ese aceite recortado parecía un
+  error de la receta. Ahora `ScaledRecipeView` lleva un bloque **«Siempre con
+  esta comida»** con su nombre, sus gramos y la línea que lo explica («ya está
+  descontado de lo que trae el plato»), y está en los cuatro sitios donde se
+  entrega: el recomendador de ella, el día de la clienta, su biblioteca de
+  recetas y el PDF. **No suma a lo que cubre el plato**: sus intercambios ya
+  salieron de la pauta antes de escalar, y contarlos otra vez aquí sería
+  cobrarlos dos veces.
 - **El descuento se hace una sola vez, en el tipo de día que ve la clienta.**
   `ClientView` reduce la casilla de cada comida con `pautaDeComida` al elegir
   el `dayType`, así que de ahí para abajo —recetas, combinaciones, porciones,

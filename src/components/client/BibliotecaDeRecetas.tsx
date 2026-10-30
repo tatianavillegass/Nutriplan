@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { pautaDeComida } from '../../utils/fijos';
+import { fijosDeComida, pautaDeComida } from '../../utils/fijos';
 import type { Alimento } from '../../types/food';
 import type { DayType, Meal, Plan } from '../../types/plan';
 import {
@@ -149,6 +149,7 @@ export function BibliotecaDeRecetas({
                   receta={r}
                   recetas={recipes}
                   requeridos={pautaDeComida(dayType, meal.id, foods).pauta}
+                  fijos={fijosDeComida(dayType, meal.id)}
                   foods={foods}
                   ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
                   acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { Receta } from '../../types/recipe';
+import type { Fijo } from '../../types/plan';
 import type { Alimento } from '../../types/food';
-import { losDosGramajes } from '../../types/food';
+import { esUnidadMedible, losDosGramajes } from '../../types/food';
 import type { ExchangeCounts } from '../../utils/exchanges';
 import { exchangesToMacros } from '../../utils/exchanges';
 import { scaleRecipe } from '../../utils/recipeScaling';
@@ -14,7 +15,7 @@ import { IngredientSwap } from './IngredientSwap';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 import { roundPortion } from '../../utils/macros';
 import { escalarMedida } from '../../utils/measures';
-import { Button } from '../common/ui';
+import { Button, fmt } from '../common/ui';
 import { RecipeMeta, MacroBar } from '../common/RecipeMeta';
 import {
   LABEL_ACOMPANAMIENTO,
@@ -68,6 +69,17 @@ interface Props {
   /** Lo que la nutricionista le ha puesto al lado a esta receta. */
   acompanamientos?: Acompanamiento[];
   /**
+   * LO QUE VA SIEMPRE CON ESA COMIDA
+   *
+   * El café con leche del desayuno, el cuadrito de chocolate de después de
+   * cenar. No es de esta receta —va con la comida, elija el plato que elija—
+   * pero **tiene que verse aquí**: es parte de lo que se va a tomar, y sus
+   * intercambios ya están descontados de lo que esta receta tiene que cubrir
+   * (por eso el aceite pone 10 g y no 15). Enseñar los gramos sin decir de
+   * dónde sale ese descuento deja la receta pareciendo que se quedó corta.
+   */
+  fijos?: Fijo[];
+  /**
    * Ingredientes que esta clienta no se come y que por tanto no salen ni en la
    * lista ni en lo que el plato cubre. Ver `DayType.ingredientesQuitados`.
    */
@@ -95,6 +107,7 @@ export function ScaledRecipeView({
   sinCabecera = false,
   ajustes,
   acompanamientos,
+  fijos = [],
   quitados,
   anadidos,
   recetas = [],
@@ -381,6 +394,41 @@ export function ScaledRecipeView({
               </li>
             ))}
           </ul>
+
+          {/*
+            LO QUE VA SIEMPRE, ANTES QUE LO DE ESTA RECETA
+            Va con la comida y no con el plato, así que no depende de cuál se
+            elija — y por eso se dice aquí, donde se están leyendo los gramos:
+            si no, el aceite recortado no se entiende.
+          */}
+          {fijos.length > 0 && (
+            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="mb-1 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+                Siempre con esta comida
+              </p>
+              <ul className="space-y-0.5">
+                {fijos.map((f) => (
+                  <li key={f.id} className="flex items-baseline gap-2 text-sm">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
+                    <span className="flex-1 text-slate-700">
+                      {f.nombre}
+                      {f.gramos > 0 && (
+                        <span className="tnum ml-1.5 font-medium text-slate-600">
+                          {fmt(f.gramos)} {esUnidadMedible(f.unidad) ? f.unidad : 'g'}
+                        </span>
+                      )}
+                      {f.tipo === 'postre' && (
+                        <span className="ml-1.5 text-[10px] text-slate-400">después</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-[10px] leading-snug text-slate-400">
+                Ya está descontado de lo que trae el plato.
+              </p>
+            </div>
+          )}
 
           {/*
             Lo que la nutricionista ha puesto al lado va aparte de la receta:

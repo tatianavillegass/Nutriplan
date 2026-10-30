@@ -2139,6 +2139,13 @@ export function ClientView() {
                         <ScaledRecipeView
                           recetas={recipes}
                           receta={receta}
+                          /*
+                            Lo que va siempre con esta comida, dentro de la
+                            receta: sus intercambios ya están fuera de la
+                            pauta (ver el `dayType` de arriba), así que sin
+                            esta línea el aceite recortado no se entiende.
+                          */
+                          fijos={fijosDeComida(dayType, m.id, diaDeLaSemana)}
                           requeridos={dayType.grid[m.id] ?? {}}
                           foods={foods}
                           ajustes={ajustesDeReceta(dayType, m.id, receta.id)}
