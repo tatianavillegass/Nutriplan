@@ -330,24 +330,18 @@ export function scaleRecipe(
       const proteicos = filtrar(enReceta, (g) => !esRemate(g));
 
       /**
-       * SÓLO SI HAY LÁCTEO PAUTADO
+       * CUÁNDO MANDA ESTA REGLA
        *
-       * Cuando el plan pauta un lácteo, el lácteo cubre el suyo y el proteico
-       * el resto: es el plato de pollo con un yogur de postre.
+       * Hace falta que el plato tenga las dos cosas: algo que remate y una
+       * fuente de verdad. Un plato que sólo lleva queso no tiene con qué
+       * cubrir la proteína, así que ahí el queso vuelve a ser la fuente y
+       * escala como cualquier otro — una ensalada de feta no puede quedarse
+       * corta de proteína porque el feta «remate».
        *
-       * Cuando NO hay lácteo pautado, los dos son fuentes de proteína y se
-       * reparten lo pautado en la proporción que traiga la receta. Antes el
-       * proteico se estiraba hasta cubrirlo todo él solo y el lácteo sumaba
-       * encima: en un bol de avena con yogur y whey salían 5 porciones de
-       * proteína donde había 4 pautadas.
+       * Los lácteos sin marcar entran sólo si hay lácteo pautado, que es como
+       * se portaban antes de que el remate existiera.
        */
       const hayLacteoPautado = Object.keys(filtrar(pautado, esLacteo)).length > 0;
-      /*
-       * Un remate marcado a mano no necesita estar pautado para portarse como
-       * remate: ése es justo el caso del feta en un plato de pollo, donde no
-       * hay ningún proteico graso pautado y aun así el feta no puede crecer.
-       * Para los lácteos sin marcar se mantiene la condición de antes.
-       */
       const hayMarcado = Object.keys(lacteos).some((g) =>
         gruposRemate.has(g as ExchangeGroupId),
       );
@@ -361,26 +355,44 @@ export function scaleRecipe(
         const mProteicos = exchangesToMacros(proteicos);
 
         /**
-         * El lácteo sólo cubre el lácteo que esté pautado. Si no hay ninguno
-         * pautado, entra de complemento con el sitio que sobre — pero nunca
-         * quita proteína al proteico, que es de donde tiene que venir.
+         * EL REMATE PONE LO SUYO Y EL RESTO LO CUBRE LA FUENTE
+         * ===================================================
+         * Un plato de 5 porciones de proteína son 4 de pollo y 1 de queso,
+         * nunca 2 de queso: el queso remata, no es de donde viene la proteína.
+         *
+         * Antes se le pedía al remate que cubriera **todo lo pautado de su
+         * subgrupo**, y eso daba dos resultados absurdos a la vez: con 2
+         * proteicos grasos pautados salían 90 g de feta, y al pollo no le
+         * quedaba nada que cubrir — los «0 g de pollo».
+         *
+         * Ahora el remate aporta como mucho **lo que trae la receta**, y
+         * nunca más de UNA porción (o de su máximo en gramos, si lo tiene).
+         * No crece: no es la fuente. Lo que falte lo pone el proteico, venga
+         * pautado como magro o como graso — que si el plan pide proteína alta
+         * en grasa y el plato no la trae, se cubre con la que haya.
          */
-        const lacteoPautado = exchangesToMacros(filtrar(pautado, esRemate)).proteina;
-        const paraElProteico = Math.max(0, mReq.proteina - lacteoPautado);
+        const UNA_PORCION = 7; // gramos de proteína de un intercambio
+        const topePorciones = mLacteos.proteina > 0 ? UNA_PORCION / mLacteos.proteina : 1;
+        let fLacteo = Math.min(1, topePorciones);
 
+        /* Su rango en gramos acota antes que nada: es lo que ella escribió. */
+        for (const g of Object.keys(lacteos) as ExchangeGroupId[]) {
+          const max = rangoDelGrupo.get(g)?.max;
+          if (max != null) fLacteo = Math.min(fLacteo, max);
+        }
+
+        const paraElProteico = Math.max(0, mReq.proteina - porFactor(mLacteos, fLacteo).proteina);
         let fProteico = mProteicos.proteina > 0 ? paraElProteico / mProteicos.proteina : 0;
         const ocupado = porFactor(mProteicos, fProteico);
 
+        /*
+         * Y si con el proteico puesto ya no cabe el remate —se pasaría de la
+         * grasa o de las kcal pautadas— se recorta el remate, que es el que
+         * sobra. Nunca al revés.
+         */
         const sitio = factorQueCabe(bucket, ocupado, mLacteos, mReq);
-        const suyo = lacteoPautado > 0 ? lacteoPautado / mLacteos.proteina : 1;
-        let fLacteo = Math.min(suyo, Math.max(0, sitio));
-
-        if (sitio <= 0.001) {
-          fLacteo = 0;
-          notas.push(
-            `Con lo pautado no queda sitio para ${nombres(lacteos)}: pauta un lácteo o quítalo del plato.`,
-          );
-        } else if (fLacteo < suyo - 0.001) {
+        if (sitio < fLacteo - 0.001) {
+          fLacteo = Math.max(0, sitio);
           notas.push(
             `${nombres(lacteos)} se ha reducido: la proteína pautada la cubre ${nombres(proteicos)}.`,
           );

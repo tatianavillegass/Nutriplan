@@ -83,14 +83,23 @@ describe('Cuando el lácteo también está pautado', () => {
     expect(de(e, 'Yogur').cantidad_final).toBe(150);
   });
 
-  it('con el doble pautado, el pollo dobla y el yogur también', () => {
+  /**
+   * EL QUE REMATA NO CRECE
+   *
+   * Con el doble pautado el que dobla es el pollo. El yogur se queda en lo
+   * que trae la receta —una porción como mucho— porque es el complemento, no
+   * la fuente: en un plato de 5 porciones de proteína van 4 de pollo y 1 de
+   * yogur, nunca 2 de yogur.
+   */
+  it('con el doble pautado dobla el pollo, no el yogur', () => {
     const e = scaleRecipe(
       PLATO,
       { proteicos_magros: 4, lacteos_proteicos: 2, almidones: 1 },
       FOOD_CATALOG,
     );
-    expect(e.factores.proteicos_magros).toBeCloseTo(2, 3);
-    expect(e.factores.lacteos_proteicos).toBeCloseTo(2, 3);
+    expect(e.factores.lacteos_proteicos).toBeCloseTo(1, 3);
+    // Y el pollo carga con lo que el yogur no pone.
+    expect(e.factores.proteicos_magros!).toBeGreaterThan(2);
   });
 });
 

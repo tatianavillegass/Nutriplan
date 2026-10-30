@@ -1273,6 +1273,18 @@ si es una de estas decisiones:
   Completar lo que falte es trabajo de la nutricionista y lo hace antes de
   enviarlo, así que el aviso va detrás de `paraNutricionista` como el de la
   grasa y las notas del escalado.
+- **El remate pone lo suyo y el resto lo cubre la fuente.** «Un plato de 5
+  porciones de proteína son 4 de pollo y 1 de queso, nunca 2 de queso.» Antes
+  se le pedía al remate que cubriera **todo lo pautado de su subgrupo**, y eso
+  daba dos absurdos a la vez: con 2 proteicos grasos pautados salían 90 g de
+  feta **y al pollo no le quedaba nada que cubrir** — los «0 g de pollo» que
+  aparecían en muchas recetas. Ahora el remate aporta como mucho **lo que trae
+  la receta**, y nunca más de una porción (o de su `remateMax`); **no crece,
+  porque no es la fuente**. Lo que falte lo pone el proteico, **venga pautado
+  como magro o como graso**: si el plan pide proteína alta en grasa y el plato
+  no la trae, se cubre con la que haya, que es la regla que ella pidió. Y si
+  con el proteico puesto ya no cabe el remate, **se recorta el remate**, nunca
+  al revés.
 - **El queso remata el plato, no es la fuente.** En un plato de pollo con
   queso feta la proteína la pone el pollo, pero para la tabla de intercambios
   un queso graso es una fuente como cualquier otra: al escalar al día de más

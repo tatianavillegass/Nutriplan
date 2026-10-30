@@ -63,7 +63,7 @@ const PLATO: Receta = {
   base: { proteicos_magros: 1, proteicos_grasos: 0.5 },
   ingredientes: [
     ing('i-pollo', 'Pollo', POLLO.id, 'proteicos_magros', 30),
-    ing('i-feta', 'Feta', FETA.id, 'proteicos_grasos', 22),
+    ing('i-feta', 'Feta', FETA.id, 'proteicos_grasos', 45),
   ],
   preparacion: '',
   notas: '',
@@ -102,8 +102,11 @@ describe('Marcado como remate', () => {
   const FETA_REMATE: Alimento = { ...FETA, remate: true };
   const e = scaleRecipe(PLATO, PAUTA, [POLLO, FETA_REMATE]);
 
-  /* Se queda en el graso que estaba pautado: ni más ni menos. */
-  it('el feta cubre su hueco y no se estira', () => {
+  /*
+   * Se queda en lo que trae la receta: una porción, que es el máximo de un
+   * remate. «Un plato de 5 porciones son 4 de pollo y 1 de queso.»
+   */
+  it('el feta se queda en su porción y no se estira', () => {
     expect(gramos(e, 'i-feta')).toBeCloseTo(45, 0);
   });
 
@@ -159,10 +162,10 @@ describe('Con rango', () => {
     expect(e.notas.some((n) => /por debajo de su mínimo/i.test(n))).toBe(true);
   });
 
-  it('el rango se dice en las notas, para que no parezca un error', () => {
+  it('el rango se nota en los gramos', () => {
     const conTecho: Alimento = { ...FETA, remate: true, remateMax: 10 };
     const e = scaleRecipe(PLATO, PAUTA, [POLLO, conTecho]);
-    expect(e.notas.some((n) => /máximo/i.test(n))).toBe(true);
+    expect(gramos(e, 'i-feta')).toBeLessThanOrEqual(10);
   });
 });
 
@@ -213,5 +216,52 @@ describe('Los lácteos siguen como estaban', () => {
       YOGUR,
     ]);
     expect(gramos(e, 'i-yogur')).toBeCloseTo(170, 0);
+  });
+});
+
+/**
+ * LAS REGLAS, TAL Y COMO ELLA LAS ESCRIBIÓ
+ *
+ * «Un plato que tenga 5 porciones de proteína utiliza 4 de pollo (120 g) y 1
+ * de queso (45 g como máximo).» Y: «si he puesto 2 intercambios de proteína
+ * alta en grasa y la receta no tiene, se compensa con la baja en grasa que
+ * tenga — no me importa que escoja una baja en grasa.»
+ */
+describe('El reparto entre la fuente y el remate', () => {
+  const FETA_REMATE: Alimento = { ...FETA, remate: true };
+  const foods = [POLLO, FETA_REMATE];
+
+  it('5 porciones son 4 de pollo y 1 de queso', () => {
+    const e = scaleRecipe(PLATO, { proteicos_magros: 4, proteicos_grasos: 1 }, foods);
+    expect(gramos(e, 'i-pollo')).toBeCloseTo(120, 0);
+    expect(gramos(e, 'i-feta')).toBeCloseTo(45, 0);
+  });
+
+  /*
+   * El caso de los «0 g de pollo»: pautaba proteína alta en grasa, el queso
+   * era el único graso del plato y se le pedía que lo cubriera todo él.
+   */
+  it('con proteína alta en grasa pautada, el pollo no se queda en cero', () => {
+    const e = scaleRecipe(PLATO, { proteicos_grasos: 2 }, foods);
+    expect(gramos(e, 'i-pollo')).toBeGreaterThan(0);
+    expect(gramos(e, 'i-feta')).toBeLessThanOrEqual(45);
+  });
+
+  it('y el queso nunca pasa de una porción', () => {
+    for (const pauta of [
+      { proteicos_grasos: 2 },
+      { proteicos_grasos: 3 },
+      { proteicos_magros: 2, proteicos_grasos: 2 },
+    ]) {
+      const e = scaleRecipe(PLATO, pauta, foods);
+      expect(gramos(e, 'i-feta')).toBeLessThanOrEqual(46);
+    }
+  });
+
+  /* Lo que falte lo pone la fuente, venga pautado como magro o como graso. */
+  it('la fuente carga con lo que el remate no pone', () => {
+    const e = scaleRecipe(PLATO, { proteicos_magros: 2, proteicos_grasos: 2 }, foods);
+    // 4 porciones pautadas, 1 la pone el queso: al pollo le tocan 3.
+    expect(gramos(e, 'i-pollo')).toBeCloseTo(90, 0);
   });
 });
