@@ -542,6 +542,42 @@ export function recetasDeComida(
  *
  * Vale igual para un `Plan` y para la foto de lo enviado (`PlanPublicado`).
  */
+/**
+ * DESAYUNO CON DESAYUNO, PRE-ENTRENO CON PRE-ENTRENO
+ * ==================================================
+ * Las comidas se emparejan entre tipos de día **por el nombre**, no por la
+ * identidad que llevan por dentro. Es como ella lo piensa: el desayuno es el
+ * desayuno coma lo que coma ese día, y lo único que cambia son las cantidades.
+ *
+ * Hacía falta decirlo explícitamente porque las identidades ya no bastan: una
+ * comida añadida a mano en el día de tirada nace con identidad propia, así que
+ * un «Desayuno» nuevo ahí no compartía nada con el «Desayuno» del día base y
+ * había que elegirle las recetas dos veces. Y al revés: el pre-entreno, que se
+ * llama distinto, no comparte con nadie — que es lo que tiene que pasar.
+ *
+ * Sin nombre no hay con qué emparejar, así que esa comida va sola.
+ */
+function claveDeComida(nombre: string): string {
+  return nombre
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Todas las comidas del plan que se llaman igual que ésta, ella incluida. */
+export function comidasQueSeLlamanIgual(
+  plan: { dayTypes: DayType[] },
+  mealId: string,
+): string[] {
+  const todas = plan.dayTypes.flatMap((d) => d.meals);
+  const suyo = todas.find((m) => m.id === mealId);
+  const clave = suyo ? claveDeComida(suyo.nombre) : '';
+  if (!clave) return [mealId];
+  const ids = todas.filter((m) => claveDeComida(m.nombre) === clave).map((m) => m.id);
+  return ids.length ? [...new Set(ids)] : [mealId];
+}
+
 export function recetasDelPlan(plan: {
   recetasAsignadas?: Record<string, string[]>;
   dayTypes: DayType[];
@@ -560,6 +596,32 @@ export function recetasDelPlan(plan: {
 
   for (const mealId of Object.keys(plan.recetasAsignadas ?? {})) {
     out[mealId] = recetasDeComida(plan.recetasAsignadas, mealId);
+  }
+
+  /*
+   * Y lo que se llama igual se junta: el «Desayuno» del día base y el del día
+   * de tirada ofrecen los mismos platos, se hayan montado como se hayan
+   * montado. Se escribe en todas sus identidades para que quitar una receta
+   * en un día la quite en el otro — si no, se quitaría de una y seguiría
+   * saliendo por la otra.
+   */
+  const porNombre = new Map<string, string[]>();
+  for (const d of plan.dayTypes) {
+    for (const m of d.meals) {
+      const clave = claveDeComida(m.nombre);
+      if (!clave) continue;
+      porNombre.set(clave, [...(porNombre.get(clave) ?? []), m.id]);
+    }
+  }
+
+  for (const ids of porNombre.values()) {
+    if (ids.length < 2) continue;
+    const juntas: string[] = [];
+    for (const id of ids) {
+      for (const r of out[id] ?? []) if (!juntas.includes(r)) juntas.push(r);
+    }
+    if (!juntas.length) continue;
+    for (const id of ids) out[id] = [...juntas];
   }
 
   return out;

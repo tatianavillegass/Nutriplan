@@ -1230,6 +1230,20 @@ si es una de estas decisiones:
   con un solo tipo de día, o si esa id no está en ningún otro, renombrar es
   sólo cambiar el nombre, y separarla rompería los registros que la clienta ya
   tiene apuntados contra esa id.
+- **Y al revés: lo que se llama igual comparte platos, aunque la id sea
+  distinta.** Su regla, literal: «las porciones se leen desde cálculo plan
+  dependiendo del NOMBRE: desayuno con desayuno, comida con comida, pre-entreno
+  con pre-entreno.» Las ids compartidas lo conseguían de rebote mientras los
+  tipos de día nacieran iguales, pero no cuando **añade una comida a mano** en
+  el día de tirada: ese «Desayuno» nacía con id propia y había que elegirle las
+  recetas otra vez, siendo el mismo desayuno. Ahora `recetasDelPlan` junta las
+  recetas de **todas las comidas que se llaman igual** (`claveDeComida`
+  normaliza tildes, mayúsculas y espacios) y la asignación escribe en todas
+  ellas (`comidasQueSeLlamanIgual`): hace falta escribir en todas porque si no,
+  **quitar** una receta en un día la dejaría puesta por la otra y parecería que
+  el botón no hace nada. El pre-entreno, que se llama distinto, sigue yendo
+  solo — que es lo que arregla el cruce de arriba. Las **cantidades** siguen
+  siendo de cada tipo de día: el `grid` no se junta, sólo los platos.
 - **Y los planes que ya estaban mal se arreglan solos al cargar**
   (`separarComidasRenombradas`, dentro de `migrarGruposPlanes`). **La señal es
   el nombre**: dos días que llaman igual a la misma id son la misma comida y

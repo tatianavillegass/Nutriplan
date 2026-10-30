@@ -61,6 +61,7 @@ import { ComboEditor } from "../components/phase2/ComboEditor";
 import { catalogoPermitido, evaluarAlimento } from "../utils/restrictions";
 import {
   RECETAS_POR_COMIDA,
+  comidasQueSeLlamanIgual,
   recetasDelPlan,
   fotoDelPlan,
 } from "../types/plan";
@@ -1007,8 +1008,19 @@ export function ClientDetail() {
                        * plan de una vez y deja de haber dos sitios donde
                        * mirar.
                        */
+                      /*
+                       * Y se escribe en todas las comidas que se llaman
+                       * igual: el desayuno es el desayuno en los dos tipos
+                       * de día. Si sólo se escribiera en ésta, quitar una
+                       * receta aquí la dejaría puesta por la otra y
+                       * parecería que el botón no hace nada.
+                       */
+                       const alMismoNombre: Record<string, string[]> = {};
+                       for (const id of comidasQueSeLlamanIgual(plan, m.id)) {
+                         alMismoNombre[id] = [...nuevas];
+                       }
                       updatePlan(plan.id, {
-                        recetasAsignadas: { ...recetasEnUso, [m.id]: nuevas },
+                        recetasAsignadas: { ...recetasEnUso, ...alMismoNombre },
                       });
                     }}
                   />
