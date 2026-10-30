@@ -138,26 +138,56 @@ describe('El yogur proteico también sirve de proteína', () => {
   });
 });
 
-describe('Lo que sí se recorta', () => {
-  it('un lácteo entero donde había magros se ajusta por la grasa', () => {
+/**
+ * LA PROTEÍNA YA NO SE RECORTA POR SU PROPIA GRASA
+ * ================================================
+ * Esto invierte lo que había, y a propósito. Antes, un plato que traía la
+ * proteína con algo más graso de lo pautado se recortaba para que cupiera su
+ * grasa: menos salmón del que tocaba, o 5 g de queso. La comida se quedaba
+ * corta justo de lo que no puede faltar, y ella acababa corrigiendo a mano
+ * receta por receta.
+ *
+ * La regla nueva, la suya: **la proteína cubre lo pautado y el exceso de
+ * grasa se le baja al aceite**, que es de donde se puede quitar sin que falte
+ * nada. Y si ni quitando el aceite entero cabe, se dice.
+ */
+describe('La proteína cubre lo pautado, venga como venga', () => {
+  it('un lácteo entero donde había magros cubre la proteína pautada', () => {
     const conEnteros = receta({ lacteos_enteros: 2 }, [ing('Leche entera', 'lacteos_enteros', 400)]);
-    const pautado: ExchangeCounts = { proteicos_magros: 2 };
-    const e = scaleRecipe(conEnteros, pautado);
+    const e = scaleRecipe(conEnteros, { proteicos_magros: 2 });
 
-    // 1 g de grasa pautada frente a los 16 g de la receta: hay que recortar.
-    expect(e.factores.lacteos_enteros!).toBeLessThan(0.5);
-    expect(e.notas.join(' ')).toMatch(/recortado/i);
-    const kcalPlan = kcalFromMacros(exchangesToMacros(pautado));
-    expect(kcalDe(conEnteros.base, e.factores)).toBeLessThanOrEqual(kcalPlan + 0.001);
+    /*
+     * Lo que tiene que cuadrar es la proteína, no la grasa: dos porciones de
+     * leche entera traen un pelo más de proteína que dos magros, así que el
+     * factor baja un poco por eso — y por nada más. Antes se quedaba por
+     * debajo de la mitad para que cupiera su grasa.
+     */
+    const proteinaEnPlato =
+      exchangesToMacros({ lacteos_enteros: 2 * e.factores.lacteos_enteros! }).proteina;
+    expect(proteinaEnPlato).toBeCloseTo(
+      exchangesToMacros({ proteicos_magros: 2 }).proteina,
+      1,
+    );
+    expect(e.factores.lacteos_enteros!).toBeGreaterThan(0.8);
   });
 
-  it('un lácteo desnatado se frena por las calorías, no por la grasa', () => {
-    // No tiene grasa que lo limite, pero arrastra hidratos que un filete no.
-    const conDesnatados = receta({ lacteos_desnatados: 3 }, [ing('Leche', 'lacteos_desnatados', 600)]);
-    const pautado: ExchangeCounts = { proteicos_grasos: 1, proteicos_magros: 1 };
-    const e = scaleRecipe(conDesnatados, pautado);
-    const kcalPlan = kcalFromMacros(exchangesToMacros(pautado));
-    expect(kcalDe(conDesnatados.base, e.factores)).toBeLessThanOrEqual(kcalPlan + 0.001);
+  it('y su grasa de más se le quita al aceite', () => {
+    const conEnterosYAceite = receta({ lacteos_enteros: 2, grasas: 2 }, [
+      ing('Leche entera', 'lacteos_enteros', 400),
+      ing('Aceite', 'grasas', 10),
+    ]);
+    const e = scaleRecipe(conEnterosYAceite, { proteicos_magros: 2, grasas: 2 });
+    expect(e.factores.grasas!).toBeLessThan(1);
+    expect(e.notas.join(' ')).toMatch(/grasa de más|se ha quitado/i);
+  });
+
+  it('cuando no cabe ni quitando el aceite, se dice', () => {
+    const conEnteros = receta({ lacteos_enteros: 2, grasas: 1 }, [
+      ing('Leche entera', 'lacteos_enteros', 400),
+      ing('Aceite', 'grasas', 5),
+    ]);
+    const e = scaleRecipe(conEnteros, { proteicos_magros: 2, grasas: 1 });
+    expect(e.notas.join(' ')).toMatch(/sobran/i);
   });
 });
 

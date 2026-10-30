@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scaleRecipe } from '../recipeScaling';
 import { exchangesToMacros } from '../exchanges';
-import { kcalFromMacros } from '../macros';
 import { FOOD_CATALOG } from '../../data/foodCatalog';
 import type { Ingrediente, Receta, RecipeBase } from '../../types/recipe';
 import type { ExchangeCounts } from '../exchanges';
@@ -58,15 +57,6 @@ const PLATO = receta({ proteicos_magros: 2, lacteos_proteicos: 1, almidones: 1 }
 
 const de = (e: ReturnType<typeof scaleRecipe>, nombre: string) =>
   e.ingredientes.find((i) => i.nombre === nombre)!;
-
-const kcalDe = (base: RecipeBase, factores: Record<string, number | undefined>) => {
-  const counts: ExchangeCounts = {};
-  for (const [g, v] of Object.entries(base)) {
-    if (v === 'ilimitado' || !v) continue;
-    counts[g as keyof ExchangeCounts] = v * (factores[g] ?? 0);
-  }
-  return kcalFromMacros(exchangesToMacros(counts));
-};
 
 describe('Cuando el lácteo también está pautado', () => {
   const pautado: ExchangeCounts = {
@@ -134,11 +124,21 @@ describe('Cuando sólo se pauta proteína, se la reparten', () => {
     expect(deProteicos).toBeLessThanOrEqual(pedida);
   });
 
-  it('nunca se pasa de lo pautado', () => {
+  /**
+   * Lo que no puede pasar es que el plato traiga MÁS proteína de la pautada:
+   * ahí sí se recorta. Lo que ya no recorta es su grasa — ésa se le baja al
+   * aceite (ver `escaladoFamilia`).
+   */
+  it('nunca se pasa de la proteína pautada', () => {
     const pautado: ExchangeCounts = { proteicos_magros: 4, almidones: 1 };
     const e = scaleRecipe(PLATO, pautado, FOOD_CATALOG);
-    const kcalPlan = kcalFromMacros(exchangesToMacros(pautado));
-    expect(kcalDe(PLATO.base, e.factores)).toBeLessThanOrEqual(kcalPlan + 0.001);
+    const enPlato = exchangesToMacros({
+      proteicos_magros: 2 * e.factores.proteicos_magros!,
+      lacteos_proteicos: 1 * e.factores.lacteos_proteicos!,
+    }).proteina;
+    expect(enPlato).toBeLessThanOrEqual(
+      exchangesToMacros(pautado).proteina + 0.001,
+    );
   });
 });
 

@@ -92,9 +92,14 @@ describe('Sin marcar', () => {
     expect(gramos(e, 'i-feta')).toBeGreaterThan(45);
   });
 
-  it('y el pollo se queda corto para no pasarse de grasa', () => {
-    expect(gramos(e, 'i-pollo')).toBeLessThan(80);
-    expect(e.notas.some((n) => /recortado/i.test(n))).toBe(true);
+  /*
+   * Y el pollo tampoco llega a lo pautado, porque el queso le quita sitio de
+   * proteína. Ya no se recorta por grasa —eso se le baja al aceite— pero el
+   * reparto sigue siendo el que no se quiere: el queso comiéndose la mitad.
+   */
+  it('y al pollo le queda menos proteína que cubrir', () => {
+    const conRemate = scaleRecipe(PLATO, PAUTA, [POLLO, { ...FETA, remate: true }]);
+    expect(gramos(e, 'i-pollo')).toBeLessThan(gramos(conRemate, 'i-pollo'));
   });
 });
 

@@ -169,7 +169,15 @@ describe('Subir de escalón sigue avisando y recortando', () => {
     expect(exchangesToMacros(e.cubiertos).grasa).toBeCloseTo(10, 0);
   });
 
-  it('un proteico graso donde se pautó magro se recorta', () => {
+  /**
+   * ESTO CAMBIÓ, Y A PROPÓSITO
+   *
+   * Antes se recortaba el queso para que cupiera su grasa, y el plato se
+   * quedaba corto de proteína. Ahora cubre la proteína pautada y la grasa de
+   * más se le baja al aceite; si ni así cabe, se dice. Es la regla que pidió:
+   * la proteína es lo que no puede faltar.
+   */
+  it('un proteico graso donde se pautó magro cubre la proteína', () => {
     const conQueso: Receta = {
       ...AVENA,
       id: 'r_queso',
@@ -179,7 +187,8 @@ describe('Subir de escalón sigue avisando y recortando', () => {
       ],
     };
     const e = scaleRecipe(conQueso, { proteicos_magros: 3 }, []);
-    expect(e.notas.join(' ')).toMatch(/recortado/i);
-    expect(e.factores.proteicos_grasos!).toBeLessThan(1);
+    expect(e.factores.proteicos_grasos).toBeCloseTo(1, 2);
+    // Y se dice que ese plato trae grasa de más, que es lo que hay que ver.
+    expect(e.notas.join(' ')).toMatch(/grasa|pauta/i);
   });
 });

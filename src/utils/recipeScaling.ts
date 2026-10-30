@@ -99,6 +99,28 @@ function filtrar(
  * porción de nueces trae 59 kcal frente a las 45 del aceite, y medirlo en
  * calorías las dejaría siempre cortas.
  */
+/** «9 g», para las notas. */
+function fmtG(gramos: number): string {
+  return `${Math.round(gramos)} g`;
+}
+
+/**
+ * La grasa que un bucket ya escalado trae por encima de la pautada. Negativa
+ * no interesa: que el plato traiga MENOS grasa de la pautada no le quita sitio
+ * a nadie, y subir el aceite por eso sería inventarse comida.
+ */
+function exceso(
+  enReceta: ExchangeCounts,
+  factores: Partial<Record<ExchangeGroupId, number>>,
+  grasaPautada: number,
+): number {
+  let grasa = 0;
+  for (const [g, n] of Object.entries(enReceta) as [ExchangeGroupId, number][]) {
+    grasa += (EXCHANGE_GROUPS[g]?.grasa ?? 0) * n * (factores[g] ?? 0);
+  }
+  return Math.max(0, grasa - grasaPautada);
+}
+
 function tope(
   bucket: MacroBucket,
   tiene: ReturnType<typeof exchangesToMacros>,
@@ -295,12 +317,65 @@ export function scaleRecipe(
   const deLaReceta = porBucket(base);
   const delPlan = porBucket(requeridos);
 
-  for (const [bucket, enReceta] of deLaReceta) {
+  /**
+   * LA GRASA, LA ÚLTIMA
+   * ===================
+   * Porque depende de lo que haya salido en la proteína: si el plato lleva
+   * salmón donde se pautó pescado blanco, esa grasa de más se le quita al
+   * aceite. Hay que saber cuánta antes de repartir las grasas.
+   */
+  const ORDEN_DE_BUCKET: Record<MacroBucket, number> = {
+    proteina: 0,
+    carbohidrato: 1,
+    grasa: 2,
+  };
+  const porOrden = [...deLaReceta].sort(
+    ([a], [b]) => ORDEN_DE_BUCKET[a] - ORDEN_DE_BUCKET[b],
+  );
+
+  /**
+   * LA GRASA QUE TRAE LA PROTEÍNA DE MÁS
+   *
+   * «Si he pautado proteínas bajas en grasa y la receta tiene salmón,
+   * compensamos el exceso bajando un poco la grasa pautada.»
+   *
+   * Antes se hacía al revés: el tope de grasa recortaba la proteína, y salían
+   * 90 g de salmón donde tocaban 150 — o 5 g de queso. Recortar la proteína
+   * para que quepa la grasa deja la comida corta de lo que de verdad importa.
+   * Ahora la proteína cubre lo pautado y lo que sobra de grasa se le descuenta
+   * al aceite, que es de donde se puede quitar sin que falte nada.
+   */
+  let grasaDeMas = 0;
+
+  for (const [bucket, enReceta] of porOrden) {
     const ancla = ANCLA_DE_BUCKET[bucket];
     const pautado = delPlan.get(bucket) ?? {};
 
     const mBase = exchangesToMacros(enReceta);
     const mReq = exchangesToMacros(pautado);
+
+    /* Lo que la proteína se ha llevado ya no está para las grasas. */
+    if (bucket === 'grasa' && grasaDeMas > 0.001) {
+      const queda = Math.max(0, mReq.grasa - grasaDeMas);
+      if (queda <= 0.001) {
+        /*
+         * Y si ni quitando toda la grasa cabe, se dice: el plato se pasa de
+         * lo pautado y eso lo decide ella —cambiar la fuente, bajar la
+         * proteína del día— no la app por su cuenta.
+         */
+        const sobra = grasaDeMas - mReq.grasa;
+        notas.push(
+          sobra > 0.5
+            ? `La proteína del plato trae ${fmtG(grasaDeMas)} de grasa: se ha quitado ${nombres(enReceta)} entero y aun así sobran ${fmtG(sobra)}.`
+            : `La proteína del plato ya trae la grasa pautada: no queda para ${nombres(enReceta)}.`,
+        );
+      } else {
+        notas.push(
+          `Se ha bajado ${nombres(enReceta)}: la proteína del plato trae ${fmtG(grasaDeMas)} de grasa de más.`,
+        );
+      }
+      mReq.grasa = queda;
+    }
 
     // Sin ancla (verduras) o sin nada de qué partir: la receta manda.
     if (!ancla || !mBase[ancla]) {
@@ -445,6 +520,7 @@ export function scaleRecipe(
           factores[g] = f;
         }
         for (const g of Object.keys(proteicos) as ExchangeGroupId[]) factores[g] = fProteico;
+        grasaDeMas += exceso(enReceta, factores, mReq.grasa);
         continue;
       }
     }
@@ -456,10 +532,25 @@ export function scaleRecipe(
      * porque un lácteo arrastra hidratos que un filete no tiene.
      */
     const topes: { valor: number; que: string }[] = [];
-    if (bucket === 'grasa' || bucket === 'proteina') {
+    /*
+     * EN LA PROTEÍNA, LA GRASA YA NO RECORTA
+     * ======================================
+     * Un plato de salmón donde se pautó pescado blanco traía la grasa de dos
+     * porciones, y el tope lo recortaba: menos salmón del pautado para que
+     * cupiera su propia grasa. Al revés de lo que hace falta — la proteína es
+     * lo que no puede faltar. Ahora cubre lo pautado y ese exceso se le baja
+     * al aceite más abajo (`grasaDeMas`), que es de donde se puede quitar.
+     */
+    if (bucket === 'grasa') {
       if (mBase.grasa > 0) topes.push({ valor: mReq.grasa / mBase.grasa, que: 'grasa' });
     }
-    if (bucket !== 'grasa') {
+    /*
+     * Y en la proteína tampoco recortan las calorías, por lo mismo: las
+     * calorías de más de un salmón son su grasa, y esa grasa ya se le baja al
+     * aceite. Recortar aquí sería cobrárselo dos veces y dejar la comida
+     * corta de proteína, que es lo que no puede faltar.
+     */
+    if (bucket === 'carbohidrato') {
       const kBase = kcalFromMacros(mBase);
       if (kBase > 0) topes.push({ valor: kcalFromMacros(mReq) / kBase, que: 'calorías' });
     }
@@ -513,6 +604,9 @@ export function scaleRecipe(
     for (const gid of Object.keys(enReceta) as ExchangeGroupId[]) {
       factores[gid] = Number.isFinite(factor) ? Math.max(0, factor) : 0;
     }
+
+    /* Lo que la proteína traiga de grasa por encima se lo come el aceite. */
+    if (bucket === 'proteina') grasaDeMas += exceso(enReceta, factores, mReq.grasa);
   }
 
   // Familias que el reparto pide y la receta no trae de ninguna manera.
