@@ -1368,6 +1368,32 @@ si es una de estas decisiones:
   poder enseñarlos: lo que cambia es la casilla, no la lista. **Y entran en la
   lista de la compra**, porque un café con leche diario es litro y medio de
   leche a la semana que no sale en ninguna receta.
+- **Y lo que va siempre, la clienta puede cambiarlo.** Sus palabras: «a Luis le
+  voy a poner manzana de postre todos los días, pero es sólo un reflejo de que
+  de postre tiene una porción de fruta: él puede elegir la que quiera.» Así que
+  quién puede elegir **lo decide el subgrupo**, leyendo de
+  `SUBGRUPOS_ABIERTOS` —la misma regla que ya tenían la despensa y las
+  combinaciones de fase 2, para no tener dos criterios sobre lo mismo—: la
+  fruta y la verdura se abren solas y **el resto no**, porque una leche
+  concreta o un batido concreto pueden ser la pauta y no un ejemplo. Para esos
+  está `Fijo.abierto`, que ella marca —la leche del café— o desmarca cuando ese
+  alimento y no otro es lo que tiene que tomar. El cambio se guarda en
+  `RegistroDia.fijosCambiados` (mealId → fijoId → foodId) y **no en el plan**:
+  hoy manzana y mañana pera no es cambiarle la pauta, es qué fruta hay en casa.
+  **Se cambia dentro de su grupo y por eso no mueve nada**: manzana por pera
+  son los mismos 15 g de hidrato, el fijo gasta lo mismo y `pautaDeComida` no
+  cambia; sólo se rehacen el nombre y los gramos desde el catálogo
+  (`fijoElegido`, con `roundPortion`, que es lo que se puede pesar). Si el
+  grupo no coincide **no se cambia**: antes que moverle la pauta por la
+  espalda, se queda como estaba. *Pendiente:* la lista de la compra sigue
+  comprando la manzana — el cambio es del día y la lista es de la semana.
+- **Al cambiar un alimento se le ofrece sólo lo que puede comer.**
+  `IngredientSwap` abría el catálogo del subgrupo entero, y ese catálogo **no
+  viene filtrado** —es el de la nutricionista tal cual—, así que se le ofrecía
+  pimiento a quien no puede comerlo y gambas a una alérgica al crustáceo. Era
+  justo lo que ella echaba en falta («no me avisa cuando una receta tiene un
+  alimento prohibido»). Ahora lleva `permitido`, que `ClientView` rellena con
+  `sePuedeOfrecer`, lo mismo que ya hacía `alternativasDe` en fase 2.
 - **Al repartir la semana se ve de dónde sale la proteína y de dónde el
   hidrato.** La tabla de «cómo va quedando» decía el nombre del plato y poco
   más, pero lo que se decide ahí no es qué plato toca el martes: es **no

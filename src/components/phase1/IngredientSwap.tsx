@@ -8,13 +8,27 @@ import { escalarMedida } from '../../utils/measures';
 import { coincide, equivalentesOrdenados, norm } from '../../utils/similitud';
 
 interface Props {
-  ingrediente: IngredienteEscalado;
+  /*
+   * Sólo se lee el nombre, el grupo y de qué alimento sale: lo que hace falta
+   * para buscarle equivalentes. Pedir el ingrediente escalado entero dejaba
+   * fuera lo que no es un ingrediente —la manzana del postre, que cuelga de la
+   * comida y no de ninguna receta— siendo exactamente el mismo gesto.
+   */
+  ingrediente: Pick<IngredienteEscalado, 'nombre' | 'grupo' | 'foodId'>;
   /** Intercambios que cubre este ingrediente en la comida. */
   intercambios: number;
   foods: Alimento[];
   /** Alimento por el que ya se ha cambiado, si lo hay. */
   cambiadoPor?: string;
   onCambiar: (foodId: string | undefined) => void;
+  /**
+   * Si un alimento del catálogo se le puede ofrecer a esta persona. El
+   * catálogo que lee su app **no viene filtrado** —es el de la nutricionista
+   * tal cual—, así que sin esto se le ofrecían gambas a una alérgica al
+   * crustáceo y pimiento a quien no puede comerlo. Lo mismo que ya hacía
+   * `alternativasDe` en fase 2.
+   */
+  permitido?: (f: Alimento) => boolean;
 }
 
 /**
@@ -30,6 +44,7 @@ export function IngredientSwap({
   foods,
   cambiadoPor,
   onCambiar,
+  permitido,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   const grupo = ingrediente.grupo as ExchangeGroupId;
@@ -54,7 +69,7 @@ export function IngredientSwap({
           .filter((f) => f.grupo === grupo && !!gramosPorIntercambio(f))
           .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-    return lista.map((f) => {
+    return lista.filter((f) => !permitido || permitido(f)).map((f) => {
       const gpi = gramosPorIntercambio(f) as number;
       return {
         food: f,
@@ -62,7 +77,7 @@ export function IngredientSwap({
         medida: escalarMedida(f.medida_casera, intercambios),
       };
     });
-  }, [foods, grupo, intercambios, info, original]);
+  }, [foods, grupo, intercambios, info, original, permitido]);
 
   const visibles = useMemo(
     () => alternativas.filter((a) => coincide(a.food.nombre, busqueda)),

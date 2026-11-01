@@ -21,7 +21,7 @@ import {
 } from "../utils/menuSemana";
 import { OrganizaTuSemana } from "../components/client/OrganizaTuSemana";
 import { AccesoTerminado } from "../components/client/AccesoTerminado";
-import { fijosDeComida, pautaDeComida } from "../utils/fijos";
+import { fijosDeComida, fijosElegidos, pautaDeComida } from "../utils/fijos";
 import { LoFijoDeLaComida } from "../components/client/LoFijoDeLaComida";
 import { PlanEnPreparacion } from "../components/client/PlanEnPreparacion";
 import { emailDeLaConsulta } from "../utils/supabase";
@@ -1123,12 +1123,37 @@ export function ClientView() {
   /**
    * Lo que su nutricionista le puso fijo en esa comida: va con cualquiera de
    * las opciones y sus intercambios ya están descontados de la pauta (ver el
-   * `dayType` de arriba), así que aquí sólo se enseña.
+   * `dayType` de arriba).
+   *
+   * Y lo que se puede elegir, se elige: «la manzana del postre es sólo un
+   * reflejo de que de postre tiene una porción de fruta». El cambio se
+   * guarda en el registro del día —hoy manzana, mañana pera— y no mueve la
+   * pauta, porque es dentro del mismo grupo.
    */
+  const fijosDeHoy = (mealId: string) =>
+    fijosElegidos(
+      fijosDeComida(dayType, mealId, diaDeLaSemana),
+      registro?.fijosCambiados?.[mealId],
+      foods,
+    );
+
+  const cambiarFijo = (mealId: string, fijoId: string, foodId: string | undefined) => {
+    const suyos = { ...(registro?.fijosCambiados?.[mealId] ?? {}) };
+    if (foodId) suyos[fijoId] = foodId;
+    else delete suyos[fijoId];
+    guardar({
+      fijosCambiados: { ...(registro?.fijosCambiados ?? {}), [mealId]: suyos },
+    });
+  };
+
   const fijosDe = (mealId: string, nombre: string) => (
     <LoFijoDeLaComida
-      fijos={fijosDeComida(dayType, mealId, diaDeLaSemana)}
+      fijos={fijosDeHoy(mealId)}
       mealNombre={nombre}
+      foods={foods}
+      cambios={registro?.fijosCambiados?.[mealId]}
+      onCambiar={(fijoId, foodId) => cambiarFijo(mealId, fijoId, foodId)}
+      permitido={sePuedeOfrecer}
     />
   );
 
@@ -2145,7 +2170,7 @@ export function ClientView() {
                             pauta (ver el `dayType` de arriba), así que sin
                             esta línea el aceite recortado no se entiende.
                           */
-                          fijos={fijosDeComida(dayType, m.id, diaDeLaSemana)}
+                          fijos={fijosDeHoy(m.id)}
                           requeridos={dayType.grid[m.id] ?? {}}
                           foods={foods}
                           ajustes={ajustesDeReceta(dayType, m.id, receta.id)}
@@ -2157,6 +2182,13 @@ export function ClientView() {
                             receta.id,
                           )}
                           sinCabecera
+                          /*
+                            Al cambiar un ingrediente se abre el catálogo de
+                            su subgrupo, y ese catálogo no viene filtrado: sin
+                            esto se le ofrecía pimiento a quien no puede
+                            comerlo. Lo mismo que ya hacía la fase 2.
+                          */
+                          permitido={sePuedeOfrecer}
                           equivalentes={registro?.sustituciones?.[m.id] ?? {}}
                           onEquivalente={(ingId, foodId) => {
                             const porComida = {

@@ -2,6 +2,8 @@ import type { Alimento } from '../types/food';
 import type { DayType, Fijo } from '../types/plan';
 import { aporteDeAlimento, type ExchangeCounts } from './exchanges';
 import { gramosPorIntercambio } from './recipeComposition';
+import { roundPortion } from './macros';
+import { esAbierto } from './subgruposAbiertos';
 import type { ExchangeGroupId } from '../data/exchangeGroups';
 
 /**
@@ -118,4 +120,72 @@ export function pautaDeComida(
 /** Si hay algo que avisar en esta comida. */
 export function hayDescuadre(p: PautaDeComida): boolean {
   return Object.keys(p.sinPautar).length > 0;
+}
+
+/**
+ * Y LA CLIENTA PUEDE CAMBIARLO
+ * ============================
+ * «A Luis le voy a poner manzana de postre todos los días, pero es sólo un
+ * reflejo de que de postre tiene una porción de fruta: él puede elegir la que
+ * quiera.» Eso es lo que ya decide `SUBGRUPOS_ABIERTOS` para la despensa y
+ * para las combinaciones de fase 2 —una porción de fruta es cualquier fruta—,
+ * así que aquí se lee de ahí y no hay dos criterios sobre lo mismo.
+ *
+ * Los demás subgrupos **no se abren solos**: una leche concreta o un batido
+ * concreto pueden ser la pauta, no un ejemplo. Para esos está `fijo.abierto`,
+ * que ella marca cuando quiera —la leche del café— o desmarca cuando ese
+ * alimento y no otro es lo que tiene que tomar.
+ *
+ * SE CAMBIA DENTRO DE SU GRUPO, Y POR ESO NO MUEVE NADA
+ * ====================================================
+ * Manzana por pera son los mismos 15 g de hidrato: el fijo sigue gastando
+ * exactamente lo mismo de la comida, así que `pautaDeComida` no cambia y las
+ * opciones se escalan igual. Lo único que cambia son el nombre y los gramos,
+ * rehechos desde el catálogo. Si el grupo no coincide, no se cambia: antes
+ * que mover su pauta por la espalda, se queda como estaba.
+ */
+
+/** Si la clienta puede cambiar este fijo por un equivalente. */
+export function fijoSeElige(fijo: Fijo, foods: Alimento[]): boolean {
+  if (fijo.abierto === false) return false;
+  const food = fijo.foodId ? foods.find((f) => f.id === fijo.foodId) : undefined;
+  /* Sin alimento detrás es una nota —«un café»—: no hay nada que cambiar. */
+  if (!food || !gramosPorIntercambio(food)) return false;
+  return fijo.abierto === true || esAbierto(food.grupo as ExchangeGroupId);
+}
+
+/** El fijo tal y como se lo va a comer, con el cambio que haya elegido. */
+export function fijoElegido(
+  fijo: Fijo,
+  foodId: string | undefined,
+  foods: Alimento[],
+): Fijo {
+  if (!foodId || foodId === fijo.foodId) return fijo;
+  const antes = fijo.foodId ? foods.find((f) => f.id === fijo.foodId) : undefined;
+  const ahora = foods.find((f) => f.id === foodId);
+  if (!antes || !ahora || antes.grupo !== ahora.grupo) return fijo;
+
+  const gpiAntes = gramosPorIntercambio(antes);
+  const gpiAhora = gramosPorIntercambio(ahora);
+  if (!gpiAntes || !gpiAhora) return fijo;
+
+  /* Las porciones son las que eran; los gramos se rehacen desde el catálogo. */
+  const porciones = (fijo.gramos || 0) / gpiAntes;
+  return {
+    ...fijo,
+    foodId: ahora.id,
+    nombre: ahora.nombre,
+    gramos: roundPortion(gpiAhora * porciones),
+    unidad: ahora.unidad ?? fijo.unidad,
+  };
+}
+
+/** Los de una comida, con lo que haya cambiado. `cambios`: fijoId → foodId. */
+export function fijosElegidos(
+  fijos: Fijo[],
+  cambios: Record<string, string> | undefined,
+  foods: Alimento[],
+): Fijo[] {
+  if (!cambios || !Object.keys(cambios).length) return fijos;
+  return fijos.map((f) => fijoElegido(f, cambios[f.id], foods));
 }

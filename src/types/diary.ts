@@ -413,6 +413,20 @@ export interface RegistroDia {
   porciones: PorcionesMarcadas;
   /** Fase 1: ingredientes cambiados por su equivalente. mealId → ingredienteId → foodId */
   sustituciones: Record<string, Record<string, string>>;
+  /**
+   * LO QUE VA SIEMPRE, CAMBIADO POR LA CLIENTA
+   *
+   * «A Luis le pongo manzana de postre, pero es sólo un reflejo de que de
+   * postre tiene una porción de fruta.» Así que la manzana se cambia por la
+   * fruta que le apetezca ese día, con los gramos rehechos — es el mismo
+   * cambio que el de un ingrediente, pero el fijo no es de ninguna receta:
+   * cuelga de la comida y va con todas sus opciones, así que necesita su
+   * propio sitio. mealId → fijoId → foodId.
+   *
+   * Va en el registro del día y no en el plan: hoy manzana y mañana pera no
+   * es cambiarle la pauta, es qué fruta hay en casa.
+   */
+  fijosCambiados?: Record<string, Record<string, string>>;
   extras: Extra[];
   /**
    * COMIDAS LIBRES

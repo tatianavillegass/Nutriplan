@@ -2,7 +2,7 @@ import type { Alimento } from '../../types/food';
 import type { DayType, Fijo, Meal } from '../../types/plan';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import type { ExchangeGroupId } from '../../data/exchangeGroups';
-import { pautaDeComida } from '../../utils/fijos';
+import { fijoSeElige, pautaDeComida } from '../../utils/fijos';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 import { FoodPicker } from '../food/FoodPicker';
 import { uid } from '../../utils/storage';
@@ -91,7 +91,7 @@ export function LoQueVaSiempre({ dayType, foods, onChange }: Props) {
   return (
     <Card
       title="Lo que va siempre"
-      subtitle="El café con leche, el postre… va con todas las opciones de esa comida y gasta de lo pautado"
+      subtitle="El café con leche, el postre… va con todas las opciones de esa comida y gasta de lo pautado. La fruta y la verdura las puede cambiar ella"
     >
       <div className="space-y-4">
         {dayType.meals.map((meal) => {
@@ -186,6 +186,31 @@ export function LoQueVaSiempre({ dayType, foods, onChange }: Props) {
                             </span>
                           )}
                         </div>
+
+                        {/*
+                          QUIÉN ELIGE ESTE ALIMENTO
+                          «La manzana del postre es sólo un reflejo de que de
+                          postre tiene una porción de fruta: puede elegir la que
+                          quiera.» La fruta y la verdura se abren solas —es la
+                          misma regla de la despensa y de las combinaciones— y
+                          el resto no, porque una leche concreta o un batido
+                          concreto pueden ser la pauta y no un ejemplo. Esto es
+                          para decirlo cuando el reflejo no coincide con el
+                          subgrupo.
+                        */}
+                        {f.foodId && (
+                          <label className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <input
+                              type="checkbox"
+                              checked={fijoSeElige(f, foods)}
+                              onChange={(e) =>
+                                cambiar(meal.id, f.id, { abierto: e.target.checked })
+                              }
+                              className="h-3 w-3 rounded border-slate-300"
+                            />
+                            Puede cambiarlo por otro equivalente
+                          </label>
+                        )}
                       </li>
                     );
                   })}

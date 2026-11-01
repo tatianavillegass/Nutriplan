@@ -282,6 +282,15 @@ export interface Fijo {
   /** Cómo se lee: con la comida, o después de ella. */
   tipo?: 'con' | 'postre';
   nota?: string;
+  /**
+   * Si la clienta puede cambiarlo por otro equivalente.
+   *
+   * Sin poner manda el subgrupo (`SUBGRUPOS_ABIERTOS`): una porción de fruta
+   * es cualquier fruta, así que la manzana del postre se cambia sola; una
+   * leche concreta, no. `true` lo abre a mano —la leche del café— y `false`
+   * lo cierra cuando ese alimento y no otro es la pauta.
+   */
+  abierto?: boolean;
 }
 
 /**

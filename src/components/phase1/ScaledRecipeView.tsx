@@ -79,6 +79,8 @@ interface Props {
    * dónde sale ese descuento deja la receta pareciendo que se quedó corta.
    */
   fijos?: Fijo[];
+  /** Qué alimentos se le pueden ofrecer al cambiar uno. Ver `IngredientSwap`. */
+  permitido?: (f: Alimento) => boolean;
   /**
    * Ingredientes que esta clienta no se come y que por tanto no salen ni en la
    * lista ni en lo que el plato cubre. Ver `DayType.ingredientesQuitados`.
@@ -108,6 +110,7 @@ export function ScaledRecipeView({
   ajustes,
   acompanamientos,
   fijos = [],
+  permitido,
   quitados,
   anadidos,
   recetas = [],
@@ -360,6 +363,7 @@ export function ScaledRecipeView({
                         foods={foods}
                         cambiadoPor={equivalenteId}
                         onCambiar={(fid) => onEquivalente(ing.id, fid)}
+                        permitido={permitido}
                       />
                     )}
                   </span>
