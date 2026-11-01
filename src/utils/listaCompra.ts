@@ -10,7 +10,7 @@ import {
 } from '../types/plan';
 import type { Receta } from '../types/recipe';
 import { scaleRecipe } from './recipeScaling';
-import { diasDeLaSemana } from './menuSemana';
+import { diaDeLaSemana, diasDeLaSemana } from './menuSemana';
 import { fijosDeComida } from './fijos';
 import { gramosPorPieza } from './measures';
 import type { OpcionEscalada } from './mealOptions';
@@ -125,8 +125,10 @@ export interface LineaCompra {
 
 export interface ListaCompra {
   lineas: LineaCompra[];
-  /** Cuántas comidas de la semana han entrado en la cuenta. */
+  /** Cuántas comidas han entrado en la cuenta. */
   comidas: number;
+  /** Para cuántos días es esta lista. */
+  dias?: number;
 }
 
 /** «1 bidón (500 ml)» → «bidón (500 ml)». El número lo pone la lista. */
@@ -151,8 +153,19 @@ export function listaDeLaCompra(
   plan: Plan | undefined,
   recetas: Receta[],
   foods: Alimento[],
+  /**
+   * PARA CUÁNTOS DÍAS SE COMPRA
+   *
+   * Sin decir nada, la semana del menú — que es como nació esto. Pero la
+   * semana del calendario no es la del supermercado: quien compra los jueves
+   * compra de jueves a jueves, y quien quiere dejarlo hecho compra para dos
+   * semanas. Se pasan las fechas y `menu.dias` tiene que traerlas todas
+   * (`menuDelRango` las junta de las semanas que toquen).
+   */
+  fechas?: string[],
 ): ListaCompra {
-  if (!menu || !plan) return { lineas: [], comidas: 0 };
+  if (!menu || !plan) return { lineas: [], comidas: 0, dias: 0 };
+  const delRango = fechas ?? diasDeLaSemana(menu.inicio);
 
   const porId = new Map(foods.map((f) => [f.id, f]));
   const acumulado = new Map<
@@ -170,9 +183,15 @@ export function listaDeLaCompra(
   >();
   let comidas = 0;
 
-  for (const [indiceDelDia, fecha] of diasDeLaSemana(menu.inicio).entries()) {
+  for (const fecha of delRango) {
     const dia = menu.dias?.[fecha];
     if (!dia) continue;
+    /*
+     * El día de la semana sale de la fecha y no de su sitio en la lista: en un
+     * rango que empieza un jueves, el primer día es el jueves y no el lunes, y
+     * el postre de los martes se compraría el día equivocado.
+     */
+    const indiceDelDia = diaDeLaSemana(fecha);
 
     /**
      * El tipo de día decide las cantidades. Si ella no dijo cuál toca, se usa
@@ -322,7 +341,7 @@ export function listaDeLaCompra(
     }
   }
 
-  return { lineas: lineasDesde(acumulado, porId), comidas };
+  return { lineas: lineasDesde(acumulado, porId), comidas, dias: delRango.length };
 }
 
 /** Lo acumulado, pasado a líneas: redondeo, sección y orden de supermercado. */
@@ -423,14 +442,28 @@ export function listaDesdeVeces(
   comidas: { mealId: string; opciones: OpcionEscalada[] }[],
   veces: MenuSemana['veces'],
   foods: Alimento[],
+  /**
+   * PARA CUÁNTOS DÍAS, EN FASE 2
+   *
+   * Aquí las veces son **por semana** —«huevos tres veces»—, así que un rango
+   * no se lee día a día: se multiplica. Catorce días son el doble de huevos.
+   *
+   * Se redondea **hacia arriba**: para tres días, una opción de dos veces por
+   * semana sale a 0,86 y se compra una. Quedarse corto en la compra es volver
+   * al supermercado; pasarse son unos huevos de más.
+   */
+  dias = 7,
 ): ListaCompra {
+  const factor = dias / 7;
   const porId = new Map(foods.map((f) => [f.id, f]));
   const acumulado: Acumulado = new Map();
   let total = 0;
 
   for (const { mealId, opciones } of comidas) {
     for (const opcion of opciones) {
-      const n = veces?.[mealId]?.[opcion.id] ?? 0;
+      const puestas = veces?.[mealId]?.[opcion.id] ?? 0;
+      if (puestas <= 0) continue;
+      const n = Math.ceil(puestas * factor);
       if (n <= 0) continue;
       total += n;
 
@@ -457,7 +490,7 @@ export function listaDesdeVeces(
     }
   }
 
-  return { lineas: lineasDesde(acumulado, porId), comidas: total };
+  return { lineas: lineasDesde(acumulado, porId), comidas: total, dias };
 }
 
 /**

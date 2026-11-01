@@ -1,4 +1,4 @@
-import type { MenuSemana, RegistroDia } from '../types/diary';
+import type { DiaDelMenu, MenuSemana, RegistroDia } from '../types/diary';
 import type { MenuPropuesto } from '../types/plan';
 
 /**
@@ -44,6 +44,50 @@ export function diasDeLaSemana(lunes: string): string[] {
     fecha.setUTCDate(fecha.getUTCDate() + i);
     return fecha.toISOString().slice(0, 10);
   });
+}
+
+/** Qué día de la semana es, con el lunes en 0 — como `Fijo.dias`. */
+export function diaDeLaSemana(iso: string): number {
+  const [a, m, d] = iso.split('-').map(Number);
+  const dia = new Date(Date.UTC(a, m - 1, d)).getUTCDay();
+  return dia === 0 ? 6 : dia - 1;
+}
+
+/**
+ * CUÁNTOS DÍAS SE COMPRAN
+ *
+ * «Quiero comprar para dos semanas», «para dos días», «de este jueves al
+ * otro». La compra no se hace de lunes a domingo porque la semana del
+ * calendario no es la del supermercado: quien compra los jueves compra de
+ * jueves a jueves.
+ *
+ * El tope son cinco semanas. No es por la cuenta —da igual— sino porque una
+ * lista de dos meses no es una lista: ni la verdura aguanta ni nadie la
+ * recorre, y un rango absurdo casi siempre es un dedo en la fecha
+ * equivocada.
+ */
+export const TOPE_DE_DIAS = 35;
+
+export function diasEntre(desde: string, hasta: string): string[] {
+  if (!desde || !hasta || hasta < desde) return desde ? [desde] : [];
+  const [a, m, d] = desde.split('-').map(Number);
+  const out: string[] = [];
+  for (let i = 0; i < TOPE_DE_DIAS; i++) {
+    const f = new Date(Date.UTC(a, m - 1, d));
+    f.setUTCDate(f.getUTCDate() + i);
+    const iso = f.toISOString().slice(0, 10);
+    out.push(iso);
+    if (iso >= hasta) break;
+  }
+  return out;
+}
+
+/** Suma días a una fecha ISO. Negativo para restar. */
+export function masDias(iso: string, n: number): string {
+  const [a, m, d] = iso.split('-').map(Number);
+  const f = new Date(Date.UTC(a, m - 1, d));
+  f.setUTCDate(f.getUTCDate() + n);
+  return f.toISOString().slice(0, 10);
 }
 
 const NOMBRES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -252,6 +296,101 @@ export function vieneDeLaPropuesta(
   const i = diasDeLaSemana(lunes).indexOf(fecha);
   const semana = propuesto.semanas[semanaDelCiclo(propuesto, lunes)];
   return !!semana?.dias?.[i]?.comidas?.[mealId];
+}
+
+/**
+ * EL MENÚ DE UN RANGO DE DÍAS
+ * ===========================
+ * «Quiero comprar para dos semanas» no es la semana de al lado: puede empezar
+ * un jueves y acabar dos jueves después. Esto junta en un solo mapa los días
+ * que pida, leyendo de cada semana lo que toque —lo que le repartió ella por
+ * debajo y lo que la clienta cambió por encima, igual que `menuEfectivo`—.
+ *
+ * Y con una propuesta de dos semanas en ciclo, las semanas que vienen **ya
+ * tienen menú**: `semanaDelCiclo` sabe cuál toca. Ahí no hay nada que
+ * rellenar.
+ *
+ * LOS DÍAS SIN MENÚ SE REPITEN, Y SE DICE
+ * =======================================
+ * Casi nadie tiene planificada la semana que viene, así que una lista de dos
+ * semanas saldría a medias justo cuando más falta hace. Se rellenan repitiendo
+ * el mismo día de la semana de partida —el jueves que viene como este jueves—
+ * y **se devuelve la lista de los que se han repetido** para poder decirlo en
+ * pantalla y poder desmarcarlo. Rellenar en silencio sería inventarle la
+ * compra.
+ *
+ * Se repite por día de la semana y no el primer día que haya: quien entrena
+ * los sábados come distinto los sábados, y copiar el lunes en el sábado le
+ * compraría de menos.
+ */
+export interface RangoDeCompra {
+  /** fecha ISO → lo de ese día, listo para la lista de la compra. */
+  dias: Record<string, DiaDelMenu>;
+  /** Las fechas que no tenían menú y se han rellenado repitiendo. */
+  repetidos: string[];
+  /** Las que se quedan vacías: no había de dónde copiar. */
+  vacios: string[];
+}
+
+/** Si ese día tiene algo decidido de verdad. En blanco es «lo quité». */
+function tieneMenu(dia: DiaDelMenu | undefined): boolean {
+  return Object.values(dia?.comidas ?? {}).some((r) => !!r);
+}
+
+export function menuDelRango(
+  propuesto: MenuPropuesto | undefined,
+  registros: RegistroDia[],
+  desde: string,
+  hasta: string,
+  repetir = true,
+): RangoDeCompra {
+  const fechas = diasEntre(desde, hasta);
+  const dias: Record<string, DiaDelMenu> = {};
+  const repetidos: string[] = [];
+  const vacios: string[] = [];
+
+  /* Una vez por semana, no una por día: `menuEfectivo` recorre los siete. */
+  const porLunes = new Map<string, MenuSemana | undefined>();
+  const semanaDe = (fecha: string) => {
+    const lunes = lunesDe(fecha);
+    if (!porLunes.has(lunes))
+      porLunes.set(
+        lunes,
+        menuEfectivo(propuesto, menuDeLaSemana(registros, fecha), fecha) ??
+          menuDeLaSemana(registros, fecha),
+      );
+    return porLunes.get(lunes);
+  };
+
+  /* De dónde se copia: la semana en la que empieza la compra. */
+  const dePartida = semanaDe(desde);
+  const mismoDiaDePartida = (fecha: string) => {
+    if (!dePartida) return undefined;
+    const suyo = diasDeLaSemana(dePartida.inicio)[diaDeLaSemana(fecha)];
+    const dia = dePartida.dias?.[suyo];
+    return tieneMenu(dia) ? dia : undefined;
+  };
+
+  for (const fecha of fechas) {
+    const propio = semanaDe(fecha)?.dias?.[fecha];
+    if (tieneMenu(propio)) {
+      dias[fecha] = propio as DiaDelMenu;
+      continue;
+    }
+
+    const copia = repetir ? mismoDiaDePartida(fecha) : undefined;
+    if (copia) {
+      /*
+       * El tipo de día es el del día copiado: si el jueves de esta semana era
+       * de entreno, el jueves que viene se compra como de entreno. Lo que
+       * tenga puesto el día en blanco manda igualmente, que para eso lo puso.
+       */
+      dias[fecha] = { ...copia, dayTypeId: propio?.dayTypeId ?? copia.dayTypeId };
+      repetidos.push(fecha);
+    } else vacios.push(fecha);
+  }
+
+  return { dias, repetidos, vacios };
 }
 
 /** Tachar (o destachar) una línea de la lista de la compra. */

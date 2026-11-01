@@ -13,6 +13,8 @@ import {
   ponerTipoDeDia,
 } from '../../utils/menuSemana';
 import { listaDeLaCompra, listaDesdeVeces, SECCIONES } from '../../utils/listaCompra';
+import { diasEntre, masDias, type RangoDeCompra } from '../../utils/menuSemana';
+import { ParaCuantosDias } from './ParaCuantosDias';
 import { comidasDecididas } from '../../utils/vecesSemana';
 import { CuantasVeces, type ComidaConOpciones } from '../phase2/CuantasVeces';
 import { queCocinar, DIAS_QUE_AGUANTA } from '../../utils/batchCooking';
@@ -59,6 +61,23 @@ interface Props {
    * nutricionista al mirar el plan).
    */
   solo?: 'menu' | 'compra';
+  /**
+   * PARA CUÁNTOS DÍAS COMPRA
+   *
+   * La lista salía de lunes a domingo porque de ahí sale el menú, pero la
+   * semana del calendario no es la del supermercado. Con esto, la pestaña de
+   * la compra deja elegir el rango y aquí se resuelve el menú de esos días
+   * —que pueden cruzar semanas— con `menuDelRango`.
+   *
+   * Lo resuelve quien la llama y no este componente a propósito: los menús de
+   * las otras semanas viven en los registros de la clienta, y este componente
+   * no sabe ni tiene por qué saber de dónde salen (recibe el suyo ya
+   * resuelto). Sin esto, la compra sigue siendo la de la semana, que es como
+   * la mira ella al abrir el plan.
+   */
+  rango?: (desde: string, hasta: string, repetir: boolean) => RangoDeCompra;
+  /** El día que se está viendo: de aquí arrancan los atajos del rango. */
+  hoy?: string;
 }
 
 const INICIALES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -92,6 +111,8 @@ export function OrganizaTuSemana({
   foods,
   onCambiar,
   solo,
+  rango,
+  hoy,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   /** Donde se escribe. Sin propuesta de por medio son el mismo menú. */
@@ -118,6 +139,29 @@ export function OrganizaTuSemana({
   const puestas = porVeces ? comidasDecididas(menu) : comidasPuestas(menu);
 
   /*
+   * El rango de la compra. Arranca en la semana entera para que quien no lo
+   * toque vea exactamente lo de siempre; los atajos sí empiezan hoy, porque
+   * «comprar para dos días» es hoy y mañana.
+   */
+  const [desde, setDesde] = useState(menu.inicio);
+  const [hasta, setHasta] = useState(masDias(menu.inicio, 6));
+  const [repetir, setRepetir] = useState(true);
+
+  const elRango = useMemo(
+    () => (rango ? rango(desde, hasta, repetir) : undefined),
+    [rango, desde, hasta, repetir],
+  );
+  const fechas = useMemo(
+    () => (elRango ? diasEntre(desde, hasta) : undefined),
+    [elRango, desde, hasta],
+  );
+  /* El mismo menú con los días del rango: lo demás —veces, tachados— es suyo. */
+  const menuDeLaCompra = useMemo(
+    () => (elRango ? { ...menu, dias: elRango.dias } : menu),
+    [elRango, menu],
+  );
+
+  /*
    * Las dos salen del menú EFECTIVO, no de lo suyo: si su nutricionista le
    * repartió la semana, la compra tiene que ser la de esa semana. Y en cuanto
    * cambia un plato, se rehacen las dos con lo que quede.
@@ -136,9 +180,11 @@ export function OrganizaTuSemana({
             })),
             menu.veces,
             foods,
+            /* Las veces son por semana: para un rango se multiplican. */
+            fechas?.length ?? 7,
           )
-        : listaDeLaCompra(menu, plan, recetas, foods),
-    [porVeces, menu, plan, recetas, foods],
+        : listaDeLaCompra(menuDeLaCompra, plan, recetas, foods, fechas),
+    [porVeces, menu.veces, menuDeLaCompra, fechas, plan, recetas, foods],
   );
   const pendientes = useMemo(
     () => lista.lineas.filter((l) => !(menu.comprados ?? []).includes(l.clave)).length,
@@ -393,6 +439,22 @@ export function OrganizaTuSemana({
             ))}
 
           {/* ── Lo que hay que comprar ──────────────────── */}
+          {laQueToca === 'compra' && elRango && hoy && (
+            <ParaCuantosDias
+              hoy={hoy}
+              desde={desde}
+              hasta={hasta}
+              onCambiar={(d, h) => {
+                setDesde(d);
+                setHasta(h);
+              }}
+              repetidos={elRango.repetidos.length}
+              repetir={repetir}
+              onRepetir={setRepetir}
+              vacios={elRango.vacios.length}
+            />
+          )}
+
           {laQueToca === 'compra' && lista.lineas.length === 0 && (
             <p className="mt-4 text-xs text-slate-500">
               Organiza algún día en «Menú» y aquí te sale la lista.
@@ -407,8 +469,9 @@ export function OrganizaTuSemana({
                 </p>
               </div>
               <p className="mt-0.5 text-[11px] text-slate-600">
-                Para las {lista.comidas} comidas que has organizado. Toca lo que vayas echando al
-                carro.
+                Para las {lista.comidas} comidas
+                {lista.dias ? ` de ${lista.dias} ${lista.dias === 1 ? 'día' : 'días'}` : ''}. Toca
+                lo que vayas echando al carro.
               </p>
 
               {/*

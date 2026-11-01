@@ -14,6 +14,7 @@ import { postresDelBanco, costeDelPostre } from "../utils/postres";
 import {
   lunesDe,
   menuDeLaSemana,
+  menuDelRango,
   menuEfectivo,
   menuDelDia,
   menuVacio,
@@ -337,6 +338,23 @@ export function ClientView() {
 
   /** Lo que tenía pensado comer hoy cuando organizó la semana. */
   const delMenu = useMemo(() => menuDelDia(menu, fecha), [menu, fecha]);
+
+  /**
+   * EL MENÚ DE LOS DÍAS QUE QUIERA COMPRAR
+   *
+   * La lista salía de lunes a domingo, y la semana del calendario no es la del
+   * supermercado: quien compra los jueves compra de jueves a jueves y quien
+   * quiere dejarlo hecho compra para dos semanas. Un rango así cruza semanas,
+   * y los menús de las otras semanas están en sus registros —más lo que ella
+   * le haya repartido, que con una propuesta en ciclo ya sabe qué toca la
+   * semana que viene—. Se resuelve aquí porque es aquí donde están; la tarjeta
+   * de la compra sólo pide un rango y pinta.
+   */
+  const rangoDeCompra = useCallback(
+    (desde: string, hasta: string, repetir: boolean) =>
+      menuDelRango(plan?.menuPropuesto, mios, desde, hasta, repetir),
+    [plan?.menuPropuesto, mios],
+  );
 
   /** Su programa: RESET 90 y los que vengan. */
   const programa = client?.programa;
@@ -1441,6 +1459,13 @@ export function ClientView() {
               onCambiar={(nuevo) =>
                 upsertRegistro(client.id, lunesDe(fecha), { menuSemana: nuevo })
               }
+              /*
+               * Sólo en su pestaña de la compra: es ella la que compra. La
+               * tarjeta que ve la nutricionista al abrir el plan sigue siendo
+               * la de la semana.
+               */
+              rango={rangoDeCompra}
+              hoy={fecha}
             />
           </div>
         )}

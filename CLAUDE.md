@@ -567,7 +567,40 @@ si es una de estas decisiones:
   enlazado va aparte y marcado, que no se puede sumar lo que no se sabe qué
   es—, se pasa **de cocido a crudo** con la equivalencia del alimento, se
   **redondea a lo que se vende** (piezas enteras, gramos a la decena) y la
-  verdura se cuenta **por comidas, no por peso**. El **batch cooking**
+  verdura se cuenta **por comidas, no por peso**.
+- **Y se compra de cuándo a cuándo ella diga, no de lunes a domingo.** La lista
+  salía de la semana del menú porque de ahí sale el dato, pero **la semana del
+  calendario no es la del supermercado**: quien compra los jueves compra de
+  jueves a jueves, quien se va el viernes compra para dos días y quien quiere
+  dejarlo hecho compra para dos semanas y no vuelve. En la pestaña de la compra
+  hay atajos —2 días · 3 días · 1 semana · 2 semanas— y dos fechas sueltas
+  detrás (`ParaCuantosDias`). **Los atajos arrancan en el día que está
+  viendo**, porque «comprar para dos días» es hoy y mañana y no los dos
+  primeros días de una semana que empezó el lunes; **sin tocar nada sigue
+  siendo la semana entera**, para que quien no lo use vea lo de siempre. Un
+  rango así cruza semanas, así que `menuDelRango` junta los días de todas las
+  que toque: lo que ella repartió por debajo y lo que la clienta cambió por
+  encima, con `menuEfectivo` una vez por semana y no una por día. **Con una
+  propuesta en ciclo las semanas que vienen ya tienen menú** (`semanaDelCiclo`),
+  así que ahí no hay nada que rellenar. `listaDeLaCompra` recibe las fechas y el
+  día de la semana **sale de la fecha, no de su sitio en la lista**: en un rango
+  que empieza en jueves, el postre de los martes se compraría el día
+  equivocado. En fase 2 las veces son por semana, así que se **multiplican** por
+  el rango y se redondea **hacia arriba** — quedarse corto es volver al
+  supermercado y pasarse son unos huevos de más. El tope son cinco semanas: una
+  lista de dos meses no la recorre nadie y casi siempre es un dedo en la fecha
+  equivocada. Los **tachados** siguen viviendo en la semana en curso: son de
+  esta compra, no del rango.
+- **Los días sin organizar se rellenan repitiendo, y se dice.** Casi nadie tiene
+  planificada la semana que viene, así que una lista de dos semanas saldría a
+  medias justo cuando más falta hace. Se copia **el mismo día de la semana** de
+  la semana de partida —el jueves que viene como este jueves— y no el primer día
+  que haya: quien entrena los sábados come distinto los sábados, y copiarle el
+  lunes le compraría de menos. `menuDelRango` devuelve **qué días ha repetido**
+  para poder decirlo en pantalla y poder desmarcarlo, porque rellenar en
+  silencio es inventarle la compra. Lo que ella dejó **en blanco** no se
+  rellena: una comida en blanco es una que quitó a propósito, no un hueco.
+  El **batch cooking**
   (`utils/batchCooking.ts`) lee lo mismo **por ingrediente y no por receta** —el
   arroz del wok del martes y el del bowl del jueves son una olla— y **en
   crudo**, que es lo que se pesa antes de cocinar. Sólo entra **lo que pide
