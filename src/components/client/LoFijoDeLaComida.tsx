@@ -1,7 +1,7 @@
 import type { Fijo } from '../../types/plan';
 import type { Alimento } from '../../types/food';
 import { esUnidadMedible } from '../../types/food';
-import { fijoSeElige } from '../../utils/fijos';
+import { fijoSeElige, tipoDeFijo, TIPOS_DE_FIJO } from '../../utils/fijos';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 import { IngredientSwap } from '../phase1/IngredientSwap';
 import { fmt } from '../common/ui';
@@ -48,8 +48,7 @@ export function LoFijoDeLaComida({
 }: Props) {
   if (!fijos.length) return null;
 
-  const conLaComida = fijos.filter((f) => f.tipo !== 'postre');
-  const despues = fijos.filter((f) => f.tipo === 'postre');
+
 
   const linea = (f: Fijo) => {
     const unidad = esUnidadMedible(f.unidad) ? f.unidad : 'g';
@@ -115,8 +114,19 @@ export function LoFijoDeLaComida({
       className="mt-1.5 space-y-0.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
       aria-label={`Lo que va con ${mealNombre.toLowerCase()}`}
     >
-      {conLaComida.length > 0 && bloque('Con esta comida', conLaComida)}
-      {despues.length > 0 && bloque('Después', despues)}
+      {/*
+        UN BLOQUE POR TIPO, EN ESTE ORDEN
+        El postre no se come con la cena y la creatina no es comida: leerlos en
+        la misma línea que el café con leche los convierte en ingredientes del
+        plato. El orden es el de la mesa: lo de la comida, el acompañamiento,
+        el postre y al final lo que no es comida.
+      */}
+      {TIPOS_DE_FIJO.map(({ id, cabecera }) => {
+        const suyos = fijos.filter((f) => tipoDeFijo(f) === id);
+        return suyos.length > 0 ? (
+          <div key={id}>{bloque(cabecera, suyos)}</div>
+        ) : null;
+      })}
       {/*
         Por qué no hay que contarlo aparte. Sin esta línea, quien lleva la
         cuenta de sus porciones se pregunta si el café va «encima» del plan.

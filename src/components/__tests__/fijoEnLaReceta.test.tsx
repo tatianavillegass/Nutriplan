@@ -111,9 +111,14 @@ describe('Y se ve en la receta', () => {
     expect(screen.getByText(/Ya está descontado/i)).toBeTruthy();
   });
 
-  it('un postre se lee como «después»', () => {
+  /*
+   * Decía «después» cuando sólo había dos tipos. Ahora hay cuatro —postre,
+   * acompañamiento, suplemento— y cada uno se nombra: «de postre» se entiende
+   * suelto y «después» no decía de qué era.
+   */
+  it('un postre se lee como «de postre»', () => {
     pintar(dia({ cena: [POSTRE] }));
-    expect(screen.getByText('después')).toBeTruthy();
+    expect(screen.getByText('de postre')).toBeTruthy();
   });
 
   it('sin fijos no aparece el bloque', () => {

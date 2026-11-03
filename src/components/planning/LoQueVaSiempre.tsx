@@ -1,11 +1,12 @@
 import type { Alimento } from '../../types/food';
-import type { DayType, Fijo, Meal } from '../../types/plan';
+import type { DayType, Fijo, Meal, TipoDeFijo } from '../../types/plan';
 import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import type { ExchangeGroupId } from '../../data/exchangeGroups';
-import { fijoSeElige, pautaDeComida } from '../../utils/fijos';
+import { fijoSeElige, pautaDeComida, tipoDeFijo, TIPOS_DE_FIJO } from '../../utils/fijos';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
 import { FoodPicker } from '../food/FoodPicker';
 import { uid } from '../../utils/storage';
+import { useState } from 'react';
 import { Card, Input, fmt } from '../common/ui';
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -66,6 +67,28 @@ export function LoQueVaSiempre({ dayType, foods, onChange }: Props) {
         gramos: gpi ? Math.round(gpi) : f.gramos || 100,
         unidad: f.unidad ?? 'g',
       },
+    ]);
+  };
+
+  /**
+   * ALGO QUE NO ESTÁ EN EL CATÁLOGO
+   *
+   * La creatina, un multivitamínico, «una infusión». No tienen macros que
+   * descontar y meterlos en el catálogo de alimentos para poder nombrarlos
+   * sería ensuciarlo con cosas que no son comida. **Sin alimento detrás no
+   * gasta nada**, que es la regla que ya tenían los fijos, y se dice en la
+   * línea.
+   *
+   * Lo que sí gasta —un flan de proteína, un batido— se da de alta en el
+   * catálogo con sus macros y se elige como cualquier otro: si no, su
+   * proteína no saldría de ninguna cuenta.
+   */
+  const anadirLibre = (meal: Meal, nombre: string) => {
+    const texto = nombre.trim();
+    if (!texto) return;
+    poner(meal.id, [
+      ...(fijos[meal.id] ?? []),
+      { id: uid('fj_'), nombre: texto, gramos: 0, tipo: 'suplemento' },
     ]);
   };
 
@@ -144,6 +167,42 @@ export function LoQueVaSiempre({ dayType, foods, onChange }: Props) {
                           >
                             ×
                           </button>
+                        </div>
+
+                        {/*
+                          DE QUÉ ES
+                          El café con leche va con el desayuno, el yogur con
+                          frutos rojos después de la cena, la ensalada al lado y
+                          la creatina no es comida. Los cuatro se pautan y
+                          gastan igual: lo único que cambia es cómo se lo lee
+                          ella. Sin esto, un flan de proteína de postre salía en
+                          la línea de «con esta comida» y parecía parte del
+                          plato.
+                        */}
+                        <div
+                          className="mt-1 flex flex-wrap gap-1"
+                          role="group"
+                          aria-label={`De qué es ${f.nombre}`}
+                        >
+                          {TIPOS_DE_FIJO.map((t) => {
+                            const on = tipoDeFijo(f) === t.id;
+                            return (
+                              <button
+                                key={t.id}
+                                onClick={() =>
+                                  cambiar(meal.id, f.id, { tipo: t.id as TipoDeFijo })
+                                }
+                                aria-pressed={on}
+                                className={`rounded-full border px-2 py-0.5 text-[10px] transition ${
+                                  on
+                                    ? 'border-brand-500 bg-brand-600 text-white'
+                                    : 'border-slate-200 bg-white text-slate-500 hover:border-brand-400'
+                                }`}
+                              >
+                                {t.etiqueta}
+                              </button>
+                            );
+                          })}
                         </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -225,6 +284,21 @@ export function LoQueVaSiempre({ dayType, foods, onChange }: Props) {
               />
 
               {/*
+                Y LO QUE NO ES COMIDA SE ESCRIBE
+                ================================
+                La creatina, un multivitamínico, «una infusión». No tienen
+                macros que descontar, y darlos de alta en el catálogo de
+                alimentos para poder nombrarlos sería ensuciarlo con cosas que
+                no se comen. Entra sin alimento detrás, así que **no gasta
+                nada** —la regla que ya tenían los fijos— y la línea lo dice.
+
+                Va aparte del buscador y con su botón a propósito: el buscador
+                avisa en cada tecla, así que engancharlo ahí daría de alta un
+                fijo por letra escrita.
+              */}
+              <EscribirLibre meal={meal} onAnadir={anadirLibre} />
+
+              {/*
                 LO QUE NO ESTÁ PAUTADO, EN ÁMBAR Y SIN ARREGLARLO SOLO
                 Quitárselo a otra comida sería mover su pauta sin que lo vea.
               */}
@@ -239,5 +313,47 @@ export function LoQueVaSiempre({ dayType, foods, onChange }: Props) {
         })}
       </div>
     </Card>
+  );
+}
+
+/** «Creatina» escrito a mano: lo que no es comida y no tiene macros. */
+function EscribirLibre({
+  meal,
+  onAnadir,
+}: {
+  meal: Meal;
+  onAnadir: (meal: Meal, nombre: string) => void;
+}) {
+  const [texto, setTexto] = useState('');
+
+  const guardar = () => {
+    if (!texto.trim()) return;
+    onAnadir(meal, texto);
+    setTexto('');
+  };
+
+  return (
+    <div className="mt-1.5 flex gap-1.5">
+      <Input
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            guardar();
+          }
+        }}
+        placeholder="…o algo que no esté en el catálogo: creatina, una infusión"
+        aria-label={`Añadir algo que no está en el catálogo a ${meal.nombre.toLowerCase()}`}
+        className="flex-1 text-sm"
+      />
+      <button
+        onClick={guardar}
+        disabled={!texto.trim()}
+        className="rounded-lg border border-slate-200 px-2.5 text-[12px] text-slate-600 transition hover:border-brand-400 disabled:opacity-40"
+      >
+        Añadir
+      </button>
+    </div>
   );
 }

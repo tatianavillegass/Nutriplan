@@ -13,6 +13,7 @@ import { sumarIntercambios } from '../../utils/anadidos';
 import { CompletenessBadge } from './MealCompleteness';
 import { IngredientSwap } from './IngredientSwap';
 import { gramosPorIntercambio } from '../../utils/recipeComposition';
+import { tipoDeFijo, TIPOS_DE_FIJO } from '../../utils/fijos';
 import { roundPortion } from '../../utils/macros';
 import { escalarMedida } from '../../utils/measures';
 import { Button, fmt } from '../common/ui';
@@ -421,8 +422,15 @@ export function ScaledRecipeView({
                           {fmt(f.gramos)} {esUnidadMedible(f.unidad) ? f.unidad : 'g'}
                         </span>
                       )}
-                      {f.tipo === 'postre' && (
-                        <span className="ml-1.5 text-[10px] text-slate-400">después</span>
+                      {/*
+                        De qué es, cuando no es parte de la comida: un flan de
+                        proteína de postre leído en la misma línea que el aceite
+                        parecía un ingrediente del plato.
+                      */}
+                      {tipoDeFijo(f) !== 'con' && (
+                        <span className="ml-1.5 text-[10px] text-slate-400">
+                          {TIPOS_DE_FIJO.find((t) => t.id === tipoDeFijo(f))?.cabecera.toLowerCase()}
+                        </span>
                       )}
                     </span>
                   </li>

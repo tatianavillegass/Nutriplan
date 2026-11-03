@@ -1382,6 +1382,29 @@ si es una de estas decisiones:
   en un desayuno sin lácteo sale en ámbar en la ficha —«aquí no tienes pautado
   ½ lácteo»— y ella decide si sube la pauta o se lo quita a otra comida;
   descontarlo de otro sitio sería mover su pauta sin que lo vea.
+- **Y hay cuatro cosas que pueden ir siempre: con la comida, de acompañamiento,
+  de postre y suplemento** (`TipoDeFijo`, etiquetas en `TIPOS_DE_FIJO`). Lo
+  pidió así: «debo también poder poner postres, suplementos o acompañamientos
+  — el yogur Alpro con frutos rojos de postre todas las noches, o un flan de
+  proteína de postre». **Sólo cambia cómo se lee, no la cuenta**: los cuatro
+  gastan igual de lo pautado si tienen alimento detrás. Hacía falta porque todo
+  se leía como «con esta comida», y un flan de proteína en esa línea parecía un
+  ingrediente del plato. En su app va **un bloque por tipo, en el orden de la
+  mesa** —lo de la comida, el acompañamiento, el postre y al final lo que no es
+  comida—, así que un postre de dos cosas (el yogur **y** los frutos rojos) sale
+  junto y sin tener que agruparlos a mano: son dos fijos del mismo tipo. Los
+  fijos de antes no tienen `tipo` y se leen como «con la comida», que es como
+  nacieron.
+- **Lo que no es comida se escribe, no se da de alta.** La creatina, un
+  multivitamínico, «una infusión»: no tienen macros que descontar, y meterlos en
+  el catálogo de alimentos para poder nombrarlos sería ensuciarlo con cosas que
+  no se comen. Entran por un campo aparte, como suplemento y sin gramos, así que
+  **no gastan nada** —la regla que ya tenían los fijos sin `foodId`— y la línea
+  lo dice. Va aparte del buscador y con su botón **a propósito**: `FoodPicker`
+  llama a `onLibre` en cada tecla, así que engancharlo ahí daría de alta un fijo
+  por letra escrita. Lo que **sí** gasta —un flan de proteína, un batido— se da
+  de alta en el catálogo con sus macros y se elige como cualquier otro: si no,
+  su proteína no saldría de ninguna cuenta.
 - **Y se ve dentro de la receta, que es donde se leen los gramos.** El
   descuento ya funcionaba —con un cuadrito de chocolate pautado, un plato de 3
   porciones de grasa pasa de 15 g de aceite a 10 g— pero el fijo no aparecía

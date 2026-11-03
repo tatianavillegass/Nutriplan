@@ -270,6 +270,19 @@ export interface DayType {
  * postre: «chocolate los martes y los viernes». Es el mismo concepto y la
  * misma cuenta, y por eso no son dos cosas distintas.
  */
+/**
+ * LAS CUATRO COSAS QUE PUEDEN IR SIEMPRE CON UNA COMIDA
+ *
+ * El café con leche va **con** el desayuno; el yogur con frutos rojos va
+ * **después** de la cena; la ensalada va **al lado**; y la creatina no es
+ * comida, es un suplemento. Todas se pautan igual y gastan igual —si tienen
+ * alimento detrás—, y lo único que cambia es cómo se le dice.
+ *
+ * Sin esto todo se leía como «con esta comida», y un flan de proteína de
+ * postre puesto en esa línea parecía un ingrediente del plato.
+ */
+export type TipoDeFijo = 'con' | 'postre' | 'acompanamiento' | 'suplemento';
+
 export interface Fijo {
   id: string;
   /** Sin alimento del catálogo no gasta intercambios: es una nota. */
@@ -279,8 +292,15 @@ export interface Fijo {
   unidad?: string;
   /** 0 = lunes … 6 = domingo. Vacío o sin poner: todos los días. */
   dias?: number[];
-  /** Cómo se lee: con la comida, o después de ella. */
-  tipo?: 'con' | 'postre';
+  /**
+   * De qué es: parte de la comida, postre, acompañamiento o suplemento.
+   *
+   * Sólo cambia **cómo se lee**, no la cuenta: los cuatro gastan igual de lo
+   * pautado si tienen alimento detrás. Hacía falta porque «yogur Alpro con
+   * frutos rojos» y «creatina» no se leen igual puestos en la misma línea: uno
+   * es el postre de la cena y el otro no es comida.
+   */
+  tipo?: TipoDeFijo;
   nota?: string;
   /**
    * Si la clienta puede cambiarlo por otro equivalente.

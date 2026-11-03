@@ -1,5 +1,5 @@
 import type { Alimento } from '../types/food';
-import type { DayType, Fijo } from '../types/plan';
+import type { DayType, Fijo, TipoDeFijo } from '../types/plan';
 import { aporteDeAlimento, type ExchangeCounts } from './exchanges';
 import { gramosPorIntercambio } from './recipeComposition';
 import { roundPortion } from './macros';
@@ -188,4 +188,29 @@ export function fijosElegidos(
 ): Fijo[] {
   if (!cambios || !Object.keys(cambios).length) return fijos;
   return fijos.map((f) => fijoElegido(f, cambios[f.id], foods));
+}
+
+/**
+ * CÓMO SE LEE CADA UNO
+ * ====================
+ * `cabecera` es el título del bloque en su app —lo que lee la clienta— y
+ * `etiqueta` el nombre corto de la pestaña de ella. Están juntos para que no
+ * se llamen de dos maneras distintas en dos pantallas.
+ */
+export const TIPOS_DE_FIJO: {
+  id: TipoDeFijo;
+  etiqueta: string;
+  cabecera: string;
+}[] = [
+  { id: 'con', etiqueta: 'Con la comida', cabecera: 'Con esta comida' },
+  { id: 'acompanamiento', etiqueta: 'Acompañamiento', cabecera: 'De acompañamiento' },
+  /* El orden es el de la mesa: el postre después de lo que se come. */
+  { id: 'postre', etiqueta: 'Postre', cabecera: 'De postre' },
+  /* Y lo que no es comida, al final. */
+  { id: 'suplemento', etiqueta: 'Suplemento', cabecera: 'Suplemento' },
+];
+
+/** El tipo de un fijo; sin poner, va con la comida (que es como nacieron). */
+export function tipoDeFijo(f: Fijo): TipoDeFijo {
+  return f.tipo ?? 'con';
 }
