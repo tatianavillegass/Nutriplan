@@ -1226,6 +1226,40 @@ si es una de estas decisiones:
   (`findFood`). No es tan exacto como el enlace, pero **equivocarse avisando de
   más es mucho mejor que callar un alimento prohibido**: un aviso se lee y se
   descarta en un segundo, y lo otro acaba en el plato.
+- **Y filtrar el catálogo era justo lo que apagaba ese aviso.** Seguía sin
+  bloquearse nada: «si digo que no come salmón me deben aparecer todas las
+  recetas que tienen salmón bloqueadas». La regla estaba bien; lo que estaba
+  mal era **lo que se le daba para mirar**. A `RecipeRecommender` le llegaba
+  `catalogoPermitido(foods, client)` —el catálogo **sin** el salmón—, y
+  `evaluarReceta` busca el salmón de la receta en esa lista para saber que está
+  vetado: en una lista sin salmón no lo encontraba (`if (!food) continue`) y
+  ninguna receta salía bloqueada. Un filtro que parecía prudente desactivaba la
+  comprobación entera. De paso **escalaba mal** esas recetas —el ingrediente no
+  resolvía— y no contaba los fijos cuyo alimento estuviera vetado.
+  **Regla: nada que evalúe o escale recibe el catálogo filtrado.** Lo que se
+  filtra es lo que se **ofrece**, y para eso está `motivoBloqueo`, que lo saca
+  en ámbar con el motivo en vez de esconderlo — porque desaparecer sin
+  explicación parece que la app está rota. Bloqueada **no es escondida**: la
+  receta sigue en la lista, en gris y con el motivo, y ella decide si le cambia
+  el ingrediente o se la salta. *Queda igual a propósito:* la despensa de fase 2
+  (`ScaledOptionsBoard`), donde lo que se ofrece lo compone ella comida a
+  comida y el filtro es el que toca.
+- **Cómo se llama una comida decide qué recetas se le ofrecen.** «En desayuno me
+  están apareciendo también comidas de la comida (camarones).» El `slot` es lo
+  que filtra el banco, las comidas nacen con el suyo (`DEFAULT_MEALS`) y
+  **renombrarlas no lo cambiaba**: una «Comida» renombrada a «Desayuno» seguía
+  ofreciendo las recetas de la comida, y una añadida a mano nace como «Extra»,
+  así que llamarla «Cena» no le traía ninguna cena. Ahora manda el nombre
+  (`slotDelNombre`), que es lo coherente con el resto —las porciones y los
+  platos ya se emparejan por nombre entre tipos de día—. Reconoce tildes,
+  mayúsculas y lo que lleve detrás («Cena (tarde)», «Comida del finde»),
+  probando la frase entera y recortando por detrás para que «media mañana» gane
+  a su primera palabra. **Sólo cuando el nombre dice de qué comida se trata**:
+  «Pre-entreno» no es ninguna de las cinco y ahí se respeta el slot que tenga,
+  que dejarla sin recetas que ofrecer es peor que lo que había. Y
+  `slotsSegunElNombre` arregla al cargar los planes que ya están así: pedirle
+  que entre comida por comida a recolocarlas es pedirle que arregle a mano algo
+  que no rompió ella.
 - **Lo que va siempre se descuenta también en las pantallas de ella.** Estaba
   descontado en la app de la clienta y no en el recomendador, así que con media
   fruta fija en el desayuno cualquier receta salía «no llega» por algo que ya

@@ -19,6 +19,8 @@ interface Props {
   dayType: DayType;
   recetas: Receta[];
   foods: Alimento[];
+  /** El catálogo **completo**: con él se escala. Ver `RecipeRecommender`. */
+  motivoBloqueo?: (food: Alimento) => string | undefined;
   onAjustar: (
     mealId: string,
     recetaId: string,
@@ -42,7 +44,14 @@ interface Props {
  * Lo que se toque se guarda en SU plan y no en la receta del banco: la misma
  * receta se cuadra distinto según a quién se le pauta.
  */
-export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjustar }: Props) {
+export function RecetasDeLaParticipante({
+  reto,
+  dayType,
+  recetas,
+  foods,
+  motivoBloqueo,
+  onAjustar,
+}: Props) {
   const [abierta, setAbierta] = useState<string | null>(null);
   const [ajustando, setAjustando] = useState<string | null>(null);
 
@@ -109,6 +118,7 @@ export function RecetasDeLaParticipante({ reto, dayType, recetas, foods, onAjust
                       receta={receta}
                       requeridos={requeridos}
                       foods={foods}
+                      motivoBloqueo={motivoBloqueo}
                       ajustes={ajustes}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, receta.id)}
                       quitados={quitados}

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Client } from "../types/client";
 import type { Plan, DayType, Meal, Phase } from "../types/plan";
-import { DEFAULT_MEALS } from "../types/plan";
+import { DEFAULT_MEALS, slotDelNombre, slotsSegunElNombre } from "../types/plan";
 import type { Receta } from "../types/recipe";
 import type { Alergeno, Alimento } from "../types/food";
 import type { Medicion } from "../types/anthropometry";
@@ -221,7 +221,12 @@ function migrarCatalogo(guardados: Alimento[] | null): Alimento[] {
  * llaman distinto compartiendo id. Ver `separarComidasRenombradas`.
  */
 function migrarGruposPlanes(plans: Plan[]): Plan[] {
-  return migrarSubgrupos(plans).map(separarComidasRenombradas);
+  /*
+   * `slotsSegunElNombre` arregla los planes que ya están renombrados: pedirle
+   * que entre a cada comida a recolocarla es pedirle que arregle a mano algo
+   * que no rompió ella.
+   */
+  return migrarSubgrupos(plans).map(separarComidasRenombradas).map(slotsSegunElNombre);
 }
 
 function migrarSubgrupos(plans: Plan[]): Plan[] {
@@ -649,7 +654,22 @@ export const useAppStore = create<AppState>((set, get) => {
               ? d
               : {
                   ...d,
-                  meals: d.meals.map((m) => (m.id === suId ? { ...m, nombre } : m)),
+                  meals: d.meals.map((m) =>
+                    m.id !== suId
+                      ? m
+                      : {
+                          ...m,
+                          nombre,
+                          /*
+                           * Y el slot también: es lo que filtra las recetas
+                           * del banco, y una «Comida» renombrada a «Desayuno»
+                           * seguía ofreciendo camarones. Si el nombre no dice
+                           * de qué comida se trata —«Pre-entreno»— se queda el
+                           * que tenía, que dejarla sin recetas es peor.
+                           */
+                          slot: slotDelNombre(nombre) ?? m.slot,
+                        },
+                  ),
                 },
           ),
         };

@@ -11,6 +11,12 @@ import { uid } from '../../utils/storage';
 interface Props {
   receta: Receta;
   foods: Alimento[];
+  /**
+   * Por qué un alimento está vetado para esta persona. El catálogo que llega
+   * es el **completo** —hace falta para escalar y para detectar lo prohibido—,
+   * así que lo vetado no se esconde: sale en ámbar con el motivo.
+   */
+  motivoBloqueo?: (food: Alimento) => string | undefined;
   /** Intercambios pautados de la comida donde se va a usar. */
   requeridos: ExchangeCounts;
   onGuardar: (patch: Partial<Receta>) => void;
@@ -21,7 +27,14 @@ interface Props {
  * Edición rápida de una receta desde el plan: cambiar el nombre, añadir o
  * quitar ingredientes y ver al momento si sigue cuadrando con lo pautado.
  */
-export function RecipeQuickEditor({ receta, foods, requeridos, onGuardar, onCerrar }: Props) {
+export function RecipeQuickEditor({
+  receta,
+  foods,
+  motivoBloqueo,
+  requeridos,
+  onGuardar,
+  onCerrar,
+}: Props) {
   const [nombre, setNombre] = useState(receta.nombre);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>(receta.ingredientes);
   const [preparacion, setPreparacion] = useState(receta.preparacion);
@@ -188,6 +201,7 @@ export function RecipeQuickEditor({ receta, foods, requeridos, onGuardar, onCerr
               <div className="sm:col-span-5">
                 <FoodPicker
                   foods={foods}
+                  motivoBloqueo={motivoBloqueo}
                   value={ing.foodId}
                   nombreLibre={ing.nombre}
                   placeholder="Escribe un alimento…"

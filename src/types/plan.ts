@@ -724,6 +724,77 @@ export function comidasDeLaSemana(plan: {
   return [...porId.values()].sort((a, b) => a.orden - b.orden);
 }
 
+/**
+ * CÓMO SE LLAMA UNA COMIDA DECIDE QUÉ RECETAS SE LE OFRECEN
+ * ========================================================
+ * El `slot` es lo que filtra las recetas del banco: en el desayuno salen las
+ * de desayuno. Las comidas nacen con su slot puesto (`DEFAULT_MEALS`) y
+ * **renombrarlas no lo cambiaba**, así que una «Comida» renombrada a
+ * «Desayuno» seguía ofreciendo las recetas de la comida — camarones en el
+ * desayuno— y lo mismo al revés. Y una comida añadida a mano nace como
+ * «Extra», así que llamarla «Cena» no le traía ninguna cena.
+ *
+ * El nombre manda, que es lo coherente con el resto: las porciones y los
+ * platos ya se emparejan por nombre entre tipos de día
+ * (`comidasQueSeLlamanIgual`).
+ *
+ * **Sólo cuando el nombre dice de qué comida se trata.** «Pre-entreno» o
+ * «Post-entreno» no son ninguno de los cinco, y ahí se respeta el que tenga:
+ * cambiárselo a «extra» le dejaría la pantalla sin recetas que ofrecer, que es
+ * peor que lo que había.
+ */
+const SLOT_POR_NOMBRE: Record<string, MealSlot> = {
+  desayuno: 'desayuno',
+  desayunos: 'desayuno',
+  almuerzo: 'almuerzo',
+  'media manana': 'almuerzo',
+  'medio dia': 'comida',
+  comida: 'comida',
+  comidas: 'comida',
+  almuerzos: 'almuerzo',
+  merienda: 'merienda',
+  meriendas: 'merienda',
+  cena: 'cena',
+  cenas: 'cena',
+};
+
+export function slotDelNombre(nombre: string): MealSlot | undefined {
+  const palabras = (nombre ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+
+  /*
+   * «Cena (tarde)», «Desayuno 2», «Comida del finde»: lo que acompaña no
+   * cambia de qué comida se trata. Se prueba la frase entera y se va
+   * recortando por detrás, para que «media mañana» —que son dos palabras— se
+   * reconozca antes que su primera palabra suelta.
+   */
+  for (let n = palabras.length; n > 0; n--) {
+    const suyo = SLOT_POR_NOMBRE[palabras.slice(0, n).join(' ')];
+    if (suyo) return suyo;
+  }
+  return undefined;
+}
+
+/** Las comidas de un tipo de día con el slot que les toca por su nombre. */
+export function slotsSegunElNombre(plan: Plan): Plan {
+  let cambiado = false;
+  const dayTypes = plan.dayTypes.map((d) => ({
+    ...d,
+    meals: d.meals.map((m) => {
+      const suyo = slotDelNombre(m.nombre);
+      if (!suyo || suyo === m.slot) return m;
+      cambiado = true;
+      return { ...m, slot: suyo };
+    }),
+  }));
+  return cambiado ? { ...plan, dayTypes } : plan;
+}
+
 export const DEFAULT_MEALS: Meal[] = [
   { id: "desayuno", nombre: "Desayuno", slot: "desayuno", orden: 1 },
   { id: "almuerzo", nombre: "Almuerzo", slot: "almuerzo", orden: 2 },

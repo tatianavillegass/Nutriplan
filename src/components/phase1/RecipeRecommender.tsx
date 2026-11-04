@@ -46,7 +46,22 @@ interface Props {
   onAlternar?: () => void;
   /** Cerrar ésta y abrir la siguiente, que es lo que se hace de verdad. */
   onSiguiente?: () => void;
+  /**
+   * EL CATÁLOGO COMPLETO, NO EL FILTRADO
+   *
+   * Aquí llegaba ya filtrado por sus restricciones, y eso es justo lo que
+   * impedía que las restricciones funcionaran: `evaluarReceta` busca el salmón
+   * de la receta en esta lista para saber que está vetado, y en una lista sin
+   * salmón no lo encontraba — así que ninguna receta salía bloqueada. Y de
+   * paso escalaba mal esas recetas (el ingrediente no resolvía) y no contaba
+   * los fijos cuyo alimento estuviera vetado.
+   *
+   * Lo que se filtra es lo que se **ofrece**, y para eso está `motivoBloqueo`:
+   * el alimento sale en ámbar con el motivo en vez de desaparecer.
+   */
   foods?: Alimento[];
+  /** Por qué un alimento está vetado para esta persona. Ver `FoodPicker`. */
+  motivoBloqueo?: (food: Alimento) => string | undefined;
   /**
    * LO QUE YA COMÍA ANTES DE ESTA REVISIÓN
    *
@@ -116,6 +131,7 @@ export function RecipeRecommender({
   onAlternar,
   onSiguiente,
   foods = [],
+  motivoBloqueo,
   deLaAnterior,
   onEditarReceta,
   onAjustarCantidades,
@@ -628,6 +644,7 @@ export function RecipeRecommender({
                   <RecipeQuickEditor
                     receta={r}
                     foods={foods}
+                    motivoBloqueo={motivoBloqueo}
                     requeridos={reparto}
                     onCerrar={() => setEditando(null)}
                     onGuardar={(patch) => {
@@ -643,6 +660,7 @@ export function RecipeRecommender({
                       receta={r}
                       requeridos={reparto}
                       foods={foods}
+                      motivoBloqueo={motivoBloqueo}
                       ajustes={ajustesDeReceta(dayType, meal.id, r.id)}
                       acompanamientos={acompanamientosDeReceta(dayType, meal.id, r.id)}
                       quitados={quitadosDeReceta(dayType, meal.id, r.id)}

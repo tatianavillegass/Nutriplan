@@ -869,7 +869,9 @@ export function ClientDetail() {
                 reto={suReto}
                 dayType={dayType}
                 recetas={recipes}
-                foods={foodsPermitidos}
+                /* Completo: filtrado escalaba mal lo que llevara algo vetado. */
+                foods={foods}
+                motivoBloqueo={motivoBloqueo}
                 onAjustar={guardarRetoques}
               />
             </Card>
@@ -967,7 +969,14 @@ export function ClientDetail() {
                     meal={m}
                     recetas={recipes}
                     client={client}
-                    foods={foodsPermitidos}
+                    /*
+                     * El catálogo COMPLETO: filtrado, `evaluarReceta` buscaba
+                     * el salmón en una lista sin salmón y no bloqueaba nada.
+                     * Lo que se filtra es lo que se ofrece, y de eso se
+                     * encarga `motivoBloqueo`.
+                     */
+                    foods={foods}
+                    motivoBloqueo={motivoBloqueo}
                     deLaAnterior={recetasDeAntes[m.slot]}
                     abierto={comidaAbierta === m.id}
                     onAlternar={() =>

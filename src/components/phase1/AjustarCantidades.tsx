@@ -26,6 +26,12 @@ interface Props {
   /** Intercambios pautados de esta comida, para esta clienta. */
   requeridos: ExchangeCounts;
   foods: Alimento[];
+  /**
+   * Por qué un alimento está vetado para esta persona. El catálogo que llega
+   * es el **completo** —hace falta para escalar y para detectar lo prohibido—,
+   * así que lo vetado no se esconde: sale en ámbar con el motivo.
+   */
+  motivoBloqueo?: (food: Alimento) => string | undefined;
   /** Gramos ya ajustados a mano: ingredienteId → gramos. */
   ajustes: Record<string, number>;
   /** Lo que ya se le ha puesto al lado. */
@@ -81,6 +87,7 @@ export function AjustarCantidades({
   receta,
   requeridos,
   foods,
+  motivoBloqueo,
   ajustes,
   acompanamientos: inicial = [],
   quitados: quitadosIniciales = [],
@@ -402,6 +409,7 @@ export function AjustarCantidades({
       <div className="mt-2">
         <FoodPicker
           foods={foods}
+          motivoBloqueo={motivoBloqueo}
           placeholder="Añadir un ingrediente a la receta…"
           limpiarTrasElegir
           onSelect={meter}
@@ -559,6 +567,7 @@ export function AjustarCantidades({
           <div className="min-w-[12rem] flex-1">
             <FoodPicker
               foods={foods}
+              motivoBloqueo={motivoBloqueo}
               placeholder="Buscar un alimento…"
               limpiarTrasElegir
               onSelect={(f) => {
