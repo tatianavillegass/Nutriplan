@@ -320,6 +320,40 @@ si es una de estas decisiones:
   retoca lo que quiera, que es la regla de todos los atajos. **`RecetasDeConsulta`
   se retiró**: enseñaba lo mismo dentro del día de fase 4 y dos sitios con el
   mismo material acaban discrepando.
+- **Las porciones que gasta una receta salen de la receta, no de la casilla de
+  la comida.** En fase 3 «me lo he comido» no apuntaba nada y ella lo vio como
+  «no se están agregando a su plan — no sabe cuántas porciones tiene
+  disponibles después de hacerla». `aportesDeLaReceta` le daba a **cada**
+  ingrediente las porciones que esa comida tenía pautadas de su grupo
+  (`reparto[ing.grupo]`), y de ahí tres fallos a la vez: **contaba doble** (un
+  desayuno con 3 almidones y una receta con avena y pan apuntaba 3 por cada
+  una, 6 de 3); **perdía** lo que la comida no pautaba; y **si la comida no
+  pautaba nada de lo que lleva la receta, la lista salía vacía** y pulsar no
+  hacía absolutamente nada. Ahora se calculan de los **gramos ya escalados**
+  partidos por lo que pesa una porción de su grupo (`gramosPorIntercambio`),
+  que es la cuenta que ella haría a mano: lo apuntado es exactamente lo que
+  pone la ficha que está leyendo. Se agrupa **por alimento** —la misma avena
+  dos veces se suma— se redondea a medias porciones (§10.3, el paso de los
+  anillos) y **lo ilimitado no se apunta**, que no gasta nada. La receta sabe
+  lo que lleva; la casilla sólo sabe lo que se pautó.
+- **Y en qué comida la apunta lo elige ella.** El botón la metía en la comida
+  bajo la que estuviera listada, y eso no es como se come: su nutricionista le
+  pone la tortilla en la cena y ella la cena el martes y la come el jueves.
+  Ahora pulsa, **elige la comida** entre las suyas (`MeLoHeComido`) y dice **si
+  usó las cantidades tal cual**. Lo segundo no cambia la cuenta —las porciones
+  son las de la receta en los dos casos— pero sí lo que se le dice: si las
+  cambió, lo apuntado es un punto de partida y hay que decírselo, porque
+  callarlo sería darle por exacto un número que no lo es. **Los gramos son los
+  de la ficha que acaba de leer**, no los de la comida que elija: es lo que ha
+  cocinado.
+- **Y lo apuntado se ve y se puede quitar.** Los ingredientes de una receta no
+  tienen por qué estar en la despensa de esa comida —la receta la eligió su
+  nutricionista y la despensa es otra lista—, así que sus porciones contaban en
+  el balance (`seleccionPorBucket` recorre todo lo marcado) pero **no salían en
+  ninguna fila**: el anillo bajaba sin que se supiera por qué y no había manera
+  de deshacerlo. Ahora hay un bloque «Apuntado de una receta» con su cantidad y
+  una × por línea. Un número que te cambia el día y que no puedes ni ver ni
+  deshacer es peor que no tenerlo.
 - **Una revisión mensual no es un plan nuevo: es el mismo que cambia.** Cada
   mes se vuelven a tomar medidas, se recalcula el gasto y sale otra
   planificación — que **nace clonada de la anterior**, así que en pantalla las

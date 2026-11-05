@@ -784,8 +784,17 @@ export function ClientView() {
    * **No se le quita nada de lo que ya tuviera marcado en otros macros**: se
    * fijan los alimentos de la receta y lo demás se queda como estaba.
    */
-  const usarDeLaBiblioteca = (meal: Meal, receta: Receta) => {
-    const reparto = dayType.grid[meal.id] ?? {};
+  const usarDeLaBiblioteca = (
+    meal: Meal,
+    receta: Receta,
+    /*
+     * Los gramos de la ficha que ha leído, que son los que ha cocinado. No los
+     * de la comida que elija: puede apuntar en la comida una receta que su
+     * nutricionista le puso en la cena, y la receta es la misma.
+     */
+    deLaFicha?: Record<string, number>,
+  ) => {
+    const reparto = deLaFicha ?? dayType.grid[meal.id] ?? {};
     if (plan.fase === 4) {
       const macros = exchangesToMacros(costeDelPostre(receta));
       guardar({

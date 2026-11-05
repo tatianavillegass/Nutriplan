@@ -6,6 +6,7 @@ import type { PorcionesMarcadas } from '../../types/diary';
 import { EXCHANGE_GROUPS, type MacroBucket, type ExchangeGroupId } from '../../data/exchangeGroups';
 import {
   alimentosDeBucket,
+  alimentosDeComida,
   libresDeComida,
   notaAceite,
   repartoElegible,
@@ -287,6 +288,26 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, a
   /** Los que ella le puso y no gastan intercambios. */
   const libres = libresDeComida(dayType, meal, foods);
 
+  /**
+   * LO APUNTADO QUE NO ESTÁ ENTRE SUS OPCIONES
+   * ==========================================
+   * Al decir «me lo he comido» en una receta se le apuntan las porciones de
+   * sus ingredientes, y esos ingredientes **no tienen por qué estar en la
+   * despensa de esa comida**: la receta la eligió su nutricionista y la
+   * despensa es otra lista. Esas porciones contaban en el balance —el anillo
+   * bajaba— pero no salían en ninguna fila, así que no había manera de ver qué
+   * se había apuntado ni de quitarlo si se pulsó por error. Un número que
+   * cambia tu día y que no puedes ni ver ni deshacer es peor que no tenerlo.
+   */
+  const apuntadoFuera = Object.entries(porciones[meal.id] ?? {})
+    .filter(([foodId, n]) => {
+      if (!(n > 0)) return false;
+      if (alimentosDeComida(dayType, meal, foods).some((f) => f.id === foodId)) return false;
+      const food = foods.find((f) => f.id === foodId);
+      return !!food?.grupo && !EXCHANGE_GROUPS[food.grupo]?.ilimitado;
+    })
+    .map(([foodId, n]) => ({ food: foods.find((f) => f.id === foodId)!, n }));
+
   /** Subgrupos que el día pauta para ese macro en esta comida. */
   const subgruposDe = (bucket: MacroBucket): ExchangeGroupId[] =>
     (Object.entries(diaElegible.grid[meal.id] ?? {}) as [ExchangeGroupId, number][])
@@ -488,6 +509,32 @@ export function FoodPortionPicker({ dayType, meal, foods, porciones, onMarcar, a
         dicen, la clienta no sabe que puede tomárselos — que es justo por lo
         que se ponen en su despensa.
       */}
+      {apuntadoFuera.length > 0 && (
+        <div className="border-t border-slate-100 px-5 py-2">
+          <p className="mb-1 text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+            Apuntado de una receta
+          </p>
+          <ul className="space-y-0.5">
+            {apuntadoFuera.map(({ food, n }) => (
+              <li key={food.id} className="flex items-baseline gap-2 text-[12px]">
+                <span className="min-w-0 flex-1 truncate text-slate-700">{food.nombre}</span>
+                <span className="tnum text-slate-500">{enPorciones(n)}</span>
+                <button
+                  onClick={() => onMarcar(meal.id, food.id, -n)}
+                  aria-label={`Quitar ${food.nombre} de ${meal.nombre.toLowerCase()}`}
+                  className="text-slate-300 transition hover:text-rose-600"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[10px] leading-snug text-slate-400">
+            Ya está contado en lo que te queda. Quítalo si no lo comiste.
+          </p>
+        </div>
+      )}
+
       {libres.length > 0 && (
         <div className="border-t border-slate-100 px-5 py-2">
           <p className="text-[11px] leading-snug text-slate-600">

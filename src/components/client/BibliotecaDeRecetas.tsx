@@ -12,6 +12,9 @@ import {
 } from '../../types/plan';
 import type { Receta } from '../../types/recipe';
 import { scaleRecipe } from '../../utils/recipeScaling';
+import { gramosPorIntercambio } from '../../utils/recipeComposition';
+import { snapHalf } from '../../utils/macros';
+import { EXCHANGE_GROUPS } from '../../data/exchangeGroups';
 import { ScaledRecipeView } from '../phase1/ScaledRecipeView';
 import { Button } from '../common/ui';
 
@@ -29,7 +32,15 @@ interface Props {
    * le apunta los gramos. Sin esto la biblioteca sólo se mira, que también
    * vale — es lo que pasa en la vista previa y en el PDF.
    */
-  onUsar?: (meal: Meal, receta: Receta) => void;
+  /**
+   * ELLA ELIGE EN QUÉ COMIDA
+   *
+   * `meal` es la que ha elegido, que no tiene que ser la comida bajo la que
+   * está listada: su nutricionista le puso la tortilla en la cena y ella la
+   * cenó el martes y la comió el jueves. `reparto` son los gramos de la ficha
+   * que estaba leyendo — lo que cocinó —, y de ahí salen las porciones.
+   */
+  onUsar?: (meal: Meal, receta: Receta, reparto: Record<string, number>) => void;
   /** «Me lo he comido» sólo lo pulsa quien come, no quien pauta. */
   soyElCliente?: boolean;
 }
@@ -159,15 +170,19 @@ export function BibliotecaDeRecetas({
                 />
 
                 {onUsar && soyElCliente && (
-                  <div className="mt-2">
-                    <Button onClick={() => onUsar(meal, r)} className="text-xs">
-                      Me lo he comido
-                    </Button>
-                    <p className="mt-1 text-[10px] leading-snug text-slate-400">
-                      Te lo apunta en {meal.nombre.toLowerCase()}. Después puedes retocar lo
-                      que quieras.
-                    </p>
-                  </div>
+                  <MeLoHeComido
+                    comidas={comidasConPauta(dayType)}
+                    deEntrada={meal}
+                    /*
+                     * Los gramos son los de la ficha que acaba de leer, no los
+                     * de la comida que elija: es lo que ha cocinado. Su
+                     * nutricionista le puso la tortilla en la cena y ella la
+                     * comió a mediodía — la tortilla es la misma.
+                     */
+                    onUsar={(elegida) =>
+                      onUsar(elegida, r, pautaDeComida(dayType, meal.id, foods).pauta)
+                    }
+                  />
                 )}
               </div>
             ))}
@@ -178,12 +193,31 @@ export function BibliotecaDeRecetas({
 }
 
 /**
- * QUÉ PORCIONES SE MARCAN AL DECIR «ME LO HE COMIDO»
+ * QUÉ PORCIONES GASTA UNA RECETA
+ * ==============================
+ * Las que de verdad lleva, calculadas de sus gramos ya escalados: los gramos
+ * del ingrediente partidos por lo que pesa una porción de su grupo en la tabla
+ * (`gramosPorIntercambio`). Es la misma cuenta que hace ella a mano.
  *
- * Los mismos aportes que ya usa el atajo de receta de fase 2 y 3: cada
- * ingrediente del catálogo se apunta con **las porciones que la comida tiene
- * pautadas de su grupo**, que es lo que la receta viene a cubrir. Lo que no
- * está enlazado al catálogo no se puede marcar y se queda fuera, como siempre.
+ * ANTES SE LEÍAN DE LA CASILLA DE LA COMIDA, Y ESTABA MAL DE TRES MANERAS
+ * ======================================================================
+ * Se le daba a **cada** ingrediente las porciones que esa comida tenía
+ * pautadas de su grupo, y de ahí:
+ *
+ *  1. **Contaba doble.** Un desayuno con 3 almidones y una receta con avena y
+ *     pan apuntaba 3 por la avena y 3 por el pan: 6 de 3.
+ *  2. **Se perdía lo que la comida no pautaba.** El yogur de la receta no
+ *     entraba si esa comida no tenía lácteo pautado, aunque se lo comiera.
+ *  3. **Y si la comida no pautaba nada de lo que lleva la receta, no apuntaba
+ *     NADA**: se pulsaba «me lo he comido» y no pasaba absolutamente nada. Es
+ *     lo que ella veía — «no se están agregando a su plan».
+ *
+ * La receta sabe lo que lleva; la casilla sólo sabe lo que se pautó. Son dos
+ * cosas distintas y la que manda aquí es la primera.
+ *
+ * Se redondea a medias porciones, que es el paso con el que se cuenta en esta
+ * fase (§10.3) y con el que se mueven los anillos de la pantalla de hoy. Lo
+ * ilimitado —la verdura— no se apunta: no gasta nada.
  */
 export function aportesDeLaReceta(
   receta: Receta,
@@ -191,11 +225,139 @@ export function aportesDeLaReceta(
   foods: Alimento[],
 ): { foodId: string; intercambios: number }[] {
   const escalada = scaleRecipe(receta, reparto, foods);
-  return escalada.ingredientes
-    .filter((i) => i.foodId && i.grupo)
-    .map((i) => ({
-      foodId: i.foodId as string,
-      intercambios: reparto[i.grupo as string] ?? 0,
-    }))
+  const porId = new Map(foods.map((f) => [f.id, f]));
+  /* Por alimento y no por ingrediente: la misma avena dos veces se suma. */
+  const porAlimento = new Map<string, number>();
+
+  for (const ing of escalada.ingredientes) {
+    if (!ing.foodId) continue;
+    const food = porId.get(ing.foodId);
+    if (!food?.grupo) continue;
+    if (EXCHANGE_GROUPS[food.grupo]?.ilimitado) continue;
+
+    const gpi = gramosPorIntercambio(food);
+    const gramos = ing.cantidad_final ?? 0;
+    if (!gpi || !(gramos > 0)) continue;
+
+    porAlimento.set(food.id, (porAlimento.get(food.id) ?? 0) + gramos / gpi);
+  }
+
+  return [...porAlimento.entries()]
+    .map(([foodId, n]) => ({ foodId, intercambios: snapHalf(n) }))
     .filter((a) => a.intercambios > 0);
+}
+
+/**
+ * «ME LO HE COMIDO»: EN QUÉ COMIDA Y SI LAS CANTIDADES SON LAS SUYAS
+ * =================================================================
+ * Era un botón suelto que lo apuntaba en la comida bajo la que estaba
+ * listada, y eso no es como se come: su nutricionista le pone la tortilla en
+ * la cena y ella la cena el martes y la come el jueves. Así que **lo elige
+ * ella**, que es además lo que pedía.
+ *
+ * Y se pregunta si usó las cantidades tal cual. No cambia la cuenta —las
+ * porciones son las de la receta en las dos— pero sí lo que se le dice: si las
+ * cambió, lo apuntado es un punto de partida y hay que decírselo, porque
+ * callarlo sería darle por exacto un número que no lo es. Ajustarlo son los
+ * mismos anillos de «Hoy» que ya usa.
+ */
+function MeLoHeComido({
+  comidas,
+  deEntrada,
+  onUsar,
+}: {
+  comidas: Meal[];
+  /** La comida bajo la que está listada: lo más probable, así que va elegida. */
+  deEntrada: Meal;
+  onUsar: (meal: Meal, talCual: boolean) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [elegida, setElegida] = useState(deEntrada.id);
+  const [hecho, setHecho] = useState<string | null>(null);
+
+  const meal = comidas.find((m) => m.id === elegida) ?? deEntrada;
+
+  const apuntar = (talCual: boolean) => {
+    onUsar(meal, talCual);
+    setHecho(
+      talCual
+        ? `Apuntado en ${meal.nombre.toLowerCase()}.`
+        : `Apuntado en ${meal.nombre.toLowerCase()} con las cantidades de la receta. Ajústalas en «Hoy».`,
+    );
+    setAbierto(false);
+  };
+
+  if (hecho) {
+    return (
+      <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+        <p className="text-xs text-emerald-900">{hecho}</p>
+        <button
+          onClick={() => setHecho(null)}
+          className="mt-0.5 text-[11px] text-emerald-700 underline"
+        >
+          Apuntarla otra vez
+        </button>
+      </div>
+    );
+  }
+
+  if (!abierto) {
+    return (
+      <div className="mt-2">
+        <Button onClick={() => setAbierto(true)} className="text-xs">
+          Me lo he comido
+        </Button>
+        <p className="mt-1 text-[10px] leading-snug text-slate-400">
+          Te descuenta sus porciones de la comida que elijas.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/40 px-3 py-2.5">
+      <p className="text-[11px] font-medium text-slate-600">¿En qué comida?</p>
+      <div
+        className="mt-1.5 flex flex-wrap gap-1.5"
+        role="group"
+        aria-label="En qué comida la apunto"
+      >
+        {comidas.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => setElegida(m.id)}
+            aria-pressed={m.id === elegida}
+            className={`rounded-full border px-2.5 py-1 text-[12px] transition ${
+              m.id === elegida
+                ? 'border-brand-500 bg-brand-600 text-white'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-brand-400'
+            }`}
+          >
+            {m.nombre}
+          </button>
+        ))}
+      </div>
+
+      <p className="mt-2.5 text-[11px] font-medium text-slate-600">
+        ¿Has usado las cantidades tal cual?
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <Button onClick={() => apuntar(true)} className="text-xs">
+          Sí, tal cual
+        </Button>
+        <button
+          onClick={() => apuntar(false)}
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[12px] text-slate-600 transition hover:border-brand-400"
+        >
+          Las cambié un poco
+        </button>
+        <button
+          onClick={() => setAbierto(false)}
+          className="px-1 text-[12px] text-slate-400 underline"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
 }

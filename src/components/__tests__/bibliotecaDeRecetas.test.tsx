@@ -118,19 +118,31 @@ describe('«Me lo he comido»', () => {
     expect(screen.queryByText('Me lo he comido')).toBeNull();
   });
 
-  it('y al pulsarlo dice qué receta y de qué comida', () => {
+  /*
+   * Antes era un botón y ya: lo apuntaba en la comida bajo la que estuviera
+   * listada. Ahora pregunta en cuál la quiere y si usó las cantidades tal
+   * cual, porque su nutricionista le pone la tortilla en la cena y ella la
+   * come a mediodía. Ver `apuntarUnaReceta.test.tsx`.
+   */
+  it('pregunta primero, y luego dice qué receta y de qué comida', () => {
     const onUsar = vi.fn();
     pintar(plan({ comida: ['rc1'] }), { onUsar, soyElCliente: true });
     fireEvent.click(screen.getByText('Wok de pollo'));
     fireEvent.click(screen.getByText('Me lo he comido'));
+    expect(onUsar).not.toHaveBeenCalled();
 
+    fireEvent.click(screen.getByText('Sí, tal cual'));
     expect(onUsar).toHaveBeenCalledTimes(1);
     expect(onUsar.mock.calls[0][0].id).toBe('comida');
     expect(onUsar.mock.calls[0][1].id).toBe('rc1');
   });
 
-  it('marca cada alimento con las porciones que esa comida tiene pautadas', () => {
-    /* La receta hace el trabajo que ella haría a mano, alimento por alimento. */
+  it('marca cada alimento con las porciones que de verdad lleva', () => {
+    /*
+     * La receta hace el trabajo que ella haría a mano, alimento por alimento.
+     * Salen de los gramos de la ficha y no de la casilla de la comida: ver
+     * `aportesDeLaReceta`.
+     */
     const aportes = aportesDeLaReceta(WOK, { proteicos_magros: 4, almidones: 3 }, [POLLO]);
     expect(aportes).toEqual([{ foodId: 'a-pollo', intercambios: 4 }]);
   });
