@@ -1653,6 +1653,12 @@ export function ClientView() {
                 mediciones={mediciones}
                 preparacion={preparacion}
                 deHoy={registro?.medidas}
+                /*
+                 * Para que el formulario se vacíe al cambiar de día: si no,
+                 * las fotos del día anterior se guardaban otra vez en la
+                 * fecha nueva y la misma toma salía dos veces.
+                 */
+                fecha={fecha}
                 clientId={client.id}
                 onGuardar={(medidas) => guardar({ medidas })}
               />

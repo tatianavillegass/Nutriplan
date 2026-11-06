@@ -37,7 +37,8 @@ describe('Apuntar el peso con decimales', () => {
   it('59,8 se guarda como 59,8', () => {
     const onGuardar = vi.fn();
     render(
-      <MisMedidas registros={[]} preparacion={{ hechos: [] }} clientId="c1" onGuardar={onGuardar} />,
+      <MisMedidas registros={[]} preparacion={{ hechos: [] }} fecha="2026-01-05"
+      clientId="c1" onGuardar={onGuardar} />,
     );
     fireEvent.click(screen.getByText('Apuntar'));
 

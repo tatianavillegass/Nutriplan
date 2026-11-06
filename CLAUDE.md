@@ -2098,6 +2098,24 @@ si es una de estas decisiones:
   Cada una la mueve **quien puede escribirla**: la clienta las suyas —el
   registro del día sólo lo escribe ella, y esa regla no se toca— y la
   nutricionista las mediciones que apuntó ella.
+- **Las fotos de un día son de ese día: el formulario se vacía al cambiar de
+  fecha.** «Juan Guillermo y Maritza subieron las fotos del inicio y después
+  las de seguimiento, y se duplicaron las de seguimiento.» No estaba en la
+  subida —las rutas llevan `Date.now()`, el caché de firmas va por ruta y
+  `FotoPersonal` depende de su `foto`—: estaba en el formulario de «Mis
+  medidas». Sus campos se rellenaban **una sola vez**, al montarse
+  (`useState` sólo mira su valor inicial), y no se volvían a sincronizar. Al
+  cambiar de día seguían cargadas las fotos del día anterior y, al guardar
+  cualquier cosa, se escribían otra vez en la fecha nueva: las mismas tres
+  fotos en dos tomas, y dos veces en el comparador. Arrastrar un peso ya era
+  raro; **arrastrar una foto inventa una toma que no existió.** Ahora el
+  componente recibe la `fecha` y compara con la última cargada **en el
+  render** —el patrón de React para ajustar estado cuando cambia una prop—: con
+  un efecto habría un parpadeo con los datos del día de antes, y durante ese
+  parpadeo se puede pulsar Guardar. Dentro del mismo día no se toca nada, para
+  que corregir lo de hoy siga funcionando aunque el padre repinte.
+  `ApuntarUnaToma` no lo tenía: se vacía con `limpiar()` al guardar y la fecha
+  es suya.
   **La cuenta atrás pública se queda fuera**: ahí todavía no hay cuenta ni
   ficha, así que esa foto sigue en texto y se mueve al darla de alta, cuando ya
   es una `Medicion`. **Y la `imagen` de un recurso sigue en texto**: es la

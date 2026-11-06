@@ -33,6 +33,17 @@ interface Props {
   preparacion: Preparacion;
   /** Lo de hoy, para poder corregirlo el mismo día. */
   deHoy?: MedidasDelDia;
+  /**
+   * QUÉ DÍA SE ESTÁ APUNTANDO
+   *
+   * Hace falta para saber **cuándo vaciar el formulario**. Sin esto, los
+   * campos se rellenaban una vez al montarse y no se volvían a sincronizar:
+   * al cambiar de día el formulario seguía con las fotos del día anterior y,
+   * al guardar, las escribía otra vez en la fecha nueva. Resultado: las mismas
+   * fotos en dos tomas, que es lo que ella vio como «se duplicaron las de
+   * seguimiento».
+   */
+  fecha: string;
   /** De quién son: es la carpeta del almacén y lo que decide quién las ve. */
   clientId: string;
   onGuardar: (medidas: MedidasDelDia) => void;
@@ -76,6 +87,7 @@ export function MisMedidas({
   mediciones = [],
   preparacion,
   deHoy,
+  fecha,
   clientId,
   onGuardar,
 }: Props) {
@@ -97,6 +109,7 @@ export function MisMedidas({
   const [nota, setNota] = useState(deHoy?.nota ?? '');
   const [subiendo, setSubiendo] = useState<string | undefined>();
 
+
   const medidas = historialDeMedidas(mediciones as Medicion[], registros);
   const evolucion = evolucionDe(medidas);
   const semanas = semanasDePeso(medidas);
@@ -105,6 +118,45 @@ export function MisMedidas({
   const conFoto = tomasConFoto(medidas);
   /** Por qué no ha entrado la foto, en su idioma y no en el del navegador. */
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * UN DÍA, UN FORMULARIO
+   * =====================
+   * `useState` sólo mira su valor inicial, así que estos campos se llenaban al
+   * montarse el componente y de ahí no se movían. Cambiar de día no los
+   * tocaba: seguían las fotos del día anterior cargadas y, al guardar
+   * cualquier cosa, se volvían a escribir en la fecha nueva. Las mismas tres
+   * fotos acababan en dos tomas distintas y en el comparador salían dos veces
+   * — con Juan Guillermo y con Maritza, que subieron las del inicio y después
+   * las de seguimiento.
+   *
+   * Arrastrar un peso o una nota ya era raro; arrastrar una foto inventa una
+   * toma que no existió.
+   *
+   * Se compara la fecha en el render, que es como React dice que se ajusta un
+   * estado cuando cambia una prop: con un efecto habría un parpadeo con los
+   * datos del día de antes, y durante ese parpadeo se puede pulsar Guardar.
+   */
+  const [diaCargado, setDiaCargado] = useState(fecha);
+  if (diaCargado !== fecha) {
+    setDiaCargado(fecha);
+    setValores(
+      Object.fromEntries(
+        CAMPOS.map((c) => [c.id, deHoy?.[c.id] != null ? String(deHoy[c.id]) : '']),
+      ),
+    );
+    setBio(
+      Object.fromEntries(
+        CAMPOS_BIO.map((c) => [
+          c.id,
+          deHoy?.bioimpedancia?.[c.id] != null ? String(deHoy.bioimpedancia![c.id]) : '',
+        ]),
+      ),
+    );
+    setFotos(deHoy?.fotos ?? {});
+    setNota(deHoy?.nota ?? '');
+    setError(null);
+  }
 
   /**
    * El punto de partida de antes de la app: lo que se midió en la cuenta atrás
