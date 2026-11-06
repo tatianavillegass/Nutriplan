@@ -1,37 +1,32 @@
-import type { DeltaMedicion, Medicion } from '../../types/anthropometry';
-import { fmt } from '../common/ui';
+import type { FormulaGrasaId, Medicion, Sexo } from '../../types/anthropometry';
+import { tablaDeAntropometria } from '../../utils/seguimientoEnTabla';
+import { TablaDeSeguimiento } from '../common/TablaDeSeguimiento';
 
 interface Props {
-  evolucion: DeltaMedicion[];
   mediciones: Medicion[];
   seleccionada?: string;
   onSeleccionar: (id: string) => void;
   onEliminar: (id: string) => void;
+  /** Hacen falta para la composición de cada toma, no sólo de la última. */
+  sexo: Sexo;
+  edad: number;
+  formula: FormulaGrasaId;
 }
 
-function Delta({ v, decimales, bajarEsMejor }: { v?: number; decimales: number; bajarEsMejor?: boolean }) {
-  if (v == null || Math.abs(v) < 0.001) {
-    return <span className="text-slate-300">—</span>;
-  }
-  const mejora = bajarEsMejor ? v < 0 : v > 0;
-  return (
-    <span className={mejora ? 'text-emerald-700' : 'text-amber-700'}>
-      {v > 0 ? '+' : '−'}
-      {fmt(Math.abs(v), decimales)}
-    </span>
-  );
-}
 
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' });
 
 export function AnthroTimeline({
-  evolucion,
   mediciones,
   seleccionada,
   onSeleccionar,
   onEliminar,
+  sexo,
+  edad,
+  formula,
 }: Props) {
+  const { columnas, grupos } = tablaDeAntropometria(mediciones, sexo, edad, formula);
   if (!mediciones.length) return null;
 
   return (
@@ -62,49 +57,18 @@ export function AnthroTimeline({
         ))}
       </div>
 
-      {evolucion.length > 0 && mediciones.length > 1 && (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[440px] text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-1.5 text-left text-[11px] font-medium text-slate-400"> </th>
-                <th className="py-1.5 text-right text-[11px] font-medium text-slate-400">Inicial</th>
-                <th className="py-1.5 text-right text-[11px] font-medium text-slate-400">Anterior</th>
-                <th className="py-1.5 text-right text-[11px] font-medium text-slate-400">Actual</th>
-                <th className="py-1.5 text-right text-[11px] font-medium text-slate-400">Δ anterior</th>
-                <th className="py-1.5 text-right text-[11px] font-medium text-slate-400">Δ inicial</th>
-              </tr>
-            </thead>
-            <tbody className="tnum">
-              {evolucion.map((e) => (
-                <tr key={e.key} className="border-b border-slate-50">
-                  <td className="py-1.5 text-xs text-slate-600">
-                    {e.label}
-                    {e.unidad && <span className="ml-1 text-[10px] text-slate-400">{e.unidad}</span>}
-                  </td>
-                  <td className="py-1.5 text-right text-xs text-slate-400">
-                    {e.inicial != null ? fmt(e.inicial, e.decimales) : '—'}
-                  </td>
-                  <td className="py-1.5 text-right text-xs text-slate-400">
-                    {e.previo != null ? fmt(e.previo, e.decimales) : '—'}
-                  </td>
-                  <td className="py-1.5 text-right text-xs font-medium text-slate-800">
-                    {e.actual != null ? fmt(e.actual, e.decimales) : '—'}
-                  </td>
-                  <td className="py-1.5 text-right text-xs">
-                    <Delta v={e.deltaPrevio} decimales={e.decimales} bajarEsMejor={e.bajarEsMejor} />
-                  </td>
-                  <td className="py-1.5 text-right text-xs">
-                    <Delta v={e.deltaInicial} decimales={e.decimales} bajarEsMejor={e.bajarEsMejor} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-[11px] text-slate-400">
-            Verde = va en la dirección del objetivo. Las medidas que no se hayan tomado no aparecen.
-          </p>
-        </div>
+      {/*
+        LA TABLA ENTERA, NO TRES COLUMNAS
+        =================================
+        Enseñaba inicial, anterior y actual: de tres columnas, dos son siempre
+        las mismas, y con cinco tomas eso esconde justo lo que se viene a ver.
+        Y sólo traía las sumas —«puedo ver la suma de pliegues pero no comparar
+        los mm de grasa en cada punto ni las medidas, y eso me interesa»—.
+        Ahora es su planilla: una columna por toma, con los ocho pliegues, los
+        siete perímetros y la composición. Ver `TablaDeSeguimiento`.
+      */}
+      {mediciones.length > 1 && (
+        <TablaDeSeguimiento columnas={columnas} grupos={grupos} />
       )}
     </div>
   );

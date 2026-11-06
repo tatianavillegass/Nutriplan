@@ -46,16 +46,21 @@ export function AnthroTab({ client, onClientChange }: Props) {
   const actual = propias.find((m) => m.id === seleccionada);
   const formula: FormulaGrasaId = client.formulaGrasa ?? "faulkner";
 
+  /*
+   * Sólo para el PDF, que es una hoja de una visita: ahí sí se lee «contra la
+   * anterior y contra la primera». En pantalla manda la tabla entera.
+   */
+  const evolucion = useMemo(
+    () => calcularEvolucion(propias, client.sexo, edadDe(client), formula),
+    [propias, client.sexo, client, formula],
+  );
+
   const composicion = useMemo(
     () =>
       actual ? calcComposicion(actual, client.sexo, edadDe(client)) : undefined,
     [actual, client.sexo, edadDe(client)],
   );
 
-  const evolucion = useMemo(
-    () => calcularEvolucion(propias, client.sexo, edadDe(client), formula),
-    [propias, client.sexo, edadDe(client), formula],
-  );
 
   /**
    * El informe sale de la medición que esté abierta, no siempre de la última:
@@ -125,8 +130,11 @@ export function AnthroTab({ client, onClientChange }: Props) {
           }
         >
           <AnthroTimeline
-            evolucion={evolucion}
             mediciones={propias}
+            /* La composición se calcula para cada toma, no sólo la última. */
+            sexo={client.sexo}
+            edad={edadDe(client)}
+            formula={formula}
             seleccionada={seleccionada}
             onSeleccionar={setSeleccionada}
             onEliminar={(id) => {

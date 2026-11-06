@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { Medicion } from '../../types/anthropometry';
 import type { RegistroDia } from '../../types/diary';
 import {
-  CAMPOS,
   CAMPOS_BIO,
   evolucionDe,
   historialDeMedidas,
@@ -14,6 +13,8 @@ import {
 import { fmt } from '../common/ui';
 import { ApuntarUnaToma } from './ApuntarUnaToma';
 import { ComparaFotos } from './ComparaFotos';
+import { TablaDeSeguimiento } from '../common/TablaDeSeguimiento';
+import { tablaDeMedidas } from '../../utils/seguimientoEnTabla';
 import { EvolucionDeMedidas } from './EvolucionDeMedidas';
 
 interface Props {
@@ -62,6 +63,7 @@ export function MedidasDeLaClienta({ registros, mediciones = [], clientId, onApu
   const semanas = semanasDePeso(medidas);
   const tendencia = tendenciaDePeso(medidas);
   const conFoto = tomasConFoto(medidas);
+  const deLaTabla = tablaDeMedidas(medidas);
   const ultima = medidas[medidas.length - 1];
   const bio = CAMPOS_BIO.filter((c) => ultimas.bioimpedancia?.[c.id] != null);
 
@@ -187,40 +189,31 @@ export function MedidasDeLaClienta({ registros, mediciones = [], clientId, onApu
         </div>
       )}
 
+      {/*
+        EL SEGUIMIENTO, COMO EN SU PLANILLA
+        ===================================
+        El histórico era una tabla con las tomas en filas y sin diferencias:
+        para comparar la cintura de marzo con la de mayo había que buscar la
+        columna en dos filas separadas por media pantalla. «Me está quedando
+        difícil comparar las medidas, la manera como se muestra no es muy
+        clara.»
+
+        Ahora es su Excel: una columna por toma, en orden, y detrás de cada una
+        el cambio desde la anterior. Ver `TablaDeSeguimiento`.
+      */}
       {medidas.length > 1 && (
         <>
           <button
             onClick={() => setHistorico((v) => !v)}
             className="mt-3 text-[11px] text-brand-700 hover:underline"
           >
-            {historico ? 'Ocultar el histórico' : `Ver las ${medidas.length} tomas`}
+            {historico
+              ? 'Ocultar el seguimiento'
+              : `Ver las ${medidas.length} tomas comparadas`}
           </button>
           {historico && (
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-slate-400">
-                    <th className="py-1 pr-2 font-medium">Fecha</th>
-                    {CAMPOS.map((c) => (
-                      <th key={c.id} className="py-1 pr-2 font-medium">
-                        {c.nombre.replace(/ \(.*\)/, '')}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...medidas].reverse().map((m) => (
-                    <tr key={m.fecha} className="border-t border-slate-100">
-                      <td className="py-1 pr-2 text-slate-600">{fechaCorta(m.fecha)}</td>
-                      {CAMPOS.map((c) => (
-                        <td key={c.id} className="tnum py-1 pr-2 text-slate-700">
-                          {m[c.id] != null ? fmt(m[c.id]!, c.unidad === 'kg' ? 1 : 0) : '·'}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-2">
+              <TablaDeSeguimiento columnas={deLaTabla.columnas} grupos={deLaTabla.grupos} />
             </div>
           )}
         </>

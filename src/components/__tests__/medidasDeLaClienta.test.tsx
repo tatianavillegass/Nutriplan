@@ -40,11 +40,16 @@ describe('En Seguimiento', () => {
     expect(screen.getByText('«Semana de viaje»')).toBeTruthy();
   });
 
-  it('el histórico se abre, no ocupa de entrada', () => {
+  /*
+   * El histórico era una tabla con las tomas en filas y sin diferencias.
+   * Ahora es su planilla —una columna por toma y el cambio detrás— y por eso
+   * el botón dice otra cosa. Ver `TablaDeSeguimiento`.
+   */
+  it('el seguimiento se abre, no ocupa de entrada', () => {
     render(<MedidasDeLaClienta registros={registros} clientId="c1" onApuntar={vi.fn()} />);
-    const boton = screen.getByText(/Ver las 2 tomas/);
-    fireEvent.click(boton);
-    expect(screen.getByText('Ocultar el histórico')).toBeTruthy();
+    fireEvent.click(screen.getByText(/Ver las 2 tomas comparadas/));
+    expect(screen.getByText('Ocultar el seguimiento')).toBeTruthy();
+    expect(screen.getByText('Dif.')).toBeTruthy();
   });
 
   /**

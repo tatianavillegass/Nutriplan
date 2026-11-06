@@ -1602,6 +1602,36 @@ si es una de estas decisiones:
   —sin plicómetro al otro lado— no tienen tarjeta. Y «+0,0» no se pinta: si la
   diferencia se redondea a cero con los decimales que se enseñan, no se ha
   movido nada que se pueda ver.
+- **El seguimiento se lee en columnas, como su planilla de siempre.** «Me está
+  quedando difícil comparar las medidas, la manera como se muestra no es muy
+  clara.» Había dos pantallas y las dos enseñaban lo mismo mal: un **histórico**
+  con las tomas en filas y sin diferencias (comparar la cintura de marzo con la
+  de mayo era buscar la misma columna en dos filas separadas por media
+  pantalla) y una tabla de **inicial / anterior / actual**, de la que dos
+  columnas son siempre las mismas y que con cinco tomas esconde justo lo que se
+  viene a ver: dónde se estancó, qué mes se movió. `TablaDeSeguimiento` es la
+  planilla: **una fila por medida, una columna por toma con su fecha y la
+  diferencia con la anterior detrás de cada una**, más los días que pasaron.
+  Primera columna fija y desplazamiento lateral, que con ocho tomas no cabe —
+  y una tabla de números sin saber de qué fila son no es una tabla. **El color
+  dice dirección, no nota**: verde hacia donde se va, ámbar al revés, y **sólo
+  donde la dirección no se discute** (la grasa y la cintura bajando). Un muslo
+  que sube puede ser músculo ganado, así que va sin color: opinar de eso no le
+  toca a la app. **«Igual»** cuando el cambio no se vería en los decimales que
+  se enseñan —medio dígito del último—, porque un cero en una columna de
+  cambios se lee como un dato.
+- **Y se comparan los milímetros de cada punto, no sólo las sumas.** «Me deja
+  ver la suma de pliegues pero no puedo comparar los mm de grasa en cada punto
+  ni las medidas, y eso me interesa.» `calcularEvolucion` sólo traía sumas,
+  cintura y cadera — y dos tomas con la misma suma pueden ser alguien que ha
+  bajado abdomen y subido tríceps, que no es lo mismo ni se hace lo mismo
+  después. Ahora salen **los ocho pliegues, los siete perímetros y el bloque de
+  composición** (`tablaDeAntropometria`), y para los online **los perímetros que
+  se miden en casa** (`tablaDeMedidas`), las dos desde el mismo sitio para que
+  una medida no se llame de dos maneras según la pantalla. Una fila que nunca
+  se midió **no ocupa sitio**; un día suelto sin ese dato sale vacío y no se
+  inventa. `calcularEvolucion` se queda **sólo para el PDF**, que es la hoja de
+  una visita y ahí sí se lee «contra la anterior y contra la primera».
 - **«Acceso hasta» era una nota, no una puerta — y ahora cierra.** Una clienta
   dada de baja en marzo seguía entrando en octubre y marcando comidas: la fecha
   no la comprobaba nadie. `estadoAcceso` sólo se usaba en las pantallas de la
