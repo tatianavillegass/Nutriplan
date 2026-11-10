@@ -868,7 +868,17 @@ export function planVisibleParaCliente(planes: Plan[]): {
   );
   const enUso = suyos.find((p) => !p.archivado);
   const deEnUso = enUso ? planParaCliente(enUso) : undefined;
-  if (deEnUso) return { plan: deEnUso };
+  if (deEnUso)
+    /*
+     * Lo normal es que la nueva nazca **clonada**: se queda con la foto de la
+     * anterior —que es lo que la clienta está comiendo— y sin `envio`, porque
+     * lo nuevo todavía no se ha mandado. Entonces lo que tiene delante es lo
+     * de antes y hay que decírselo, igual que cuando la nueva se hace desde
+     * cero. Sin esto el aviso sólo salía en el caso raro.
+     */
+    return enUso && !enUso.envio
+      ? { plan: deEnUso, preparando: enUso }
+      : { plan: deEnUso };
 
   /*
    * El anterior: el más reciente de los archivados que llegó a enviarse. Los

@@ -93,11 +93,16 @@ describe('Lo que ve mientras le montan el siguiente', () => {
   });
 
   /*
-   * La clonación ya copiaba la foto, así que ahí nunca hubo agujero: lo que se
-   * comprueba es que sigue sin haberlo y que NO se avisa de nada, porque lo
-   * que ve es la foto de su plan en uso.
+   * EL CASO NORMAL, QUE ES EL QUE IMPORTA
+   *
+   * La nueva nace **clonada**: se queda la foto de la anterior y se borra el
+   * envío. Aquí se daba por hecho que no había nada que avisar «porque lo que
+   * ve es la suya», y no es verdad: lo que ve es **la foto de lo anterior**,
+   * que es justo el caso del que hay que avisar. «Sólo tiene que aparecer un
+   * mensaje de que estoy haciendo el nuevo plan, pero tiene que poder ver el
+   * que tenía antes.»
    */
-  it('si la nueva heredó la foto, no hay aviso: lo que ve es la suya', () => {
+  it('si la nueva heredó la foto, ve esa foto y se le avisa', () => {
     const { plan: visible, preparando } = planVisibleParaCliente([
       enviado('p1', '2026-01-10', { archivado: true }),
       plan('p2', {
@@ -105,6 +110,16 @@ describe('Lo que ve mientras le montan el siguiente', () => {
         createdAt: '2026-03-01',
         publicado: { fase: 1, dayTypes: [], fecha: '2026-01-10T09:00:00.000Z' },
       } as Partial<Plan>),
+    ]);
+    expect(visible?.id).toBe('p2');
+    expect(preparando?.id).toBe('p2');
+  });
+
+  /* Y en cuanto se envía deja de haber nada que avisar: lo que ve es lo nuevo. */
+  it('enviada ya, sin aviso', () => {
+    const { plan: visible, preparando } = planVisibleParaCliente([
+      enviado('p1', '2026-01-10', { archivado: true }),
+      enviado('p2', '2026-03-01'),
     ]);
     expect(visible?.id).toBe('p2');
     expect(preparando).toBeUndefined();

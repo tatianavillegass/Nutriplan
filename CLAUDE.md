@@ -1557,6 +1557,24 @@ si es una de estas decisiones:
   mandó**. No es un plan viejo que se cuela — es literalmente lo último que
   ella le dijo que comiera. Un borrador que nunca se envió no vale como
   respaldo: nunca fue su plan.
+- **Y aun así se quedaba sin plan, por una segunda puerta.** «Cuando estoy
+  creando plan nuevo, el cliente sigue sin ver el plan actual.» El cálculo
+  estaba bien; lo que fallaba es que `ClientView` cortaba más abajo con
+  `if (!plan.envio)`, **después** de que `planVisibleParaCliente` ya hubiera
+  decidido qué enseñar. Y una planificación nueva nace, a propósito, **con la
+  foto de la anterior y sin `envio`** (la foto es lo que la clienta está
+  comiendo; el envío se borra porque lo nuevo no se ha mandado), así que esa
+  línea la bloqueaba justo en el caso para el que se hizo el arreglo — y en el
+  normal, porque lo normal es clonar. **Quién decide si hay algo que enseñar es
+  `planParaCliente`, y sólo él**: dos sitios decidiendo lo mismo es cómo se
+  cuela un «no» que nadie quería. De paso, el mensaje de la nutricionista se
+  lee con `plan.envio?.mensaje`: lo que se enseña puede ser la foto de un plan
+  que todavía no se ha enviado.
+- **El aviso sale también cuando la nueva nace clonada**, que es el caso
+  normal. Se daba por hecho que ahí no había nada que avisar «porque lo que ve
+  es la suya», y no: lo que ve es **la foto de lo anterior**. `preparando` se
+  pone siempre que la planificación en uso no se haya enviado todavía, y se va
+  sola en cuanto se envía.
 - **Y se le dice, con un aviso que se puede quitar.** «Tu siguiente plan está
   siendo elaborado», y debajo lo que de verdad hace falta: **que mientras tanto
   siga con éste**, porque sin esa línea el aviso sólo crea la duda de si lo que

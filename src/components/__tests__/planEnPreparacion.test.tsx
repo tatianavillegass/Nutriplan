@@ -151,3 +151,62 @@ describe('Sin nada a medio montar', () => {
     expect(screen.getByText(/Hola,/)).toBeTruthy();
   });
 });
+
+/**
+ * EL CASO DE VERDAD: LA NUEVA NACE CLONADA
+ * ========================================
+ * «Cuando estoy creando plan nuevo, el cliente sigue sin ver el plan actual.»
+ *
+ * Lo de arriba cubría la planificación hecha **desde cero**, que es la rara.
+ * Lo normal es que nazca clonada: se queda con la foto de la anterior —que es
+ * lo que la clienta está comiendo— y **sin `envio`**, porque lo nuevo todavía
+ * no se ha mandado.
+ *
+ * `planVisibleParaCliente` lo resolvía bien y aun así se quedaba sin plan,
+ * porque más abajo había una **segunda puerta** —`if (!plan.envio)`— que
+ * cortaba después de que ya se hubiera decidido qué enseñar. Dos sitios
+ * decidiendo lo mismo es cómo se cuela un «no» que nadie quería.
+ */
+describe('Cuando la nueva nace clonada de la anterior', () => {
+  /** Igual que la hace el store: se queda la foto, se borra el envío. */
+  const CLONADA: Plan = {
+    ...DEMO_PLAN,
+    id: 'pl_clon',
+    archivado: false,
+    fecha: '2026-03-01',
+    envio: undefined,
+    publicado: {
+      fase: DEMO_PLAN.fase,
+      dayTypes: DEMO_PLAN.dayTypes,
+      fecha: '2026-01-10T09:00:00.000Z',
+    },
+  } as Plan;
+
+  beforeEach(() => {
+    useAppStore.setState({ plans: [{ ...ENVIADO, archivado: true }, CLONADA] });
+  });
+
+  it('sigue viendo el plan que tenía', () => {
+    abrir();
+    expect(screen.queryByText(/todavía se está preparando/i)).toBeNull();
+    expect(screen.getByText(/Hola,/)).toBeTruthy();
+  });
+
+  it('y se le dice que se está montando el siguiente', () => {
+    abrir();
+    expect(screen.getByText('Tu siguiente plan está siendo elaborado')).toBeTruthy();
+  });
+
+  /* Enviada ya, no hay nada que avisar: lo que ve ES lo nuevo. */
+  it('en cuanto se envía, el aviso se va', () => {
+    useAppStore.setState({
+      plans: [
+        { ...ENVIADO, archivado: true },
+        { ...CLONADA, envio: { fecha: '2026-03-02T09:00:00.000Z' } } as Plan,
+      ],
+    });
+    abrir();
+    expect(screen.queryByText('Tu siguiente plan está siendo elaborado')).toBeNull();
+    expect(screen.getByText(/Hola,/)).toBeTruthy();
+  });
+});

@@ -540,15 +540,21 @@ export function ClientView() {
     );
   }
 
-  // Hasta que la nutricionista lo envía, aquí no hay nada que ver.
-  if (!plan.envio) {
-    return (
-      <EmptyState title="Tu plan todavía se está preparando">
-        En cuanto tu nutricionista lo envíe, aparecerá aquí con las comidas del
-        día.
-      </EmptyState>
-    );
-  }
+  /*
+   * AQUÍ HABÍA UNA SEGUNDA PUERTA, Y ERA LA QUE LA DEJABA SIN PLAN
+   * ==============================================================
+   * Cortaba con `if (!plan.envio)`, y eso anulaba todo lo demás. Una
+   * planificación nueva nace **con la foto de la anterior y sin `envio`**
+   * —a propósito: la foto es lo que la clienta está comiendo y el envío se
+   * borra porque lo nuevo no se ha mandado—, así que esta línea la bloqueaba
+   * justo en el caso para el que se hizo el arreglo: «cuando estoy creando
+   * plan nuevo, el cliente sigue sin ver el plan actual».
+   *
+   * Quién decide si hay algo que enseñar es `planParaCliente`, y ya lo ha
+   * decidido antes de llegar aquí: con foto se enseña la foto, y sin foto ni
+   * envío no se llega a esta línea. Dos sitios decidiendo lo mismo es cómo se
+   * cuela un «no» que nadie quería.
+   */
 
   const guardar = (patch: Parameters<typeof upsertRegistro>[2]) =>
     upsertRegistro(client.id, fecha, { dayTypeId: dayType.id, ...patch });
@@ -1385,7 +1391,12 @@ export function ClientView() {
           no vuelve: se recuerda por la fecha del envío, así que el siguiente
           mensaje que se mande sí aparecerá.
         */}
-        {plan.envio.mensaje && registro?.avisoLeido !== plan.envio.fecha && (
+        {/*
+          Puede no haberlo: lo que se está enseñando es la foto de lo último
+          que se le mandó, y la planificación que la lleva puede estar todavía
+          sin enviar —es el caso de siempre mientras se le monta la nueva—.
+        */}
+        {plan.envio?.mensaje && registro?.avisoLeido !== plan.envio.fecha && (
           <div className="flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 no-print">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-medium tracking-wide text-brand-700 uppercase">
