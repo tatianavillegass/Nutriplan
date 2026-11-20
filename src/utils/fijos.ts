@@ -72,6 +72,28 @@ export function aporteDeFijos(fijos: Fijo[], foods: Alimento[]): ExchangeCounts 
   return out;
 }
 
+/**
+ * LO QUE SE PASA POR UNA MIGAJA NO SE AVISA
+ * =========================================
+ * Con medio lácteo pautado y 125 ml de leche semi puestos de fijo, la app
+ * avisaba: «aquí no tienes pautado 0,0 lácteos semidesnatados». Y el cero era
+ * de verdad — se pasaba de **0,0102 porciones**, que son dos mililitros y
+ * medio de leche.
+ *
+ * La culpa no es de nadie: una porción de leche semi son 245 ml y ella escribe
+ * 125, que es medio vaso. Para cuadrar al milímetro habría que escribir 122,5.
+ * Cualquier cantidad redonda deja un resto así, con casi cualquier alimento.
+ *
+ * Y un aviso que dice «te pasas de cero» es peor que no avisar: no se puede
+ * arreglar —el reparto va de medio en medio— y enseña a no leer los avisos,
+ * que son los mismos que sí tienen que verse cuando el café se lleva medio
+ * lácteo que no está pautado.
+ *
+ * La migaja es media décima: justo lo que no se vería en el número que se
+ * enseña.
+ */
+const MIGAJA = 0.05;
+
 export interface PautaDeComida {
   /** Lo que les queda a las opciones, ya descontados los fijos. */
   pauta: ExchangeCounts;
@@ -110,7 +132,7 @@ export function pautaDeComida(
        * Lo que no cabía. Con 1 lácteo pautado y un café que gasta 1,5, sobra
        * 0,5: eso es lo que se avisa, no el intercambio entero.
        */
-      if (resto < -0.001) sinPautar[g] = -resto;
+      if (resto < -MIGAJA) sinPautar[g] = -resto;
     }
   }
 

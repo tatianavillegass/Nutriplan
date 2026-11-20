@@ -1492,6 +1492,19 @@ si es una de estas decisiones:
   poder enseñarlos: lo que cambia es la casilla, no la lista. **Y entran en la
   lista de la compra**, porque un café con leche diario es litro y medio de
   leche a la semana que no sale en ninguna receta.
+- **Y lo que se pasa por una migaja no se avisa.** «Me está poniendo esto, pero
+  en el cálculo sí tengo 0,5 lácteos pautados»: con medio lácteo pautado y 125
+  ml de leche semi de fijo salía «aquí no tienes pautado **0,0** lácteos
+  semidesnatados». El cero era de verdad — se pasaba de **0,0102 porciones**,
+  dos mililitros y medio de leche. La culpa no es de nadie: una porción de leche
+  semi son 245 ml y ella escribe 125, que es medio vaso; para cuadrar al
+  milímetro habría que escribir 122,5, y **cualquier cantidad redonda deja un
+  resto así con casi cualquier alimento**. Un aviso que dice «te pasas de cero»
+  es peor que no avisar: no se puede arreglar —el reparto va de medio en
+  medio— y enseña a no leer los avisos, que son los mismos que sí tienen que
+  verse cuando el café se lleva medio lácteo que no está pautado. `MIGAJA` es
+  **media décima**, justo lo que no se vería en el número que se enseña, así que
+  ya no puede salir un «0,0» en un aviso.
 - **Y lo que va siempre, la clienta puede cambiarlo.** Sus palabras: «a Luis le
   voy a poner manzana de postre todos los días, pero es sólo un reflejo de que
   de postre tiene una porción de fruta: él puede elegir la que quiera.» Así que
