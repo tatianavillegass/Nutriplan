@@ -1105,6 +1105,14 @@ si es una de estas decisiones:
   informa de nada. Los ya contestados con el formato viejo llevan `numero` en
   vez de `semana` y se siguen enseñando como «Quincena 1»: el día en que se
   escribieron no se puede reescribir desde hoy.
+- **Y vive en la pantalla del plan, no en «Resumen».** «No la hace nadie porque
+  nadie se mete a Resumen.» Tenía razón: a esa pestaña se entra a mirar la
+  evolución, de vez en cuando; la que se abre todos los días es la del día. Así
+  que la tarjeta sale **arriba del plan** el domingo y los días siguientes
+  mientras siga sin contestar. Va **plegada, en dos líneas** —cinco preguntas
+  delante de la comida todos los días se leen una vez y se ignoran para
+  siempre— y se despliega al tocarla, sin bloquear nada. **Está sólo ahí**:
+  tenerla en dos sitios es cómo acaban diciendo cosas distintas.
 - **Que se mida ella es para las online, y se enciende a mano.** A las
   presenciales las mide la nutricionista con el plicómetro, y pedirles además
   que se pasen la cinta en casa es duplicar el trabajo con peor dato. A las

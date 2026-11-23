@@ -1678,21 +1678,6 @@ export function ClientView() {
                 onGuardar={(medidas) => guardar({ medidas })}
               />
             )}
-            {/*
-              La encuesta de la semana: se abre el domingo, pregunta por la
-              semana que acaba, se queda hasta la siguiente y no bloquea nada.
-              Ver `utils/checkin.ts`.
-            */}
-            {soyElCliente && pendiente && (
-              <CheckInSemanal
-                semana={pendiente}
-                fecha={fecha}
-                onGuardar={(checkin) =>
-                  guardar({ checkins: [...(registro?.checkins ?? []), checkin] })
-                }
-              />
-            )}
-
             <ResumenTab
               client={client}
               dayTypes={plan.dayTypes}
@@ -1707,6 +1692,31 @@ export function ClientView() {
 
         {laPestana === "hoy" && (
           <div className="space-y-5">
+            {/*
+              LA ENCUESTA DE LA SEMANA, DONDE SE ENTRA
+              ==========================================================
+              Vivía en «Resumen» y **no la contestaba nadie**: a esa pestaña se
+              entra a mirar la evolución, no a diario. La pantalla que se abre
+              todos los días es ésta, así que es aquí donde tiene que aparecer
+              — el domingo, que es cuando se abre, y los días siguientes
+              mientras siga sin contestar.
+              Va **plegada**, en dos líneas: una encuesta de cinco preguntas
+              delante de la comida todos los días de la semana se lee una vez y
+              se ignora para siempre. Se despliega al tocarla, no bloquea nada
+              y se puede dejar para otro día, que es como estaba pensada.
+              Está sólo aquí: tenerla en dos sitios es cómo acaban diciendo
+              cosas distintas.
+            */}
+            {soyElCliente && pendiente && (
+              <CheckInSemanal
+                semana={pendiente}
+                fecha={fecha}
+                onGuardar={(checkin) =>
+                  guardar({ checkins: [...(registro?.checkins ?? []), checkin] })
+                }
+              />
+            )}
+
             {/*
               EL RETO, LO PRIMERO
               ==========================================================
