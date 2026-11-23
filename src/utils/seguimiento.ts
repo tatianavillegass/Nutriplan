@@ -104,7 +104,12 @@ export function resumenAdherencia(
     const a = adherenciaDelDia(r, dayType);
     lista.push({
       fecha,
-      porcentaje: a.porcentaje,
+      /*
+       * Sin comidas pautadas ese día no hay con qué comparar, así que se deja
+       * en blanco como los días sin registro: un 0 % en rojo decía «no
+       * cumplió» de un día que puede estar marcado entero.
+       */
+      porcentaje: a.comparable ? a.porcentaje : undefined,
       extras: a.extras,
       kcalExtras: a.kcalExtras,
     });

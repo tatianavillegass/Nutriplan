@@ -85,6 +85,13 @@ interface Props {
   ) => void;
 }
 
+/** Las demás comidas para las que está marcada, en su nombre de siempre. */
+function otrasComidas(receta: Receta, slot: MealSlot): string[] {
+  return receta.categorias
+    .filter((c) => c !== slot)
+    .map((c) => SLOTS.find((s) => s.id === c)?.nombre.toLowerCase() ?? c);
+}
+
 const SLOTS: { id: MealSlot; nombre: string }[] = [
   { id: 'desayuno', nombre: 'Desayuno' },
   { id: 'almuerzo', nombre: 'Almuerzo' },
@@ -509,6 +516,24 @@ export function RecipeRecommender({
                 s.faltantes.length === 0 && s.sobrantes.length === 0 ? (
                   <Badge tone="brand">exacta</Badge>
                 ) : undefined
+              }
+              /*
+                DE QUÉ COMIDA DICE SER
+                ======================
+                «Cuando voy a poner recetas en desayuno me aparecen recetas de
+                comidas, me distrae un poco.» Sin buscar, aquí sólo entran las
+                que están marcadas para esta comida — así que si sale una
+                cena, es que la receta **también** está marcada como desayuno
+                en el banco. Eso no se veía por ningún lado, y mirar la receta
+                una por una para averiguarlo es el trabajo que esto viene a
+                ahorrar.
+                Se dice en la tarjeta, y sólo cuando hay algo que decir: las
+                que son sólo de esta comida no llevan nada.
+              */
+              nota={
+                slot !== 'todas' && otrasComidas(s.receta, slot).length > 0
+                  ? `también en ${otrasComidas(s.receta, slot).join(' y ')}`
+                  : undefined
               }
               pie={
                 <>

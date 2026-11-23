@@ -625,6 +625,15 @@ si es una de estas decisiones:
   lista de dos meses no la recorre nadie y casi siempre es un dedo en la fecha
   equivocada. Los **tachados** siguen viviendo en la semana en curso: son de
   esta compra, no del rango.
+- **El selector de la compra llegó a enchufarse en la pestaña equivocada.** «El
+  cliente no puede decidir de cuándo a cuándo quiere hacer la lista de la
+  compra» — y era verdad, con el selector hecho y con sus tests en verde: las
+  dos props que lo encienden (`rango` y `hoy`) acabaron en la instancia
+  `solo="menu"` —Reajustes— en vez de en la de Compra. `OrganizaTuSemana` es la
+  misma clase usada dos veces, así que no falló nada: simplemente no se
+  pintaba. **El test probaba el componente suelto y pasaba**, que es la forma
+  más silenciosa de tener algo roto. Por eso `laCompraDelCliente.test.tsx` pasa
+  por `ClientView` entero: lo que estaba roto era el cable, no la bombilla.
 - **Los días sin organizar se rellenan repitiendo, y se dice.** Casi nadie tiene
   planificada la semana que viene, así que una lista de dos semanas saldría a
   medias justo cuando más falta hace. Se copia **el mismo día de la semana** de
@@ -1260,6 +1269,31 @@ si es una de estas decisiones:
   (`findFood`). No es tan exacto como el enlace, pero **equivocarse avisando de
   más es mucho mejor que callar un alimento prohibido**: un aviso se lee y se
   descarta en un segundo, y lo otro acaba en el plato.
+- **Lo que marcó la clienta cuenta aunque el plan haya cambiado después.** «En
+  el seguimiento aparece que el cliente no ha marcado algunos días y ellos
+  dicen que sí han marcado todo.» Tenían razón los dos. `adherenciaDelDia`
+  contaba las marcas **por id de comida**, y renombrar una comida le cambia la
+  id (`separarComida`): el día que se renombra una, **todos los días ya
+  marcados pasan a contar cero**, y lo mismo al montar una planificación nueva
+  con otras comidas. Ahora una marca **sólo se descarta si es de una comida que
+  el plan tiene hoy y que ese día no lleva pauta** —marcó la merienda un día
+  sin merienda—; lo que no se reconoce es de una versión anterior del plan y
+  cuenta, porque la clienta marcó su comida y que nosotros hayamos movido las
+  fichas por debajo no es cosa suya. Se topa en el total, que marcar de más no
+  sube del 100 %.
+- **Y un día sin comidas pautadas no es un 0 %, es un «no se puede comparar».**
+  La misma función ya lo tenía en cuenta para el numerador y lo ignoraba para
+  el porcentaje: salía 0 % —rojo, «no cumplió»— en un día que puede estar
+  marcado entero. `AdherenciaDia.comparable` lo dice, y `resumenAdherencia`
+  deja esos días **en blanco**, como los que no tienen registro.
+- **Una receta dice de qué otras comidas es.** «Cuando voy a poner recetas en
+  desayuno me aparecen recetas de comidas, me distrae un poco.» Sin buscar, el
+  recomendador sólo ofrece las marcadas para esa comida, así que una cena en el
+  desayuno significa que la receta está marcada **también** como desayuno en el
+  banco — un dato que no se veía sin abrir la receta, que es el trabajo que esa
+  pantalla ahorra. Ahora la tarjeta lo dice («también en comida y cena»), y
+  **sólo cuando hay algo que decir**: las que son de esta comida y ya no llevan
+  nada.
 - **Y filtrar el catálogo era justo lo que apagaba ese aviso.** Seguía sin
   bloquearse nada: «si digo que no come salmón me deben aparecer todas las
   recetas que tienen salmón bloqueadas». La regla estaba bien; lo que estaba

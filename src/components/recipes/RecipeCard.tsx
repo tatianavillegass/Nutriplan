@@ -12,6 +12,12 @@ interface Props {
   pie?: ReactNode;
   /** Esquina superior derecha: «exacta», «ya usada». */
   esquina?: ReactNode;
+  /**
+   * Una línea corta bajo el nombre. Se usa para decir **de qué otras comidas
+   * es** la receta: si al pautar el desayuno sale una cena, es porque está
+   * marcada también como desayuno, y eso no se veía por ningún lado.
+   */
+  nota?: string;
   /** Guarnición o postre: la foto va más baja porque caben más por fila. */
   pequena?: boolean;
 }
@@ -43,6 +49,7 @@ export function RecipeCard({
   onClick,
   pie,
   esquina,
+  nota,
   pequena = false,
 }: Props) {
   return (
@@ -93,6 +100,9 @@ export function RecipeCard({
         <span className="text-[13px] leading-snug font-medium text-slate-800">
           {receta.nombre}
         </span>
+        {nota && (
+          <span className="mt-0.5 text-[10px] leading-snug text-amber-700">{nota}</span>
+        )}
         <RecipeMeta receta={receta} className="mt-1 gap-x-2.5 text-[10px]" />
         {pie && <span className="mt-1 block">{pie}</span>}
       </span>

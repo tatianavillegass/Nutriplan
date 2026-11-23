@@ -354,6 +354,12 @@ export interface AdherenciaDia {
   kcalExtras: number;
   /** 0–100. */
   porcentaje: number;
+  /**
+   * Si ese día se puede comparar con algo. Sin comidas pautadas no se puede:
+   * el 0 % que salía no era «no cumplió» sino «no hay con qué medirlo», y es
+   * justo lo que hacía que un día entero marcado apareciera en rojo.
+   */
+  comparable: boolean;
 }
 
 /** Resumen para el calendario y para la pestaña de seguimiento. */
@@ -368,11 +374,31 @@ export function adherenciaDelDia(
    */
   const comidas = dayType ? comidasConPauta(dayType) : [];
   const comidasTotales = comidas.length;
-  const ids = new Set(comidas.map((m) => m.id));
+  const conPauta = new Set(comidas.map((m) => m.id));
+  /* Todas las del tipo de día, lleven pauta hoy o no. */
+  const delPlan = new Set((dayType?.meals ?? []).map((m) => m.id));
   const cumplidas = registro?.cumplidas ?? [];
-  const comidasCumplidas = comidasTotales
-    ? cumplidas.filter((id) => ids.has(id)).length
-    : cumplidas.length;
+
+  /**
+   * LO QUE MARCÓ CUENTA AUNQUE EL PLAN HAYA CAMBIADO DESDE ENTONCES
+   * ===============================================================
+   * Esto contaba sólo las marcas cuyo id siguiera existiendo hoy, y una
+   * comida renombrada **cambia de id** (`separarComida`). Así que el día que
+   * se renombra una comida, todos los días que la clienta ya había marcado
+   * pasaban a contar cero: «aparece que no ha marcado y ellos dicen que sí
+   * marcaron todo». Lo mismo al montarle una planificación nueva con otras
+   * comidas.
+   *
+   * La regla ahora: una marca **sólo se descarta si es de una comida que el
+   * plan tiene hoy y que ese día no lleva pauta** —marcó la merienda un día
+   * sin merienda—. Lo que no se reconoce es de una versión anterior del plan
+   * y **cuenta**: la clienta marcó su comida, y que nosotros hayamos movido
+   * las fichas por debajo no es cosa suya.
+   */
+  const cuentan = cumplidas.filter((id) => !delPlan.has(id) || conPauta.has(id)).length;
+  /* Nunca más de las que había: marcar de más no sube del 100 %. */
+  const comidasCumplidas = comidasTotales ? Math.min(comidasTotales, cuentan) : cuentan;
+
   const { kcal } = totalExtras(registro?.extras ?? []);
   return {
     fecha: registro?.fecha ?? '',
@@ -382,6 +408,11 @@ export function adherenciaDelDia(
     extras: registro?.extras?.length ?? 0,
     kcalExtras: kcal,
     porcentaje: comidasTotales ? Math.round((comidasCumplidas / comidasTotales) * 100) : 0,
+    /*
+     * Sin comidas pautadas no hay con qué comparar. Antes salía 0 % —rojo, «no
+     * cumplió»— en un día en que puede haberlo marcado todo.
+     */
+    comparable: comidasTotales > 0,
   };
 }
 

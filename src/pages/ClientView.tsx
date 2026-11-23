@@ -1479,13 +1479,6 @@ export function ClientView() {
               onCambiar={(nuevo) =>
                 upsertRegistro(client.id, lunesDe(fecha), { menuSemana: nuevo })
               }
-              /*
-               * Sólo en su pestaña de la compra: es ella la que compra. La
-               * tarjeta que ve la nutricionista al abrir el plan sigue siendo
-               * la de la semana.
-               */
-              rango={rangoDeCompra}
-              hoy={fecha}
             />
           </div>
         )}
@@ -1526,6 +1519,17 @@ export function ClientView() {
               onCambiar={(nuevo) =>
                 upsertRegistro(client.id, lunesDe(fecha), { menuSemana: nuevo })
               }
+              /*
+               * De cuándo a cuándo compra. Sólo aquí: es ella la que va al
+               * supermercado, y la tarjeta que ve la nutricionista al abrir el
+               * plan sigue siendo la de la semana.
+               *
+               * Estaban puestas en la instancia de «Reajustes» —la del menú— y
+               * por eso el selector no salía nunca: el cableado nunca se probó
+               * entero, sólo el componente suelto.
+               */
+              rango={rangoDeCompra}
+              hoy={fecha}
             />
           </div>
         )}
