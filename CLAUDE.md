@@ -1789,6 +1789,29 @@ si es una de estas decisiones:
   curso y sólo si hay cobros apuntados**: de un mes pasado el divisor serían
   las activas de hoy y el dividendo lo de entonces —un número que miente— y
   «0 € por clienta» a primeros de mes no es un dato, es un susto.
+- **La caja se abre: quién pagó, cuánto y cuándo.** «Dice que en noviembre han
+  ingresado 9k pero no me suena que esté bien. Deberíamos tener una hoja donde
+  yo pueda ver quiénes han pagado y cuánto, con fecha.» El resumen daba un
+  total por mes y nada más, y **un número que no se puede abrir no se puede
+  comprobar**: sólo se puede creer o desconfiar, y desconfiar de tu propia caja
+  es peor que no tenerla. `LibroDeCaja` es la planilla que ella ya llevaba
+  aparte: una línea por movimiento, en orden de fecha, con el nombre, el
+  método, el importe y la categoría. **Los gastos van en la misma tabla** —es
+  una caja, no dos listas: se repasa de arriba abajo contra el banco— y desde
+  el nombre se salta a su ficha, que es lo siguiente que se hace cuando algo no
+  cuadra. Un gasto fijo se enseña **dentro del mes que se está mirando**, no en
+  la fecha en que se dio de alta, para que la lista cuadre con el total.
+- **Y el total es la suma de esas líneas, no un número al lado.** Calcularlo
+  por separado dejaría que discreparan, y entonces la pregunta pasaría de «¿de
+  dónde salen los 9k?» a «¿cuál de los dos números vale?», que es peor que la
+  original.
+- **Los cobros que parecen el mismo dos veces se marcan.** Un pago se puede
+  apuntar desde la cita (`cobrarDeLaCita`), desde la ficha (`AgendaPanel`) y
+  desde el bono (`BonosPanel`): tres puertas al mismo sitio, y eso está bien,
+  pero si se entra por dos el mes sale inflado sin que nada chirríe. Se señala
+  lo que coincide en **persona, importe y día**, y **no se descuenta nada**:
+  puede ser real —una clienta que paga dos bonos a la vez— y decidirlo por ella
+  sería inventarse su contabilidad. Se marca y lo mira.
 - **Los gastos son de dos clases, y los fijos se cuentan solos.** Sueltos
   (`Gasto` sin `cada`) y fijos, que se apuntan una vez con su periodicidad y
   entran todos los meses (`utils/finanzas.ts`). Sin los fijos el flujo de caja

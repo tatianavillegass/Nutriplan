@@ -19,6 +19,7 @@ import {
 } from "../utils/finanzas";
 import { Button, Card, Field, Input, Select } from "../components/common/ui";
 import { ResumenConsulta } from "../components/perfil/ResumenConsulta";
+import { LibroDeCaja } from "../components/perfil/LibroDeCaja";
 import { CopiaDeSeguridad } from "../components/perfil/CopiaDeSeguridad";
 import { gastosPorCategoria } from "../utils/consulta";
 
@@ -65,7 +66,9 @@ export function PerfilPage() {
    * junto en una sola página era una pantalla que había que recorrer entera
    * para llegar a lo de abajo.
    */
-  const [tab, setTab] = useState<"resumen" | "gastos" | "acceso">("resumen");
+  const [tab, setTab] = useState<"resumen" | "caja" | "gastos" | "acceso">(
+    "resumen",
+  );
 
   return (
     <div className="space-y-5">
@@ -80,6 +83,7 @@ export function PerfilPage() {
         {(
           [
             ["resumen", "Resumen"],
+            ["caja", "Caja"],
             ["gastos", "Gastos"],
             ["acceso", "Acceso"],
           ] as const
@@ -109,6 +113,16 @@ export function PerfilPage() {
           )}
         </>
       )}
+
+      {/*
+        LA CAJA, ABIERTA
+        ================
+        El resumen da un total por mes y nada más. «Dice que en noviembre han
+        ingresado 9k pero no me suena que esté bien»: un número que no se puede
+        abrir sólo se puede creer o desconfiar. Aquí está la lista de la que
+        sale, línea a línea.
+      */}
+      {tab === "caja" && <LibroDeCaja clients={clients} gastos={gastos} moneda={moneda} />}
 
       {tab === "gastos" && (
         <>

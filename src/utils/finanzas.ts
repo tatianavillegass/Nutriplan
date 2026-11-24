@@ -79,6 +79,15 @@ export function totalGastosDelMes(gastos: Gasto[], mes: string): number {
   return gastosDelMes(gastos, mes).reduce((s, g) => s + (g.importe || 0), 0);
 }
 
+/**
+ * Lo cobrado en un mes.
+ *
+ * **Es la suma de lo que enseña el libro de caja**, línea a línea. Antes se
+ * calculaba aquí por su cuenta y la lista no existía: un número que no se
+ * puede abrir no se puede comprobar, y «dice que en noviembre han ingresado
+ * 9k pero no me suena» no tenía dónde mirarse. Calculándolo en dos sitios
+ * podrían discrepar, y entonces la pregunta sería cuál de los dos vale.
+ */
 export function ingresosDelMes(clientes: Client[], mes: string): number {
   return clientes.reduce(
     (suma, c) =>
