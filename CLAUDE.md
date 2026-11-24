@@ -1049,8 +1049,26 @@ si es una de estas decisiones:
   día que llega el plan, para colgarlo en la nevera. Ahora es una tarjeta al
   final de «Recetas» («Tu plan en papel», o «Tus comidas en papel» en fase 2)
   que dice para qué sirve, porque un botón suelto no lo dice. Si esa pestaña no
-  existe en su fase se queda al final del plan: fuera del paso, pero nunca
-  inalcanzable.
+  existe en su fase, va a **«Resumen»**.
+- **«Fuera del paso» era, en realidad, enterrado.** «En fase 3 no me deja
+  exportar en PDF» — y el botón estaba: al final de la pantalla del día, que
+  es donde caía cuando no hay pestaña «Recetas». En fase 1 casi siempre la hay
+  (recetas asignadas), así que el caso raro era el normal en fase 3, donde lo
+  habitual es no tener ninguna: el botón quedaba tras un día entero de scroll
+  y no lo encontraba nadie, ni ella ni las clientas. Ahora cae en «Resumen»,
+  que **siempre existe** y es donde se entra a mirar cosas del plan y no del
+  día: el sitio de algo que se hace una vez.
+- **Y en la pantalla donde se monta el plan no había ningún botón de exportar.**
+  La única forma era abrir la vista de la clienta y bajar hasta el final —
+  por eso «no me deja exportar» lo decía ella y no sólo las clientas. Ahora hay
+  una tarjeta en **«Entrega»**, al lado de «Enviar», porque mandarlo e
+  imprimirlo son el mismo momento. Imprime **lo que ve la clienta**
+  (`planParaCliente`) y no el borrador: un papel que no coincide con su app es
+  peor que no tener papel. Si todavía no se ha enviado nada, sale el borrador y
+  **la tarjeta lo dice**. El `PlanDocument` va **fuera de `screen-only`**: la
+  regla de impresión esconde ese bloque entero, y un `display: block` dentro de
+  un `display: none` no se pinta. Y montado siempre, no al pulsar, para que el
+  Ctrl+P del navegador saque el plan igual que el botón.
 - **El nombre del plato no se corta en «Reajustes».** Iba con `truncate` y al
   lado van siete botones de día: en un móvil lo que sobraba era el nombre,
   justo lo que hay que leer para decidir. Ahora se envuelve y en pantalla

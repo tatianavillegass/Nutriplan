@@ -243,10 +243,20 @@ describe('Las cinco pestañas', () => {
     expect(screen.getAllByRole('button', { name: /nevera|PDF/i }).length).toBeGreaterThan(0);
   });
 
-  /** Y si esa pestaña no existe en su fase, se queda al final del plan. */
-  it('y si no hay pestaña «Recetas», al final del plan', () => {
+  /*
+   * Y si esa pestaña no existe en su fase, el sitio es «Resumen».
+   *
+   * Estaba al final de la pantalla del día, y ahí no lo encontraba nadie: en
+   * fase 3 lo normal es no tener recetas asignadas, así que no hay pestaña
+   * «Recetas» y el botón quedaba tras un día entero de scroll. De ahí «en
+   * fase 3 no me deja exportar en PDF». «Resumen» siempre existe y es donde
+   * se entra a mirar cosas del plan y no del día.
+   */
+  it('y si no hay pestaña «Recetas», en «Resumen»', () => {
     abrir();
     expect(hayPestana('Recetas')).toBe(false);
+    expect(screen.queryAllByRole('button', { name: /nevera|PDF/i })).toHaveLength(0);
+    fireEvent.click(pestana('Resumen'));
     expect(screen.getAllByRole('button', { name: /nevera|PDF/i }).length).toBeGreaterThan(0);
   });
 

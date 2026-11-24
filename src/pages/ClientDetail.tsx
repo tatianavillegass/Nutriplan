@@ -37,6 +37,8 @@ import { PatronesDePausa } from "../components/client/PatronesDePausa";
 import { PausaDeCliente } from "../components/planning/PausaDeCliente";
 import { MedidasDeCliente } from "../components/planning/MedidasDeCliente";
 import { MedidasDeLaClienta } from "../components/client/MedidasDeLaClienta";
+import { PlanDocument } from "../components/export/PlanDocument";
+import { usePrintDocument } from "../components/export/printing";
 import { EntrenosDeCliente } from "../components/planning/EntrenosDeCliente";
 import { SinNumerosDeCliente } from "../components/planning/SinNumerosDeCliente";
 import { SusEntrenos } from "../components/client/SusEntrenos";
@@ -62,6 +64,7 @@ import { catalogoPermitido, evaluarAlimento } from "../utils/restrictions";
 import {
   RECETAS_POR_COMIDA,
   comidasQueSeLlamanIgual,
+  planParaCliente,
   recetasDelPlan,
   fotoDelPlan,
 } from "../types/plan";
@@ -184,6 +187,19 @@ export function ClientDetail() {
   });
 
   const foodsPermitidos = catalogoPermitido(foods, client);
+
+  /*
+   * El nombre del archivo es lo que ve al guardarlo. Lleva el nombre de la
+   * clienta porque va a acabar en una carpeta con veinte más.
+   */
+  const imprimirPlan = usePrintDocument(`Plan ${client.nombre}`.trim());
+
+  /**
+   * Lo que se imprime es **lo que ve ella**: si el plan está enviado, la foto;
+   * si todavía no, el borrador tal y como está. Imprimir siempre el borrador
+   * daría un papel que no coincide con su app, que es peor que no tener papel.
+   */
+  const paraElPapel = planParaCliente(plan) ?? plan;
   /**
    * Para los buscadores de la nutricionista se pasa el catálogo entero: un
    * alimento vetado se enseña en ámbar con el motivo en vez de desaparecer,
@@ -295,7 +311,13 @@ export function ClientDetail() {
   ];
 
   return (
-    <div className="space-y-5">
+    <>
+    {/*
+     * `screen-only`: al imprimir, la regla de `index.css` esconde esto entero
+     * y deja sólo el documento. Sin esta clase saldría la pantalla de montar
+     * el plan —pestañas, botones y todo— encima del PDF.
+     */}
+    <div className="screen-only space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3 no-print">
         <div>
           <Link
@@ -1213,6 +1235,37 @@ export function ClientDetail() {
             client={client}
             onEmail={(email) => updateClient(client.id, { email })}
           />
+          {/*
+            EL PLAN EN PAPEL, DESDE DONDE SE MONTA
+            ======================================
+            No había ningún botón de exportar en esta pantalla: la única forma
+            era abrir la vista del cliente y bajar hasta el final. Y en fase 3
+            allí cae al fondo del día, porque sin recetas asignadas no hay
+            pestaña «Recetas» que lo acoja — de ahí «en fase 3 no me deja
+            exportar en PDF»: el botón estaba, pero enterrado.
+            Va al lado de «Enviar» a propósito: mandarlo y imprimirlo son el
+            mismo momento, el de dar el plan por hecho.
+          */}
+          <Card
+            title="El plan en papel"
+            subtitle={
+              plan.publicado
+                ? `Lo mismo que ve ${client.nombre.split(' ')[0]} en su app`
+                : 'Todavía sin enviar: sale el borrador tal y como está'
+            }
+            actions={
+              <Button variant="outline" onClick={imprimirPlan}>
+                Exportar PDF
+              </Button>
+            }
+          >
+            <p className="text-xs leading-snug text-slate-500">
+              Para imprimirlo, mandarlo por correo o guardarlo. Sale el formato
+              de su fase: la hoja de recetas en fase 1, la de la nevera en fase
+              2 y la tabla de porciones en 3 y 4.
+            </p>
+          </Card>
+
           <SendPlanPanel
             plan={plan}
             client={client}
@@ -1233,5 +1286,23 @@ export function ClientDetail() {
         </div>
       )}
     </div>
+
+    {/*
+      EL DOCUMENTO VA FUERA DE `screen-only`
+      ======================================
+      Dentro no serviría de nada: la regla de impresión esconde ese bloque
+      entero, y un `display: block` dentro de un `display: none` no se pinta.
+      Montado siempre y no al pulsar, para que el Ctrl+P del navegador saque
+      el plan igual que el botón.
+    */}
+    {plan && (
+      <PlanDocument
+        client={client}
+        plan={paraElPapel}
+        recipes={recipes}
+        foods={foods}
+      />
+    )}
+    </>
   );
 }

@@ -1656,6 +1656,20 @@ export function ClientView() {
         {laPestana === "resumen" && (
           <div className="space-y-5">
             {/*
+              SIN PESTAÑA «RECETAS», AQUÍ Y NO AL FONDO DEL DÍA
+              ==========================================================
+              Estaba al final de la pantalla del día, debajo de todo. En fase 1
+              casi siempre hay pestaña «Recetas» y el botón vive ahí, pero en
+              fase 3 lo normal es no tener recetas asignadas: no hay pestaña, y
+              el botón quedaba enterrado tras un día entero de scroll. De ahí
+              «en fase 3 no me deja exportar en PDF» — estaba, pero no se
+              encontraba.
+              «Resumen» siempre existe y es donde se entra a mirar cosas del
+              plan y no del día: es el sitio para algo que se hace una vez.
+            */}
+            {!hayPestana("recetas") && planEnPapel}
+
+            {/*
               A las presenciales las mide la nutricionista con el plicómetro;
               a las online no hay forma de medirlas, así que la báscula y la
               cinta las lleva ella. Se enciende persona a persona (`seMide`):
@@ -2445,8 +2459,6 @@ export function ClientView() {
               />
             )}
 
-            {/* Sin pestaña «Recetas» que lo acoja, al final del día. */}
-            {!hayPestana("recetas") && planEnPapel}
           </div>
         )}
       </div>
