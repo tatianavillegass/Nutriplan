@@ -143,6 +143,33 @@ export function bucketExchanges(counts: ExchangeCounts): Record<MacroBucket, num
   return out;
 }
 
+/**
+ * DE DÓNDE SALE EL NÚMERO DE CADA MACRO
+ * =====================================
+ * «En cálculo plan puse 5 proteínas pero en entrega me aparece como si
+ * hubiese puesto 6.»
+ *
+ * Las dos pantallas cuentan bien, pero cuentan cosas distintas: «cálculo
+ * plan» va **por subgrupo** (proteicos magros, lácteos proteicos, legumbres…)
+ * y el esquema de entrega va **por macro**. Y al macro de proteína suman
+ * también los lácteos proteicos —que son proteína— y las legumbres, que
+ * cuentan en hidrato **y** en proteína porque sus 7 g lo son tanto como los de
+ * un proteico magro.
+ *
+ * Así que el 6 es correcto y el 5 también: son dos preguntas distintas. Lo que
+ * faltaba era que la pantalla dijera cuál está contestando, porque un total
+ * que no cuadra con lo que acabas de escribir no se lee como «otra cuenta»,
+ * se lee como un error.
+ */
+export function deDondeSale(
+  counts: ExchangeCounts,
+  bucket: MacroBucket,
+): { grupo: ExchangeGroupId; nombre: string; n: number }[] {
+  return EXCHANGE_GROUP_LIST.filter(
+    (g) => !g.ilimitado && (counts[g.id] ?? 0) > 0 && bucketsDeGrupo(g.id).includes(bucket),
+  ).map((g) => ({ grupo: g.id, nombre: g.nombre.toLowerCase(), n: counts[g.id] as number }));
+}
+
 /** Perfil de grupos presentes (para el matcher de recetas). */
 export function groupProfile(counts: ExchangeCounts): ExchangeGroupId[] {
   return EXCHANGE_GROUP_LIST.filter((g) => (counts[g.id] ?? 0) > 0).map((g) => g.id);

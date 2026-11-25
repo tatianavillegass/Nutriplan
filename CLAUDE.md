@@ -1789,6 +1789,19 @@ si es una de estas decisiones:
   curso y sólo si hay cobros apuntados**: de un mes pasado el divisor serían
   las activas de hoy y el dividendo lo de entonces —un número que miente— y
   «0 € por clienta» a primeros de mes no es un dato, es un susto.
+- **«Puse 5 proteínas y en entrega me aparecen 6».** Las dos pantallas cuentan
+  bien, pero cuentan cosas distintas: «Cálculo plan» reparte **por subgrupo**
+  (`groupTotal`: proteicos magros, lácteos proteicos, legumbres…) y el esquema
+  de entrega suma **por macro** (`bucketExchanges`). Al macro de proteína
+  entran también los lácteos proteicos —que son proteína— y **las legumbres,
+  que cuentan en hidrato y en proteína a la vez**, porque sus 7 g lo son igual
+  que los de un proteico magro. Así que el 6 es correcto y el 5 también: son
+  dos preguntas distintas. Lo que faltaba era que la pantalla dijera cuál está
+  contestando — **un total que no cuadra con lo que acabas de escribir no se
+  lee como otra cuenta, se lee como un error**. `PlanSchemaTable` desglosa cada
+  macro («Proteína 6 = 1 legumbres + 5 proteicos magros») y **sólo cuando hay
+  más de un subgrupo detrás**: con uno, el número se explica solo. Es la misma
+  regla que el libro de caja — un número que se puede abrir.
 - **La caja se abre: quién pagó, cuánto y cuándo.** «Dice que en noviembre han
   ingresado 9k pero no me suena que esté bien. Deberíamos tener una hoja donde
   yo pueda ver quiénes han pagado y cuánto, con fecha.» El resumen daba un
