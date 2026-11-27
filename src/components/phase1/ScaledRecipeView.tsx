@@ -312,9 +312,30 @@ export function ScaledRecipeView({
                 (requeridos[ing.grupo as keyof typeof requeridos] as number | undefined) ?? 0;
               const original = ing.foodId ? foods.find((f) => f.id === ing.foodId) : undefined;
               const gpiOriginal = original ? gramosPorIntercambio(original) : undefined;
-              const enElPlato =
-                gpiOriginal && ing.cantidad_final ? ing.cantidad_final / gpiOriginal : 0;
-              const intercambios = enElPlato > 0 ? enElPlato : pautadas;
+              /**
+               * UN CERO ES UN CERO, NO UN «NO SE SABE»
+               * ======================================
+               * Esto caía a lo pautado en cuanto el plato daba cero, y el
+               * respaldo no era para eso: era para cuando **no se puede
+               * calcular** la porción —un ingrediente sin alimento del
+               * catálogo detrás—. Con un cero de verdad mentía.
+               *
+               * Es lo que vio Alexandra: un plato con **0 g de aguacate** que
+               * al pulsar «Cambiar» le ofrecía **70 g de guacamole**. El
+               * aguacate se había quedado en cero porque la grasa pautada se
+               * la llevó el salmón (la regla de compensar la grasa de una
+               * proteína grasa), y el botón ofrecía la porción entera que el
+               * plato no tiene.
+               *
+               * Así que sólo se cae a lo pautado cuando no hay forma de
+               * calcularlo. Si se calcula y sale cero, es cero: no hay nada
+               * que cambiar y no sale botón.
+               */
+              const sePuedeCalcular = !!gpiOriginal;
+              const enElPlato = sePuedeCalcular
+                ? (ing.cantidad_final ?? 0) / (gpiOriginal as number)
+                : undefined;
+              const intercambios = enElPlato ?? pautadas;
               const gpi = equivalente ? gramosPorIntercambio(equivalente) : undefined;
 
               const nombreFinal = equivalente?.nombre ?? ing.nombre;
@@ -333,7 +354,22 @@ export function ScaledRecipeView({
                 alimento?.medida_casera && alimento.gramos > 0 && gramosFinales
                   ? escalarMedida(alimento.medida_casera, gramosFinales / alimento.gramos)
                   : undefined;
-              const displayFinal = caseras && casera ? casera : enGramos;
+              /**
+               * Y UN CERO SE DICE CON PALABRAS
+               * ==============================
+               * «0 g de aguacate» se lee como «pesa cero gramos», que no
+               * significa nada en una cocina. Lo que pasa es que ese
+               * ingrediente **no cabe en lo que tiene pautado** —la grasa se
+               * la llevó otro alimento del plato— y decirlo así es lo único
+               * que permite hacer algo al respecto: quitarlo de la receta,
+               * subirle la pauta o cambiar el plato.
+               */
+              const enCero = sePuedeCalcular && !(gramosFinales && gramosFinales > 0);
+              const displayFinal = enCero
+                ? 'no entra en lo pautado'
+                : caseras && casera
+                  ? casera
+                  : enGramos;
 
               /**
                * CRUDO Y COCIDO PESAN DISTINTO, Y CADA UNA PESA UNA COSA
@@ -350,7 +386,13 @@ export function ScaledRecipeView({
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-400" />
                   <span className="flex-1 text-slate-700">
                     {nombreFinal}
-                    <span className="tnum ml-1.5 font-medium text-brand-800">{displayFinal}</span>
+                    <span
+                      className={`ml-1.5 font-medium ${
+                        enCero ? 'text-[11px] text-amber-700' : 'tnum text-brand-800'
+                      }`}
+                    >
+                      {displayFinal}
+                    </span>
                     {caseras && casera && (
                       <span className="tnum ml-1.5 text-[10px] text-slate-400">{enGramos}</span>
                     )}

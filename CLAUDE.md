@@ -1789,6 +1789,22 @@ si es una de estas decisiones:
   curso y sólo si hay cobros apuntados**: de un mes pasado el divisor serían
   las activas de hoy y el dividendo lo de entonces —un número que miente— y
   «0 € por clienta» a primeros de mes no es un dato, es un susto.
+- **Lo que se cambia es lo que hay en el plato, y un cero es un cero.** «Hay un
+  plato que tiene 0 g de aguacate, pero al darle al botón de cambiar le aparece
+  guacamole y le da 70 g.» Las porciones del cambio salen del plato —sus gramos
+  entre los que pesa una porción— con un respaldo a lo pautado **para cuando no
+  se puede calcular**: un ingrediente sin alimento del catálogo detrás. El
+  respaldo saltaba también cuando el cálculo daba **cero**, y entonces mentía:
+  el aguacate se había quedado en 0 g porque la grasa pautada se la llevó el
+  salmón (la regla de compensar la grasa de una proteína grasa, §3.2), y el
+  botón ofrecía la porción entera que el plato no tiene. Ahora se distingue
+  **«no se puede calcular» de «se calculó y es cero»**: con cero no hay nada
+  que cambiar y no sale botón.
+- **Y un ingrediente en cero se dice con palabras.** «0 g de aguacate» se lee
+  como «pesa cero gramos», que no significa nada en una cocina. Lo que pasa es
+  que **no cabe en lo pautado**, y decirlo así es lo único que permite hacer
+  algo: quitarlo de la receta, subir la pauta o cambiar el plato. Va en ámbar y
+  sin número, para que no se confunda con una cantidad.
 - **«Puse 5 proteínas y en entrega me aparecen 6».** Las dos pantallas cuentan
   bien, pero cuentan cosas distintas: «Cálculo plan» reparte **por subgrupo**
   (`groupTotal`: proteicos magros, lácteos proteicos, legumbres…) y el esquema
