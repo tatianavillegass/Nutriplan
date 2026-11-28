@@ -1805,6 +1805,14 @@ si es una de estas decisiones:
   que **no cabe en lo pautado**, y decirlo así es lo único que permite hacer
   algo: quitarlo de la receta, subir la pauta o cambiar el plato. Va en ámbar y
   sin número, para que no se confunda con una cantidad.
+- **Pero «al gusto» no es un cero.** Ese aviso se llevó por delante a las
+  verduras y a los condimentos, que **no llevan cantidad a propósito**: la
+  verdura es ilimitada y ponerle gramos a la sal sería inventárselos. Decirle a
+  alguien que la lechuga «no entra» es decirle que no se eche lechuga. Se
+  reconocen por tres cosas: la receta ya los escribe como «al gusto», su grupo
+  es `condimento`, o su subgrupo es **ilimitado**. El aviso queda sólo para lo
+  que **sí debería traer cantidad y se ha quedado sin ella**, que es de lo
+  único que hay algo que decir.
 - **«Puse 5 proteínas y en entrega me aparecen 6».** Las dos pantallas cuentan
   bien, pero cuentan cosas distintas: «Cálculo plan» reparte **por subgrupo**
   (`groupTotal`: proteicos magros, lácteos proteicos, legumbres…) y el esquema

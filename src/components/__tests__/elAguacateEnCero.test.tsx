@@ -36,6 +36,15 @@ const AGUACATE: Alimento = {
 
 const GUACAMOLE: Alimento = { ...AGUACATE, id: 'a-guacamole', nombre: 'Guacamole' };
 
+const LECHUGA: Alimento = {
+  ...AGUACATE,
+  id: 'a-lechuga',
+  nombre: 'Lechuga',
+  grupo: 'verduras',
+  gramos: 100,
+  nutrientes: { kcal: 15, hc: 1, proteina: 1, grasa: 0 },
+};
+
 const SALMON: Alimento = {
   ...AGUACATE,
   id: 'a-salmon',
@@ -48,7 +57,7 @@ const SALMON: Alimento = {
 /* Otra proteína grasa, para que el salmón tenga por quién cambiarse. */
 const CABALLA: Alimento = { ...SALMON, id: 'a-caballa', nombre: 'Caballa' };
 
-const FOODS = [AGUACATE, GUACAMOLE, SALMON, CABALLA];
+const FOODS = [AGUACATE, GUACAMOLE, SALMON, CABALLA, LECHUGA];
 
 const ing = (id: string, nombre: string, foodId: string, grupo: string, c: number) =>
   ({
@@ -159,5 +168,63 @@ describe('Y al cambiar algo que sí tiene gramos', () => {
       b.textContent?.includes('Caballa'),
     );
     expect(caballa?.textContent).toContain('400');
+  });
+});
+
+/**
+ * «AL GUSTO» NO ES UN CERO
+ *
+ * Al decir que un ingrediente sin gramos «no entra en lo pautado» se llevó por
+ * delante a las verduras, que no llevan cantidad **a propósito**: la verdura es
+ * ilimitada y ponerle gramos a la sal sería inventárselos. Decirle a alguien
+ * que la lechuga «no entra» es decirle que no se eche lechuga.
+ */
+describe('Lo que va al gusto', () => {
+  const conVerdura = {
+    ...PLATO,
+    base: { proteicos_magros: 2, grasas: 1, verduras: 'ilimitado' },
+    ingredientes: [
+      ing('i1', 'Salmón', SALMON.id, 'proteicos_magros', 100),
+      ing('i2', 'Aguacate', AGUACATE.id, 'grasas', 70),
+      /*
+       * Sin cantidad base: es la verdura que sale «al gusto», que es la que
+       * ella vio marcada como «no entra».
+       */
+      { ...ing('i3', 'Lechuga', LECHUGA.id, 'verduras', 0), cantidad_base: null },
+      /* Un condimento: tampoco lleva cantidad, y no es un hueco. */
+      { ...ing('i4', 'Eneldo', '', 'condimento', 0), foodId: undefined },
+    ],
+  } as unknown as Receta;
+
+  const pintarConVerdura = () =>
+    render(
+      <ScaledRecipeView
+        receta={conVerdura}
+        recetas={[conVerdura]}
+        requeridos={{ proteicos_magros: 4, grasas: 1 }}
+        foods={FOODS}
+        equivalentes={{}}
+        onEquivalente={vi.fn()}
+      />,
+    );
+
+  it('la verdura sigue diciendo «al gusto»', () => {
+    pintarConVerdura();
+    const linea = screen.getByText('Lechuga').closest('li')!;
+    expect(linea.textContent).toContain('al gusto');
+    expect(linea.textContent).not.toContain('no entra');
+  });
+
+  it('y el condimento tampoco es un hueco', () => {
+    pintarConVerdura();
+    expect(screen.getByText('Eneldo').closest('li')!.textContent).not.toContain('no entra');
+  });
+
+  /* Y el aviso sigue donde tiene que estar: en lo que sí debía traer cantidad. */
+  it('pero el aguacate sigue avisando', () => {
+    pintarConVerdura();
+    expect(screen.getByText('Aguacate').closest('li')!.textContent).toContain(
+      'no entra en lo pautado',
+    );
   });
 });

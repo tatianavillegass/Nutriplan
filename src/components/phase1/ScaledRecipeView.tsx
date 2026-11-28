@@ -364,7 +364,24 @@ export function ScaledRecipeView({
                * que permite hacer algo al respecto: quitarlo de la receta,
                * subirle la pauta o cambiar el plato.
                */
-              const enCero = sePuedeCalcular && !(gramosFinales && gramosFinales > 0);
+              /**
+               * «AL GUSTO» NO ES UN CERO
+               * ========================
+               * La verdura y los condimentos **no llevan cantidad a propósito**
+               * —la verdura es ilimitada y ponerle gramos a la sal sería
+               * inventárselos—, así que no tener gramos es su estado normal y
+               * no un ingrediente que no cabe en lo pautado. Decirles «no
+               * entra» es decirle a alguien que no se eche perejil.
+               *
+               * El cero del que hay que avisar es el del ingrediente que **sí
+               * debería traer cantidad** y se ha quedado sin ella.
+               */
+              const esAlGusto =
+                ing.display === 'al gusto' ||
+                ing.grupo === 'condimento' ||
+                !!EXCHANGE_GROUPS[ing.grupo as keyof typeof EXCHANGE_GROUPS]?.ilimitado;
+              const enCero =
+                sePuedeCalcular && !esAlGusto && !(gramosFinales && gramosFinales > 0);
               const displayFinal = enCero
                 ? 'no entra en lo pautado'
                 : caseras && casera
